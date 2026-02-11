@@ -40,6 +40,7 @@ struct LocationPickerView: View {
             }
             .navigationTitle(L("location.selectStart"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -331,6 +332,7 @@ struct MapPickerView: View {
             }
             .navigationTitle(L("location.chooseFromMap"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {

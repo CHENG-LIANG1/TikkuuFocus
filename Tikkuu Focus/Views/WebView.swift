@@ -96,9 +96,10 @@ struct PrivacyPolicyView: View {
             }
             .navigationTitle(L("settings.privacy"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(L("journey.summary.done")) {
+                    Button(L("common.done")) {
                         dismiss()
                     }
                     .fontWeight(.semibold)

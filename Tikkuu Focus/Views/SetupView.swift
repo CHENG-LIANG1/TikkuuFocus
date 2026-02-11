@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreLocation
 import SwiftData
+import MapKit
 
 struct SetupView: View {
     @StateObject private var locationManager = LocationManager()
@@ -34,6 +35,7 @@ struct SetupView: View {
     @State private var preparingPulse: CGFloat = 1.0
     @State private var showFirstJourneyGuide = false
     @State private var showWeatherDetail = false
+    @State private var mapPreloadCoordinate: CLLocationCoordinate2D?
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var allRecords: [JourneyRecord]
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     
@@ -89,7 +91,7 @@ struct SetupView: View {
                         .offset(y: cardsAppeared ? 0 : 20)
                         .blur(radius: cardsAppeared ? 0 : 4)
                         .animation(AnimationConfig.smoothSpring.delay(0.08), value: cardsAppeared)
-                        .drawingGroup() // Optimize rendering
+                        // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
                     
                     transportSelectionCard
                         .scaleEffect(cardsAppeared ? 1 : 0.9)
@@ -97,7 +99,7 @@ struct SetupView: View {
                         .offset(y: cardsAppeared ? 0 : 20)
                         .blur(radius: cardsAppeared ? 0 : 4)
                         .animation(AnimationConfig.smoothSpring.delay(0.12), value: cardsAppeared)
-                        .drawingGroup() // Optimize rendering
+                        // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
                     
                     durationSelectionCard
                         .scaleEffect(cardsAppeared ? 1 : 0.9)
@@ -119,12 +121,19 @@ struct SetupView: View {
             }
             .environment(\.adaptiveTextColor, weatherManager.optimalTextColor)
             .environment(\.adaptiveSecondaryTextColor, weatherManager.optimalSecondaryTextColor)
+
+            if let preloadCoordinate = mapPreloadCoordinate {
+                MapPreloadView(center: preloadCoordinate)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
         .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
             setupLocation()
             fetchWeatherForSelectedLocation()
+            prewarmMapIfPossible()
             
             // Debug version info
             AppInfo.debugVersionInfo()
@@ -141,6 +150,7 @@ struct SetupView: View {
         }
         .onChange(of: selectedLocation) { _, _ in
             fetchWeatherForSelectedLocation()
+            prewarmMapIfPossible()
         }
         .onChange(of: locationManager.currentLocation) { _, newLocation in
             if case .currentLocation = selectedLocation, let location = newLocation {
@@ -148,6 +158,7 @@ struct SetupView: View {
                 Task {
                     await weatherManager.fetchWeather(for: location.coordinate)
                 }
+                prewarmMapIfPossible()
             }
         }
         .onChange(of: locationManager.authorizationStatus) { _, newStatus in
@@ -227,10 +238,52 @@ struct SetupView: View {
             TrophyView()
         }
         .sheet(isPresented: $showWeatherDetail) {
-            WeatherDetailView(
-                weatherManager: weatherManager,
-                coordinate: currentCoordinate
-            )
+            NavigationStack {
+                WeatherDetailView(
+                    weatherManager: weatherManager,
+                    coordinate: currentCoordinate
+                )
+                .navigationTitle(L("label.weather"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(L("common.done")) {
+                            showWeatherDetail = false
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+            }
+        }
+        .sheet(item: $journeyManager.pendingSummaryPayload) { payload in
+            NavigationStack {
+                JourneySummaryView(
+                    session: payload.session,
+                    discoveredPOIs: payload.discoveredPOIs,
+                    weatherCondition: payload.weatherCondition,
+                    isDaytime: payload.isDaytime,
+                    progress: payload.progress,
+                    isCompleted: payload.isCompleted,
+                    actualDuration: payload.actualDuration,
+                    onDismiss: {
+                        journeyManager.pendingSummaryPayload = nil
+                    }
+                )
+                .navigationTitle(L("journey.viewSummary"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(L("common.done")) {
+                            journeyManager.pendingSummaryPayload = nil
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
         }
         .overlay {
             if showFirstJourneyGuide {
@@ -278,6 +331,12 @@ struct SetupView: View {
             
             await weatherManager.fetchWeather(for: coordinate)
         }
+    }
+
+    private func prewarmMapIfPossible() {
+        let coordinate = currentCoordinate
+        mapPreloadCoordinate = coordinate
+        journeyManager.prewarmMapServices(near: coordinate)
     }
     
     // MARK: - Header
@@ -567,7 +626,12 @@ struct SetupView: View {
                     
                     Slider(value: Binding(
                         get: { Double(selectedDuration) },
-                        set: { selectedDuration = Int($0) }
+                        set: {
+                            let newValue = Int($0)
+                            guard newValue != selectedDuration else { return }
+                            selectedDuration = newValue
+                            triggerDurationSliderHaptic(for: newValue)
+                        }
                     ), in: 5...120, step: 5)
                     .tint(Color(red: 0.4, green: 0.7, blue: 0.9))
                 }
@@ -876,6 +940,52 @@ struct SetupView: View {
                 isStarting = false
             }
         }
+    }
+
+    private func triggerDurationSliderHaptic(for value: Int) {
+        // Give crisp step feedback while dragging, with stronger pulses on milestones.
+        if value == 5 || value == 120 || value % 30 == 0 {
+            HapticManager.heavy()
+        } else if value % 15 == 0 {
+            HapticManager.medium()
+        } else {
+            HapticManager.selection()
+        }
+    }
+}
+
+private struct MapPreloadView: View {
+    let center: CLLocationCoordinate2D
+    @State private var cameraPosition: MapCameraPosition = .automatic
+
+    var body: some View {
+        Map(position: $cameraPosition) {}
+            .frame(width: 1, height: 1)
+            .opacity(0.01)
+            .onAppear {
+                cameraPosition = .region(
+                    MKCoordinateRegion(
+                        center: center,
+                        span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
+                    )
+                )
+            }
+            .onChange(of: center.latitude) { _, _ in
+                cameraPosition = .region(
+                    MKCoordinateRegion(
+                        center: center,
+                        span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
+                    )
+                )
+            }
+            .onChange(of: center.longitude) { _, _ in
+                cameraPosition = .region(
+                    MKCoordinateRegion(
+                        center: center,
+                        span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
+                    )
+                )
+            }
     }
 }
 

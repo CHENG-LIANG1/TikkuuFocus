@@ -33,6 +33,7 @@ struct HistoryView: View {
     @State private var selectedRecords: Set<UUID> = []
     @State private var showDeleteConfirmation = false
     @State private var recordToDelete: JourneyRecord?
+    @State private var deletingRecordIDs: Set<UUID> = []
     
     // MARK: - Cached Computed Properties (Performance Optimization)
     
@@ -218,6 +219,7 @@ struct HistoryView: View {
             }
             .navigationTitle(L("history.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if selectedTab == .records && !records.isEmpty {
@@ -351,27 +353,45 @@ struct HistoryView: View {
     
     private func deleteSelectedRecords() {
         HapticManager.success()
-        withAnimation(AnimationConfig.smoothSpring) {
-            for recordID in selectedRecords {
-                if let record = records.first(where: { $0.id == recordID }) {
-                    modelContext.delete(record)
+        let idsToDelete = selectedRecords
+
+        withAnimation(.easeInOut(duration: 0.28)) {
+            deletingRecordIDs.formUnion(idsToDelete)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                for recordID in idsToDelete {
+                    if let record = records.first(where: { $0.id == recordID }) {
+                        modelContext.delete(record)
+                    }
+                    deletingRecordIDs.remove(recordID)
                 }
+                selectedRecords.removeAll()
+                isEditMode = false
+                updateCachedStats()
             }
-            selectedRecords.removeAll()
-            isEditMode = false
-            updateCachedStats()
         }
     }
     
     private func deleteSingleRecord(_ record: JourneyRecord) {
         HapticManager.success()
-        withAnimation(AnimationConfig.smoothSpring) {
-            modelContext.delete(record)
-            recordToDelete = nil
-            if expandedRecordID == record.id {
-                expandedRecordID = nil
+        let targetID = record.id
+
+        withAnimation(.easeInOut(duration: 0.28)) {
+            _ = deletingRecordIDs.insert(targetID)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                modelContext.delete(record)
+                deletingRecordIDs.remove(targetID)
+                recordToDelete = nil
+                if expandedRecordID == record.id {
+                    expandedRecordID = nil
+                }
+                updateCachedStats()
             }
-            updateCachedStats()
         }
     }
     
@@ -563,8 +583,14 @@ struct HistoryView: View {
                         }
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.95, anchor: .top).combined(with: .opacity),
-                            removal: .scale(scale: 0.98, anchor: .top).combined(with: .opacity)
+                            removal: .recordStripPullOut
                         ))
+                        .zIndex(expandedRecordID == record.id ? 1 : 0)
+                        .scaleEffect(deletingRecordIDs.contains(record.id) ? 0.78 : 1.0, anchor: .leading)
+                        .offset(x: deletingRecordIDs.contains(record.id) ? 220 : 0)
+                        .rotationEffect(.degrees(deletingRecordIDs.contains(record.id) ? 6 : 0))
+                        .opacity(deletingRecordIDs.contains(record.id) ? 0 : 1)
+                        .animation(.easeInOut(duration: 0.24), value: deletingRecordIDs.contains(record.id))
                         .id(record.id) // Ensure proper identity for animations
                     }
                 }
@@ -965,6 +991,32 @@ struct HistoryView: View {
     }
 }
 
+private struct RecordStripPullOutModifier: ViewModifier {
+    let progress: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(
+                x: 1.0 - (progress * 0.2),
+                y: 1.0 - (progress * 0.04),
+                anchor: .leading
+            )
+            .offset(x: progress * 220)
+            .rotationEffect(.degrees(Double(progress) * 7.0))
+            .opacity(1.0 - progress)
+            .blur(radius: progress * 2.0)
+    }
+}
+
+private extension AnyTransition {
+    static var recordStripPullOut: AnyTransition {
+        .modifier(
+            active: RecordStripPullOutModifier(progress: 1.0),
+            identity: RecordStripPullOutModifier(progress: 0.0)
+        )
+    }
+}
+
 // MARK: - History Tab
 
 enum HistoryTab: String, CaseIterable, Identifiable {
@@ -1143,280 +1195,187 @@ struct ExpandableRecordCard: View {
     let onDelete: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Collapsed header (always visible)
-                HStack(spacing: 14) {
-                    // Transport icon
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        colorForTransportMode(record.transportMode).opacity(0.25),
-                                        colorForTransportMode(record.transportMode).opacity(0.12)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 52, height: 52)
-                        
-                        Image(systemName: iconForTransportMode(record.transportMode))
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(colorForTransportMode(record.transportMode))
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(record.startLocationName)
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(.primary)
-                            .lineLimit(1)
-                        
-                        HStack(spacing: 8) {
-                            Text(FormatUtilities.formatDate(record.startTime))
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.secondary)
-                            
-                            if record.isCompleted {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 12))
-                                    Text(L("history.detail.completed"))
-                                        .font(.system(size: 12, weight: .semibold))
-                                }
-                                .foregroundColor(.green)
-                            }
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    if !isEditMode {
-                        HStack(spacing: 12) {
-                            // Delete button
-                            Button {
-                                HapticManager.light()
-                                onDelete()
-                            } label: {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.red)
-                                    .frame(width: 36, height: 36)
-                                    .background(
-                                        Circle()
-                                            .fill(Color.red.opacity(0.1))
-                                    )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            // Expand indicator
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(colorForTransportMode(record.transportMode).opacity(0.18))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: iconForTransportMode(record.transportMode))
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundColor(colorForTransportMode(record.transportMode))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(record.startLocationName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 8) {
+                        Text(FormatUtilities.formatDate(record.startTime))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        Text("·")
+                            .foregroundColor(.secondary)
+
+                        Text(L("transport.\(record.transportMode.lowercased())"))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
                     }
                 }
-                .padding(18)
-                .background(
-                    RoundedRectangle(cornerRadius: isExpanded ? 24 : 20)
-                        .fill(.ultraThinMaterial)
-                )
-                
-                // Expanded content with scale animation
-                if isExpanded {
-                    VStack(alignment: .leading, spacing: 20) {
-                        // Quick stats row
-                        HStack(spacing: 10) {
-                            ExpandedQuickStat(
-                                icon: "clock.fill",
-                                value: FormatUtilities.formatTime(record.duration),
-                                label: L("history.detail.duration"),
-                                color: .blue
+
+                Spacer(minLength: 0)
+
+                if !isEditMode {
+                    Button {
+                        HapticManager.light()
+                        onDelete()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.red)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Circle()
+                                    .fill(Color.red.opacity(0.12))
                             )
-                            
-                            ExpandedQuickStat(
-                                icon: "location.fill",
-                                value: FormatUtilities.formatDistance(record.distanceTraveled),
-                                label: L("history.detail.distanceTraveled"),
-                                color: .green
-                            )
-                            
-                            ExpandedQuickStat(
-                                icon: "star.fill",
-                                value: "\(record.discoveredPOICount)",
-                                label: L("history.detail.poisDiscovered"),
-                                color: .yellow
-                            )
-                        }
-                        
-                        // Route map
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "map.fill")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.blue, .purple],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                
-                                Text(L("history.detail.routeInfo"))
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(.primary)
-                            }
-                            
-                            RouteMapPreview(
-                                startCoordinate: CLLocationCoordinate2D(
-                                    latitude: record.startLatitude,
-                                    longitude: record.startLongitude
-                                ),
-                                endCoordinate: CLLocationCoordinate2D(
-                                    latitude: record.destinationLatitude,
-                                    longitude: record.destinationLongitude
-                                )
-                            )
-                            .frame(height: 240)
-                            .clipShape(RoundedRectangle(cornerRadius: 18))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .strokeBorder(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0.4),
-                                                Color.white.opacity(0.1)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                        lineWidth: 2
-                                    )
-                            )
-                            .shadow(color: Color.black.opacity(0.2), radius: 12, x: 0, y: 6)
-                        }
-                        
-                        // Location details
-                        VStack(spacing: 14) {
-                            ExpandedDetailRow(
-                                icon: "location.circle.fill",
-                                label: L("history.detail.start"),
-                                value: record.startLocationName,
-                                color: .green
-                            )
-                            
-                            ExpandedDetailRow(
-                                icon: "flag.circle.fill",
-                                label: L("history.detail.destination"),
-                                value: record.destinationName,
-                                color: .red
-                            )
-                            
-                            Divider()
-                                .padding(.vertical, 4)
-                            
-                            ExpandedDetailRow(
-                                icon: "gauge.with.dots.needle.67percent",
-                                label: L("history.detail.progress"),
-                                value: FormatUtilities.formatProgress(record.progress),
-                                color: .purple
-                            )
-                            
-                            ExpandedDetailRow(
-                                icon: "clock.arrow.circlepath",
-                                label: L("history.detail.plannedDuration"),
-                                value: FormatUtilities.formatTime(record.plannedDuration),
-                                color: .orange
-                            )
-                            
-                            Divider()
-                                .padding(.vertical, 4)
-                            
-                            ExpandedDetailRow(
-                                icon: "calendar",
-                                label: L("history.detail.started"),
-                                value: FormatUtilities.formatDateTime(record.startTime),
-                                color: .cyan
-                            )
-                            
-                            if let endTime = record.endTime {
-                                ExpandedDetailRow(
-                                    icon: "calendar.badge.checkmark",
-                                    label: L("history.detail.ended"),
-                                    value: FormatUtilities.formatDateTime(endTime),
-                                    color: .cyan
-                                )
-                            }
-                        }
                     }
-                    .padding(20)
-                    .padding(.top, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24)
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .strokeBorder(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.blue.opacity(0.4),
-                                                Color.purple.opacity(0.4)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                        lineWidth: 2
-                                    )
-                            )
-                    )
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.95, anchor: .top)
-                            .combined(with: .opacity)
-                            .combined(with: .move(edge: .top)),
-                        removal: .scale(scale: 0.95, anchor: .top)
-                            .combined(with: .opacity)
-                            .combined(with: .move(edge: .top))
-                    ))
-                    .padding(.top, 8)
+                    .buttonStyle(.plain)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .animation(.spring(response: 0.28, dampingFraction: 0.84), value: isExpanded)
                 }
             }
-            .background(
-                RoundedRectangle(cornerRadius: isExpanded ? 24 : 20)
-                    .fill(.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: isExpanded ? 24 : 20)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: isExpanded ? [
-                                Color.blue.opacity(0.5),
-                                Color.purple.opacity(0.5)
-                            ] : [
-                                Color.white.opacity(0.12),
-                                Color.white.opacity(0.05)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+            .padding(16)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard !isEditMode else { return }
+                onTap()
+            }
+
+            if isExpanded {
+                Divider()
+                    .overlay(Color.white.opacity(0.22))
+
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 10) {
+                        ExpandedQuickStat(
+                            icon: "clock.fill",
+                            value: FormatUtilities.formatTime(record.duration),
+                            label: L("history.detail.duration"),
+                            color: .blue
+                        )
+
+                        ExpandedQuickStat(
+                            icon: "location.fill",
+                            value: FormatUtilities.formatDistance(record.distanceTraveled),
+                            label: L("history.detail.distanceTraveled"),
+                            color: .green
+                        )
+
+                        ExpandedQuickStat(
+                            icon: "star.fill",
+                            value: "\(record.discoveredPOICount)",
+                            label: L("history.detail.poisDiscovered"),
+                            color: .orange
+                        )
+                    }
+
+                    RouteMapPreview(
+                        startCoordinate: CLLocationCoordinate2D(
+                            latitude: record.startLatitude,
+                            longitude: record.startLongitude
                         ),
-                        lineWidth: isExpanded ? 2 : 1
+                        endCoordinate: CLLocationCoordinate2D(
+                            latitude: record.destinationLatitude,
+                            longitude: record.destinationLongitude
+                        )
                     )
-            )
-            .shadow(
-                color: isExpanded ? Color.blue.opacity(0.3) : Color.black.opacity(0.08),
-                radius: isExpanded ? 24 : 8,
-                x: 0,
-                y: isExpanded ? 12 : 4
-            )
+                    .frame(height: 180)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+
+                    VStack(spacing: 12) {
+                        ExpandedDetailRow(
+                            icon: "location.circle.fill",
+                            label: L("history.detail.start"),
+                            value: record.startLocationName,
+                            color: .green
+                        )
+
+                        ExpandedDetailRow(
+                            icon: "flag.circle.fill",
+                            label: L("history.detail.destination"),
+                            value: record.destinationName,
+                            color: .red
+                        )
+
+                        ExpandedDetailRow(
+                            icon: "gauge.with.dots.needle.67percent",
+                            label: L("history.detail.progress"),
+                            value: FormatUtilities.formatProgress(record.progress),
+                            color: .purple
+                        )
+
+                        ExpandedDetailRow(
+                            icon: "clock.arrow.circlepath",
+                            label: L("history.detail.plannedDuration"),
+                            value: FormatUtilities.formatTime(record.plannedDuration),
+                            color: .orange
+                        )
+
+                        ExpandedDetailRow(
+                            icon: "calendar",
+                            label: L("history.detail.started"),
+                            value: FormatUtilities.formatDateTime(record.startTime),
+                            color: .cyan
+                        )
+
+                        if let endTime = record.endTime {
+                            ExpandedDetailRow(
+                                icon: "calendar.badge.checkmark",
+                                label: L("history.detail.ended"),
+                                value: FormatUtilities.formatDateTime(endTime),
+                                color: .cyan
+                            )
+                        }
+                    }
+                }
+                .padding(16)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isExpanded ? 1.02 : 1.0, anchor: .top)
-        .animation(AnimationConfig.fluidSpring, value: isExpanded)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(
+                    isExpanded ? Color.blue.opacity(0.34) : Color.white.opacity(0.16),
+                    lineWidth: isExpanded ? 1.5 : 1
+                )
+        )
+        .shadow(
+            color: Color.black.opacity(isExpanded ? 0.15 : 0.08),
+            radius: isExpanded ? 14 : 8,
+            x: 0,
+            y: isExpanded ? 8 : 4
+        )
+        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isExpanded)
         .disabled(isEditMode)
-        .opacity(isEditMode ? 0.7 : 1.0)
+        .opacity(isEditMode ? 0.75 : 1.0)
         .animation(AnimationConfig.smoothSpring, value: isEditMode)
-    }
+        }
     
     private func iconForTransportMode(_ mode: String) -> String {
         switch mode.lowercased() {
@@ -1635,6 +1594,7 @@ struct LocationDetailView: View {
             }
             .navigationTitle(location)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -1780,6 +1740,7 @@ struct TransportModeDetailView: View {
             }
             .navigationTitle(mode.capitalized)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -2109,6 +2070,7 @@ struct RecordDetailView: View {
             }
             .navigationTitle(L("history.detail.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -2523,9 +2485,80 @@ struct MilestoneCard: View {
 
 // MARK: - Time Detail View
 
+struct HistoryMetricRecordRow: View {
+    let record: JourneyRecord
+    let value: String
+    var showChevron: Bool = true
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(colorForTransportMode(record.transportMode).opacity(0.2))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: iconForTransportMode(record.transportMode))
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(colorForTransportMode(record.transportMode))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.startLocationName.isEmpty ? L("location.current") : record.startLocationName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                Text("\(FormatUtilities.formatDate(record.startTime)) · \(FormatUtilities.formatTime(record.duration))")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+
+    private func iconForTransportMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return "figure.walk"
+        case "cycling": return "bicycle"
+        case "driving": return "car.fill"
+        case "subway": return "tram.fill"
+        default: return "figure.walk"
+        }
+    }
+
+    private func colorForTransportMode(_ mode: String) -> Color {
+        switch mode.lowercased() {
+        case "walking": return .green
+        case "cycling": return .blue
+        case "driving": return .purple
+        case "subway": return .orange
+        default: return .blue
+        }
+    }
+}
+
 struct TimeDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let records: [JourneyRecord]
+    @State private var selectedRecord: JourneyRecord?
     
     private var sortedRecords: [JourneyRecord] {
         records.sorted { $0.duration > $1.duration }
@@ -2558,7 +2591,16 @@ struct TimeDetailView: View {
                             .padding(.vertical, 60)
                         } else {
                             ForEach(sortedRecords) { record in
-                                TimeRecordRow(record: record)
+                                Button {
+                                    HapticManager.light()
+                                    selectedRecord = record
+                                } label: {
+                                    HistoryMetricRecordRow(
+                                        record: record,
+                                        value: FormatUtilities.formatTime(record.duration)
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -2568,6 +2610,7 @@ struct TimeDetailView: View {
             }
             .navigationTitle(L("history.totalTime"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -2575,6 +2618,9 @@ struct TimeDetailView: View {
                     }
                     .fontWeight(.semibold)
                 }
+            }
+            .sheet(item: $selectedRecord) { record in
+                RecordDetailView(record: record)
             }
         }
     }
@@ -2585,6 +2631,7 @@ struct TimeDetailView: View {
 struct DistanceDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let records: [JourneyRecord]
+    @State private var selectedRecord: JourneyRecord?
     
     private var sortedRecords: [JourneyRecord] {
         records.sorted { $0.distanceTraveled > $1.distanceTraveled }
@@ -2617,7 +2664,16 @@ struct DistanceDetailView: View {
                             .padding(.vertical, 60)
                         } else {
                             ForEach(sortedRecords) { record in
-                                DistanceRecordRow(record: record)
+                                Button {
+                                    HapticManager.light()
+                                    selectedRecord = record
+                                } label: {
+                                    HistoryMetricRecordRow(
+                                        record: record,
+                                        value: FormatUtilities.formatDistance(record.distanceTraveled)
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -2627,6 +2683,7 @@ struct DistanceDetailView: View {
             }
             .navigationTitle(L("history.totalDistance"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -2634,6 +2691,9 @@ struct DistanceDetailView: View {
                     }
                     .fontWeight(.semibold)
                 }
+            }
+            .sheet(item: $selectedRecord) { record in
+                RecordDetailView(record: record)
             }
         }
     }
@@ -2644,6 +2704,7 @@ struct DistanceDetailView: View {
 struct CompletedDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let records: [JourneyRecord]
+    @State private var selectedRecord: JourneyRecord?
     
     private var sortedRecords: [JourneyRecord] {
         records.sorted { $0.startTime > $1.startTime }
@@ -2682,7 +2743,16 @@ struct CompletedDetailView: View {
                             .padding(.vertical, 60)
                         } else {
                             ForEach(sortedRecords) { record in
-                                CompletedRecordRow(record: record)
+                                Button {
+                                    HapticManager.light()
+                                    selectedRecord = record
+                                } label: {
+                                    HistoryMetricRecordRow(
+                                        record: record,
+                                        value: FormatUtilities.formatProgress(record.progress)
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -2692,6 +2762,7 @@ struct CompletedDetailView: View {
             }
             .navigationTitle(L("history.completed"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -2699,6 +2770,9 @@ struct CompletedDetailView: View {
                     }
                     .fontWeight(.semibold)
                 }
+            }
+            .sheet(item: $selectedRecord) { record in
+                RecordDetailView(record: record)
             }
         }
     }
@@ -2709,15 +2783,19 @@ struct CompletedDetailView: View {
 struct POIsDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let records: [JourneyRecord]
-    
-    private var poisWithRecords: [(poi: DiscoveredPOI, record: JourneyRecord)] {
-        let result: [(poi: DiscoveredPOI, record: JourneyRecord)] = []
-        // Note: JourneyRecord doesn't store POIs, so we'll show records with POI counts
-        // In a real implementation, you'd need to store POIs in the record
-        return result
+    @State private var selectedPOI: RecordPOIItem?
+    @State private var selectedRecord: JourneyRecord?
+
+    private var poiItems: [RecordPOIItem] {
+        records.flatMap { record in
+            record.discoveredPOIs.map { poi in
+                RecordPOIItem(record: record, poi: poi)
+            }
+        }
+        .sorted { $0.poi.discoveredAt > $1.poi.discoveredAt }
     }
-    
-    private var recordsWithPOIs: [JourneyRecord] {
+
+    private var fallbackRecordsWithPOIs: [JourneyRecord] {
         records.filter { $0.discoveredPOICount > 0 }
             .sorted { $0.discoveredPOICount > $1.discoveredPOICount }
     }
@@ -2729,7 +2807,7 @@ struct POIsDetailView: View {
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 12) {
-                        if recordsWithPOIs.isEmpty {
+                        if poiItems.isEmpty && fallbackRecordsWithPOIs.isEmpty {
                             VStack(spacing: 16) {
                                 Image(systemName: "star.fill")
                                     .font(.system(size: 60))
@@ -2753,9 +2831,29 @@ struct POIsDetailView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 60)
+                        } else if !poiItems.isEmpty {
+                            ForEach(poiItems) { item in
+                                Button {
+                                    HapticManager.light()
+                                    selectedPOI = item
+                                } label: {
+                                    HistoryPOIRow(item: item)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         } else {
-                            ForEach(recordsWithPOIs) { record in
-                                POIRecordRow(record: record)
+                            // Older records may only have POI count without POI details.
+                            ForEach(fallbackRecordsWithPOIs) { record in
+                                Button {
+                                    HapticManager.light()
+                                    selectedRecord = record
+                                } label: {
+                                    HistoryMetricRecordRow(
+                                        record: record,
+                                        value: "\(record.discoveredPOICount)"
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -2765,6 +2863,7 @@ struct POIsDetailView: View {
             }
             .navigationTitle(L("history.poisFound"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -2773,6 +2872,157 @@ struct POIsDetailView: View {
                     .fontWeight(.semibold)
                 }
             }
+            .sheet(item: $selectedPOI) { item in
+                POIItemDetailView(item: item)
+            }
+            .sheet(item: $selectedRecord) { record in
+                RecordDetailView(record: record)
+            }
+        }
+    }
+}
+
+struct RecordPOIItem: Identifiable {
+    let record: JourneyRecord
+    let poi: StoredDiscoveredPOI
+
+    var id: UUID {
+        poi.id
+    }
+}
+
+struct HistoryPOIRow: View {
+    let item: RecordPOIItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.yellow.opacity(0.2))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: "star.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.yellow)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.poi.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+
+                Text(item.poi.category)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+struct POIItemDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let item: RecordPOIItem
+    @State private var cameraPosition: MapCameraPosition = .automatic
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        Map(position: $cameraPosition) {
+                            Annotation(item.poi.name, coordinate: item.poi.coordinate) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.yellow)
+                                        .frame(width: 28, height: 28)
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                        }
+                        .frame(height: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+
+                        VStack(spacing: 12) {
+                            HistoryPOIDetailRow(icon: "star.fill", label: L("poi.title"), value: item.poi.name, color: .yellow)
+                            HistoryPOIDetailRow(icon: "tag.fill", label: L("common.category"), value: item.poi.category, color: .orange)
+                            HistoryPOIDetailRow(icon: "clock.fill", label: L("history.detail.started"), value: FormatUtilities.formatDateTime(item.poi.discoveredAt), color: .blue)
+                            HistoryPOIDetailRow(icon: "location.fill", label: L("history.detail.start"), value: item.record.startLocationName.isEmpty ? L("location.current") : item.record.startLocationName, color: .green)
+                        }
+                        .padding(20)
+                        .glassCard(cornerRadius: 20)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle(item.poi.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(L("common.done")) {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .onAppear {
+                cameraPosition = .region(
+                    MKCoordinateRegion(
+                        center: item.poi.coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    )
+                )
+            }
+        }
+    }
+}
+
+struct HistoryPOIDetailRow: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 34, height: 34)
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(color)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                Text(value)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+            Spacer()
         }
     }
 }
@@ -2884,6 +3134,7 @@ struct AchievementDetailView: View {
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {

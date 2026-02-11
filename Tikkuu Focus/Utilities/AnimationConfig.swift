@@ -466,7 +466,15 @@ struct FloatingModifier: ViewModifier {
     let isActive: Bool
     let distance: CGFloat
     let duration: Double
+    let delay: Double
     @State private var offset: CGFloat = 0
+    
+    init(isActive: Bool = true, distance: CGFloat = 8, duration: Double = 2.0, delay: Double = 0) {
+        self.isActive = isActive
+        self.distance = distance
+        self.duration = duration
+        self.delay = delay
+    }
     
     func body(content: Content) -> some View {
         content
@@ -476,6 +484,7 @@ struct FloatingModifier: ViewModifier {
                     withAnimation(
                         Animation.easeInOut(duration: duration)
                             .repeatForever(autoreverses: true)
+                            .delay(delay)
                     ) {
                         offset = -distance
                     }

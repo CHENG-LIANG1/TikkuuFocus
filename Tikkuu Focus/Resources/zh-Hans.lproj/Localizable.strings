@@ -53,6 +53,7 @@
 
 // Weather Details
 "weather.humidity" = "湿度";
+"weather.temperature" = "温度";
 "weather.wind" = "风速";
 "weather.visibility" = "能见度";
 "weather.pressure" = "气压";
@@ -125,9 +126,22 @@
 "settings.contact" = "联系与支持";
 "settings.privacy" = "隐私政策";
 "settings.about" = "关于";
+"settings.onboarding" = "新手引导";
 "settings.about.app" = "关于 Roam Focus";
 "settings.tutorial" = "查看教程";
 "settings.version" = "版本";
+"settings.data" = "数据管理";
+"settings.data.icloud" = "iCloud 同步";
+"settings.data.icloud.subtitle" = "即将支持";
+"settings.data.clear" = "清除所有数据";
+"settings.data.clear.subtitle" = "删除记录与进度（无法恢复）";
+"settings.data.clear.confirm1.title" = "清除所有数据？";
+"settings.data.clear.confirm1.message" = "将删除本地所有历史记录与进度数据。";
+"settings.data.clear.confirm1.action" = "继续";
+"settings.data.clear.confirm2.title" = "最终确认";
+"settings.data.clear.confirm2.message" = "此操作不可撤销，所有数据将被永久删除。";
+"settings.data.clear.confirm2.action" = "永久删除";
+"settings.data.clear.inputPlaceholder" = "请输入确认文字";
 
 // About
 "about.title" = "关于";
@@ -168,6 +182,46 @@
 "onboarding.page4.feature1" = "随时暂停和继续旅程";
 "onboarding.page4.feature2" = "自定义你的出发地点";
 "onboarding.page4.feature3" = "在专注的同时发现新地方";
+"onboarding.v2.header" = "漫游专注";
+"onboarding.v2.hero.chip1" = "专注";
+"onboarding.v2.hero.chip2" = "路线";
+"onboarding.v2.hero.chip3" = "景点";
+"onboarding.v2.page1.badge" = "实时旅程";
+"onboarding.v2.page1.title" = "把专注变成探索";
+"onboarding.v2.page1.subtitle" = "从你的城市出发，在真实地图上漫游，同时保持专注节奏。";
+"onboarding.v2.page1.feature1.title" = "选择出发地点";
+"onboarding.v2.page1.feature1.desc" = "可用当前位置或预设城市，快速开始。";
+"onboarding.v2.page1.feature2.title" = "切换交通方式";
+"onboarding.v2.page1.feature2.desc" = "步行、骑行、驾驶、地铁，体验不同节奏。";
+"onboarding.v2.page1.feature3.title" = "自然发现";
+"onboarding.v2.page1.feature3.desc" = "沿途出现景点信息，不打断专注。";
+"onboarding.v2.page2.badge" = "专注中";
+"onboarding.v2.page2.title" = "移动时依然顺滑";
+"onboarding.v2.page2.subtitle" = "专注过程中可自由缩放拖动，只有点击时才回到跟随视角。";
+"onboarding.v2.page2.feature1.title" = "实时进度";
+"onboarding.v2.page2.feature1.desc" = "时间与路线进展同屏呈现，一眼掌握。";
+"onboarding.v2.page2.feature2.title" = "不强制回中";
+"onboarding.v2.page2.feature2.desc" = "相机停在你操作的位置，不会自动抢焦点。";
+"onboarding.v2.page2.feature3.title" = "控制更清晰";
+"onboarding.v2.page2.feature3.desc" = "关键操作就近可达，不打断当前任务。";
+"onboarding.v2.page3.badge" = "旅程后";
+"onboarding.v2.page3.title" = "看见真正有用的结果";
+"onboarding.v2.page3.subtitle" = "每次旅程都生成完整结算：时间、距离、天气与路线一目了然。";
+"onboarding.v2.page3.feature1.title" = "会话统计";
+"onboarding.v2.page3.feature1.desc" = "用卡片查看时长、距离、完成度与交通方式。";
+"onboarding.v2.page3.feature2.title" = "历史记录";
+"onboarding.v2.page3.feature2.desc" = "展开样式更连贯，回看最近旅程更顺手。";
+"onboarding.v2.page3.feature3.title" = "奖杯与里程碑";
+"onboarding.v2.page3.feature3.desc" = "随着专注积累，逐步解锁更多成就。";
+"onboarding.v2.page4.badge" = "准备就绪";
+"onboarding.v2.page4.title" = "开始下一段专注旅程";
+"onboarding.v2.page4.subtitle" = "一键启动，保持节奏，享受路线，稳定完成。";
+"onboarding.v2.page4.feature1.title" = "快速开始";
+"onboarding.v2.page4.feature1.desc" = "打开后几秒内即可选好并出发。";
+"onboarding.v2.page4.feature2.title" = "舒适视觉";
+"onboarding.v2.page4.feature2.desc" = "昼夜与天气风格统一，界面更耐看。";
+"onboarding.v2.page4.feature3.title" = "全局本地化";
+"onboarding.v2.page4.feature3.desc" = "语言与时间格式跟随应用设置。";
 
 // History
 "history.title" = "漫游历史";
@@ -211,6 +265,7 @@
 "common.loading" = "加载中...";
 "common.done" = "完成";
 "common.edit" = "编辑";
+"common.category" = "分类";
 "common.cancel" = "取消";
 "common.delete" = "删除";
 
@@ -679,6 +734,7 @@
 "journey.summary.photoPermission.message" = "请在设置中允许 Roam Focus 保存照片到您的相册。";
 "journey.summary.photoPermission.openSettings" = "打开设置";
 "journey.summary.photoPermission.cancel" = "取消";
+"journey.summary.saved" = "已保存到相册";
 
 // Activity Heatmap
 "heatmap.less" = "少";
@@ -714,4 +770,3 @@
 "common.bullet" = "•";
 "common.slash" = "/";
 "common.dash" = "—";
-

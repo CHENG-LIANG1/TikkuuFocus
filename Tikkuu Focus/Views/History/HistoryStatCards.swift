@@ -176,9 +176,9 @@ struct AchievementCard: View {
     }
 }
 
-// MARK: - Milestone Card
+// MARK: - Milestone Stat Card
 
-struct MilestoneCard: View {
+struct MilestoneStatCard: View {
     let icon: String
     let title: String
     let value: String

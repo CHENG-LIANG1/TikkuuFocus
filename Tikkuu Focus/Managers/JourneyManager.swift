@@ -9,6 +9,7 @@ import Foundation
 import CoreLocation
 import MapKit
 import Combine
+import UIKit
 
 /// Manages the journey logic: destination generation, routing, and progress tracking
 @MainActor
@@ -16,6 +17,7 @@ class JourneyManager: ObservableObject {
     @Published var state: JourneyState = .idle
     @Published var currentPosition: VirtualPosition?
     @Published var discoveredPOIs: [DiscoveredPOI] = []
+    @Published var pendingSummaryPayload: JourneySummaryPayload?
     
     private var timer: Timer?
     private var lastPOICheckTime: Date?
@@ -26,6 +28,40 @@ class JourneyManager: ObservableObject {
     private let discoveryRadius: CLLocationDistance = 100 // Reduced from 500m to 100m
     
     private let subwayManager = SubwayManager()
+    private var hasPrewarmedMapServices = false
+    private var didEnterBackgroundObserver: NSObjectProtocol?
+    private var didBecomeActiveObserver: NSObjectProtocol?
+
+    init() {
+        didEnterBackgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handleDidEnterBackground()
+            }
+        }
+
+        didBecomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handleDidBecomeActive()
+            }
+        }
+    }
+
+    deinit {
+        if let observer = didEnterBackgroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = didBecomeActiveObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
     
     // MARK: - Journey Creation
     
@@ -73,9 +109,7 @@ class JourneyManager: ObservableObject {
                     
                 } catch SubwayError.noNearbyLine {
                     print("❌ No subway line found within 10km")
-                    state = .failed(NSLocalizedString("error.subway.noNearbyLine.detailed", 
-                                                     value: "未找到附近的地铁线路（搜索范围：10公里）。请确认您的位置附近有地铁站，或尝试选择其他交通方式。", 
-                                                     comment: "No nearby subway line detailed"))
+                    state = .failed(L("error.subway.noNearbyLine.detailed"))
                     return
                 } catch {
                     print("❌ Subway search error: \(error.localizedDescription)")
@@ -92,9 +126,6 @@ class JourneyManager: ObservableObject {
                     SubwayStationInfo(name: station.name, coordinate: station.coordinate)
                 }
                 
-                // Record POIs near start location
-                await recordStartLocationPOIs(at: startLocation)
-                
                 // Create session with subway route
                 let session = JourneySession(
                     id: UUID(),
@@ -110,6 +141,11 @@ class JourneyManager: ObservableObject {
                 
                 state = .active(session)
                 startTimer()
+
+                // Run start-area POI cache in background to avoid delaying journey start.
+                Task(priority: .utility) {
+                    await self.recordStartLocationPOIs(at: startLocation)
+                }
                 
             } else {
                 // Normal routing for other transport modes
@@ -118,9 +154,6 @@ class JourneyManager: ObservableObject {
                 
                 // Calculate route
                 let route = try await calculateRoute(from: location, to: destination, transportMode: transportMode)
-                
-                // Record POIs near start location (to exclude them from discovery)
-                await recordStartLocationPOIs(at: location)
                 
                 // Create session
                 let session = JourneySession(
@@ -137,53 +170,53 @@ class JourneyManager: ObservableObject {
                 
                 state = .active(session)
                 startTimer()
+
+                // Run start-area POI cache in background to avoid delaying journey start.
+                Task(priority: .utility) {
+                    await self.recordStartLocationPOIs(at: location)
+                }
             }
             
         } catch {
             state = .failed(error.localizedDescription)
         }
     }
+
+    /// Pre-warm MapKit services to reduce first-start latency.
+    func prewarmMapServices(near coordinate: CLLocationCoordinate2D) {
+        guard !hasPrewarmedMapServices else { return }
+        hasPrewarmedMapServices = true
+
+        Task(priority: .utility) {
+            // 1) Warm local search pipeline.
+            let searchRequest = MKLocalSearch.Request()
+            searchRequest.naturalLanguageQuery = "landmark"
+            searchRequest.region = MKCoordinateRegion(
+                center: coordinate,
+                latitudinalMeters: 1200,
+                longitudinalMeters: 1200
+            )
+            searchRequest.resultTypes = .pointOfInterest
+            let search = MKLocalSearch(request: searchRequest)
+            _ = try? await search.start()
+
+            // 2) Warm directions pipeline with a tiny local request.
+            let destination = coordinate.coordinate(at: 300, bearing: 30)
+            let directionsRequest = MKDirections.Request()
+            directionsRequest.source = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+            directionsRequest.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
+            directionsRequest.transportType = .walking
+            let directions = MKDirections(request: directionsRequest)
+            _ = try? await directions.calculate()
+        }
+    }
     
     /// Generate a random destination at the specified distance
     private func generateRandomDestination(from start: CLLocationCoordinate2D, 
-                                          distance: Double,
-                                          maxAttempts: Int = 5) async throws -> CLLocationCoordinate2D {
-        for _ in 0..<maxAttempts {
-            // Generate random bearing (0-360 degrees)
-            let bearing = Double.random(in: 0..<360)
-            let destination = start.coordinate(at: distance, bearing: bearing)
-            
-            // Validate destination (basic check - not in ocean, etc.)
-            if await isValidDestination(destination) {
-                return destination
-            }
-        }
-        
-        // Fallback: return a destination even if validation fails
+                                          distance: Double) async throws -> CLLocationCoordinate2D {
+        // Skip pre-validation network calls and rely on route calculation fallback.
         let bearing = Double.random(in: 0..<360)
         return start.coordinate(at: distance, bearing: bearing)
-    }
-    
-    /// Check if destination is valid (has roads nearby)
-    private func isValidDestination(_ coordinate: CLLocationCoordinate2D) async -> Bool {
-        // Simple validation: check if we can find any roads nearby
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = "road"
-        request.region = MKCoordinateRegion(
-            center: coordinate,
-            latitudinalMeters: 1000,
-            longitudinalMeters: 1000
-        )
-        
-        let search = MKLocalSearch(request: request)
-        
-        do {
-            let response = try await search.start()
-            return !response.mapItems.isEmpty
-        } catch {
-            // If search fails, assume it's valid (better than blocking)
-            return true
-        }
     }
     
     /// Calculate route from start to destination
@@ -284,9 +317,9 @@ class JourneyManager: ObservableObject {
     
     private func startTimer() {
         stopTimer()
-        
-        // 性能优化：降低更新频率从 0.5s 到 2.0s，减少 CPU 占用
-        timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+
+        let interval = PerformanceOptimizer.shared.journeyUpdateInterval
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.updateJourney()
             }
@@ -331,6 +364,21 @@ class JourneyManager: ObservableObject {
         }
         
         return true
+    }
+
+    private func handleDidEnterBackground() {
+        // Pause periodic updates in background to save battery.
+        stopTimer()
+    }
+
+    private func handleDidBecomeActive() {
+        // Resume timer only if journey is running/paused context exists.
+        if case .active = state {
+            startTimer()
+            Task { @MainActor [weak self] in
+                await self?.updateJourney()
+            }
+        }
     }
     
     // MARK: - POI Detection
@@ -459,9 +507,9 @@ enum JourneyError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noRouteFound:
-            return NSLocalizedString("error.journey.noRoute", comment: "No route found")
+            return L("error.journey.noRoute")
         case .invalidDestination:
-            return NSLocalizedString("error.journey.invalidDestination", comment: "Invalid destination")
+            return L("error.journey.invalidDestination")
         }
     }
 }

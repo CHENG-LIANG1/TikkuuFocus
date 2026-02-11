@@ -20,16 +20,16 @@ enum FormatUtilities {
         if hours > 0 {
             // Show hours and minutes: "6 hr 30 min"
             if minutes > 0 {
-                let hourStr = String(format: NSLocalizedString("time.hours", comment: ""), hours)
-                let minStr = String(format: NSLocalizedString("time.minutes", comment: ""), minutes)
+                let hourStr = String(format: L("time.hours"), hours)
+                let minStr = String(format: L("time.minutes"), minutes)
                 return "\(hourStr) \(minStr)"
             } else {
-                return String(format: NSLocalizedString("time.hours", comment: ""), hours)
+                return String(format: L("time.hours"), hours)
             }
         } else if minutes > 0 {
-            return String(format: NSLocalizedString("time.minutes", comment: ""), minutes)
+            return String(format: L("time.minutes"), minutes)
         } else {
-            return String(format: NSLocalizedString("time.seconds", comment: ""), secs)
+            return String(format: L("time.seconds"), secs)
         }
     }
     
@@ -51,16 +51,16 @@ enum FormatUtilities {
     static func formatDistance(_ meters: Double) -> String {
         if meters >= 1000 {
             let km = meters / 1000.0
-            return String(format: NSLocalizedString("distance.kilometers", comment: ""), km)
+            return String(format: L("distance.kilometers"), km)
         } else {
-            return String(format: NSLocalizedString("distance.meters", comment: ""), meters)
+            return String(format: L("distance.meters"), meters)
         }
     }
     
     /// Format speed to human-readable string
     static func formatSpeed(_ metersPerSecond: Double) -> String {
         let kmh = metersPerSecond * 3.6
-        return String(format: NSLocalizedString("speed.kmh", comment: ""), kmh)
+        return String(format: L("speed.kmh"), kmh)
     }
     
     /// Format progress percentage
@@ -73,7 +73,7 @@ enum FormatUtilities {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
-        formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage)
+        formatter.locale = Locale(identifier: AppSettings.shared.currentLanguage)
         return formatter.string(from: date)
     }
     
@@ -82,7 +82,7 @@ enum FormatUtilities {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage)
+        formatter.locale = Locale(identifier: AppSettings.shared.currentLanguage)
         return formatter.string(from: date)
     }
     
@@ -91,7 +91,7 @@ enum FormatUtilities {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .none
-        formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage)
+        formatter.locale = Locale(identifier: AppSettings.shared.currentLanguage)
         return formatter.string(from: date)
     }
     
@@ -100,14 +100,14 @@ enum FormatUtilities {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
         formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage)
+        formatter.locale = Locale(identifier: AppSettings.shared.currentLanguage)
         return formatter.string(from: date)
     }
     
     /// Format relative date (e.g., "Today", "Yesterday", "2 days ago")
     static func formatRelativeDate(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage)
+        formatter.locale = Locale(identifier: AppSettings.shared.currentLanguage)
         formatter.unitsStyle = .full
         return formatter.localizedString(for: date, relativeTo: Date())
     }

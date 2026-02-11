@@ -11,7 +11,6 @@ import SwiftData
 
 struct ActiveJourneyView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var journeyManager: JourneyManager
     @ObservedObject private var settings = AppSettings.shared
@@ -25,9 +24,6 @@ struct ActiveJourneyView: View {
     @State private var showHistory = false
     @State private var showCustomStopDialog = false
     @State private var currentSpeed: Double = 0.0
-    @State private var showJourneySummary = false
-    @State private var summaryProgress: Double = 0.0
-    @State private var summaryCompleted: Bool = false
     @StateObject private var weatherManager = WeatherManager()
     
     var body: some View {
@@ -84,61 +80,12 @@ struct ActiveJourneyView: View {
         .sheet(isPresented: $showHistory) {
             HistoryView()
         }
-        .sheet(item: Binding(
-            get: { showJourneySummary ? journeyManager.state.session : nil },
-            set: { showJourneySummary = $0 != nil }
-        )) { session in
-            journeySummaryView(for: session)
-                .presentationBackground(.clear)
-                .presentationDragIndicator(.hidden)
-        }
         .task {
             // Fetch weather when view appears
             if let session = journeyManager.state.session {
                 await weatherManager.fetchWeather(for: session.startLocation)
             }
         }
-    }
-    
-    // MARK: - Journey Summary View
-    
-    @ViewBuilder
-    private func journeySummaryView(for session: JourneySession) -> some View {
-        let currentProgress: Double = {
-            if let position = journeyManager.currentPosition {
-                return position.progress
-            } else if case .completed = journeyManager.state {
-                return 1.0
-            } else {
-                return 0.0
-            }
-        }()
-        
-        let completed: Bool = {
-            if let position = journeyManager.currentPosition {
-                return position.progress >= 1.0
-            } else if case .completed = journeyManager.state {
-                return true
-            } else {
-                return false
-            }
-        }()
-        
-        let actualDuration: TimeInterval = Date().timeIntervalSince(session.startTime)
-        
-        JourneySummaryView(
-            session: session,
-            discoveredPOIs: journeyManager.discoveredPOIs,
-            weatherCondition: weatherManager.weatherDescription.isEmpty ? "Clear" : weatherManager.weatherDescription,
-            isDaytime: weatherManager.isDaytime,
-            progress: currentProgress,
-            isCompleted: completed,
-            actualDuration: actualDuration,
-            onDismiss: {
-                showJourneySummary = false
-                journeyManager.cancelJourney()
-            }
-        )
     }
     
     // MARK: - Top Bar
@@ -365,9 +312,13 @@ struct ActiveJourneyView: View {
                     Button {
                         HapticManager.success()
                         saveCompletedJourney(session: session)
-                        
-                        // Show journey summary
-                        showJourneySummary = true
+                        presentSummary(
+                            session: session,
+                            progress: 1.0,
+                            isCompleted: true,
+                            actualDuration: Date().timeIntervalSince(session.startTime),
+                            discoveredPOIs: journeyManager.discoveredPOIs
+                        )
                     } label: {
                         Text(L("journey.viewSummary"))
                             .font(.system(size: 16, weight: .semibold))
@@ -620,6 +571,7 @@ struct ActiveJourneyView: View {
             distanceTraveled: session.totalDistance,
             progress: 1.0,
             discoveredPOICount: journeyManager.discoveredPOIs.count,
+            discoveredPOIsJSON: JourneyRecord.encodePOIs(journeyManager.discoveredPOIs),
             isCompleted: true
         )
         
@@ -632,9 +584,14 @@ struct ActiveJourneyView: View {
             distanceTraveled: session.totalDistance,
             remainingTime: 0
         )
-        
-        // Show summary
-        showJourneySummary = true
+
+        presentSummary(
+            session: session,
+            progress: 1.0,
+            isCompleted: true,
+            actualDuration: actualDuration,
+            discoveredPOIs: journeyManager.discoveredPOIs
+        )
     }
     #endif
     
@@ -668,14 +625,44 @@ struct ActiveJourneyView: View {
             distanceTraveled: position.distanceTraveled,
             progress: position.progress,
             discoveredPOICount: journeyManager.discoveredPOIs.count,
+            discoveredPOIsJSON: JourneyRecord.encodePOIs(journeyManager.discoveredPOIs),
             isCompleted: position.progress >= 1.0
         )
         
         // Save to SwiftData
         modelContext.insert(record)
-        
-        // Show summary instead of canceling immediately
-        showJourneySummary = true
+
+        presentSummary(
+            session: session,
+            progress: position.progress,
+            isCompleted: position.progress >= 1.0,
+            actualDuration: actualDuration,
+            discoveredPOIs: journeyManager.discoveredPOIs
+        )
+    }
+
+    private func presentSummary(
+        session: JourneySession,
+        progress: Double,
+        isCompleted: Bool,
+        actualDuration: TimeInterval,
+        discoveredPOIs: [DiscoveredPOI]
+    ) {
+        let payload = JourneySummaryPayload(
+            session: session,
+            discoveredPOIs: discoveredPOIs,
+            weatherCondition: weatherManager.weatherDescription.isEmpty ? L("weather.condition.clear") : weatherManager.weatherDescription,
+            isDaytime: weatherManager.isDaytime,
+            progress: progress,
+            isCompleted: isCompleted,
+            actualDuration: actualDuration
+        )
+
+        // Dismiss map screen first.
+        journeyManager.cancelJourney()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            journeyManager.pendingSummaryPayload = payload
+        }
     }
     
     private func getLocationName(for coordinate: CLLocationCoordinate2D) -> String {
@@ -726,6 +713,7 @@ struct ActiveJourneyView: View {
             distanceTraveled: session.totalDistance,
             progress: 1.0,
             discoveredPOICount: journeyManager.discoveredPOIs.count,
+            discoveredPOIsJSON: JourneyRecord.encodePOIs(journeyManager.discoveredPOIs),
             isCompleted: true
         )
         

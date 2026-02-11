@@ -7,12 +7,30 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Performance optimization utilities
 class PerformanceOptimizer {
     static let shared = PerformanceOptimizer()
     
     private init() {}
+
+    // MARK: - Energy & Motion
+
+    /// True when the device requests reduced visual/CPU load.
+    var isEnergySavingMode: Bool {
+        ProcessInfo.processInfo.isLowPowerModeEnabled || UIAccessibility.isReduceMotionEnabled
+    }
+
+    /// Preferred timer interval for journey position refresh.
+    var journeyUpdateInterval: TimeInterval {
+        isEnergySavingMode ? 3.0 : 1.5
+    }
+
+    /// Preferred timer interval for non-critical UI telemetry updates.
+    var secondaryUpdateInterval: TimeInterval {
+        isEnergySavingMode ? 8.0 : 5.0
+    }
     
     // MARK: - Throttle
     
@@ -162,6 +180,51 @@ class PerformanceOptimizer {
         print("💾 [\(label)] Memory usage: \(String(format: "%.2f", usage)) MB")
         #endif
     }
+
+    // MARK: - Image Optimization
+
+    /// Compress an image to be under a target size in KB.
+    /// - Parameters:
+    ///   - image: Source image.
+    ///   - maxSizeKB: Maximum size in kilobytes.
+    /// - Returns: Compressed UIImage or nil if compression fails.
+    func compressImage(_ image: UIImage, maxSizeKB: Int) -> UIImage? {
+        let maxBytes = maxSizeKB * 1024
+        guard maxBytes > 0 else { return nil }
+
+        // Quick path: already small enough at high quality
+        if let data = image.jpegData(compressionQuality: 0.9), data.count <= maxBytes {
+            return UIImage(data: data)
+        }
+
+        var quality: CGFloat = 0.85
+        var currentImage = image
+
+        for _ in 0..<6 {
+            if let data = currentImage.jpegData(compressionQuality: quality), data.count <= maxBytes {
+                return UIImage(data: data)
+            }
+
+            // Reduce dimensions if still too large
+            let scale: CGFloat = 0.85
+            let newSize = CGSize(width: currentImage.size.width * scale, height: currentImage.size.height * scale)
+            guard newSize.width >= 50, newSize.height >= 50 else { break }
+
+            let renderer = UIGraphicsImageRenderer(size: newSize)
+            currentImage = renderer.image { _ in
+                currentImage.draw(in: CGRect(origin: .zero, size: newSize))
+            }
+
+            quality = max(0.5, quality - 0.1)
+        }
+
+        // Final attempt with lower quality
+        if let data = currentImage.jpegData(compressionQuality: 0.5), data.count <= maxBytes {
+            return UIImage(data: data)
+        }
+
+        return nil
+    }
     
     // MARK: - Batch Processing
     
@@ -217,7 +280,7 @@ extension View {
     }
     
     /// Lazy load view with placeholder
-    func lazyLoad<Placeholder: View>(@ViewBuilder placeholder: () -> Placeholder) -> some View {
+    func lazyLoad<Placeholder: View>(@ViewBuilder placeholder: @escaping () -> Placeholder) -> some View {
         LazyView {
             self
         } placeholder: {

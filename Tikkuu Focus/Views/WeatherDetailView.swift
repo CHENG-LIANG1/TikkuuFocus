@@ -9,34 +9,17 @@ import SwiftUI
 import WeatherKit
 import CoreLocation
 
-/// 天气详情和预报视图
 struct WeatherDetailView: View {
-    @Environment(\.dismiss) var dismiss
-    @Environment(\.colorScheme) var colorScheme
     @ObservedObject var weatherManager: WeatherManager
     let coordinate: CLLocationCoordinate2D
-    
+
     @State private var hourlyForecast: [HourWeather] = []
     @State private var dailyForecast: [DayWeather] = []
     @State private var isLoadingForecast = false
-    @State private var selectedTab = 0
-    
-    // Helper to check if hour is current
-    private func isCurrentHour(_ date: Date) -> Bool {
-        let calendar = Calendar.current
-        let now = Date()
-        return calendar.isDate(date, equalTo: now, toGranularity: .hour)
-    }
-    
-    // Helper to check if day is today
-    private func isToday(_ date: Date) -> Bool {
-        let calendar = Calendar.current
-        return calendar.isDateInToday(date)
-    }
-    
+    @State private var selectedTab: ForecastTab = .hourly
+
     var body: some View {
         ZStack {
-            // Weather-based background
             WeatherBackgroundView(
                 colors: weatherManager.weatherGradientColors,
                 weatherCondition: weatherManager.weatherCondition,
@@ -45,265 +28,247 @@ struct WeatherDetailView: View {
                 overlayIntensity: weatherManager.overlayIntensity
             )
             .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                // Header
-                headerView
-                    .padding(.top, 20)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 20)
-                
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        // Current weather card
-                        currentWeatherCard
-                        
-                        // Tab selector
+                    VStack(spacing: 16) {
+                        currentSummaryCard
+                        metricsGridCard
                         tabSelector
-                        
-                        // Forecast content
-                        if selectedTab == 0 {
-                            hourlyForecastView
+
+                        if selectedTab == .hourly {
+                            hourlySection
                         } else {
-                            dailyForecastView
+                            dailySection
                         }
                     }
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 36)
                 }
             }
         }
         .preferredColorScheme(AppSettings.shared.currentColorScheme)
-        .onAppear {
-            loadForecast()
-        }
+        .onAppear(perform: loadForecast)
     }
-    
-    // MARK: - Header
-    
-    private var headerView: some View {
-        HStack {
-            Spacer()
-            
-            Text(L("label.weather"))
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+
+    private var currentSummaryCard: some View {
+        VStack(spacing: 14) {
+            Image(systemName: weatherManager.weatherIcon)
+                .font(.system(size: 64, weight: .light))
                 .foregroundColor(weatherManager.optimalTextColor)
-            
-            Spacer()
-        }
-        .overlay(alignment: .trailing) {
-            Button {
-                HapticManager.light()
-                dismiss()
-            } label: {
-                Text(L("common.done"))
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(weatherManager.optimalTextColor)
-            }
-        }
-    }
-    
-    // MARK: - Current Weather Card
-    
-    private var currentWeatherCard: some View {
-        VStack(spacing: 24) {
-            // Large weather icon with glow
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                weatherManager.optimalTextColor.opacity(0.15),
-                                Color.clear
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 80
-                        )
-                    )
-                    .frame(width: 160, height: 160)
-                
-                Image(systemName: weatherManager.weatherIcon)
-                    .font(.system(size: 90, weight: .light))
-                    .foregroundColor(weatherManager.optimalTextColor)
-                    .symbolRenderingMode(.hierarchical)
-            }
-            
-            // Temperature
+                .symbolRenderingMode(.hierarchical)
+
             Text(weatherManager.temperatureString)
-                .font(.system(size: 72, weight: .ultraLight, design: .rounded))
+                .font(.system(size: 66, weight: .semibold, design: .rounded))
+                .monospacedDigit()
                 .foregroundColor(weatherManager.optimalTextColor)
-            
-            // Description
+
             if !weatherManager.weatherDescription.isEmpty {
                 Text(weatherManager.weatherDescription)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(weatherManager.optimalSecondaryTextColor)
             }
-            
-            // Additional details in grid
+
             if let weather = weatherManager.currentWeather {
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        WeatherDetailItemCard(
-                            icon: "humidity.fill",
-                            label: L("weather.humidity"),
-                            value: String(format: "%.0f%%", weather.humidity * 100),
-                            textColor: weatherManager.optimalTextColor,
-                            secondaryColor: weatherManager.optimalSecondaryTextColor
-                        )
-                        
-                        WeatherDetailItemCard(
-                            icon: "wind",
-                            label: L("weather.wind"),
-                            value: String(format: "%.0f km/h", weather.wind.speed.value),
-                            textColor: weatherManager.optimalTextColor,
-                            secondaryColor: weatherManager.optimalSecondaryTextColor
-                        )
-                    }
-                    
-                    HStack(spacing: 12) {
-                        WeatherDetailItemCard(
-                            icon: "eye.fill",
-                            label: L("weather.visibility"),
-                            value: String(format: "%.0f km", weather.visibility.value / 1000),
-                            textColor: weatherManager.optimalTextColor,
-                            secondaryColor: weatherManager.optimalSecondaryTextColor
-                        )
-                        
-                        WeatherDetailItemCard(
-                            icon: "gauge.with.dots.needle.bottom.50percent",
-                            label: L("weather.pressure"),
-                            value: String(format: "%.0f hPa", weather.pressure.value),
-                            textColor: weatherManager.optimalTextColor,
-                            secondaryColor: weatherManager.optimalSecondaryTextColor
-                        )
-                    }
+                HStack(spacing: 10) {
+                    WeatherBadge(
+                        icon: "sun.max.fill",
+                        title: L("weather.temperature"),
+                        value: String(format: "%.0f°", weather.temperature.value),
+                        textColor: weatherManager.optimalTextColor,
+                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                    )
+
+                    WeatherBadge(
+                        icon: "humidity.fill",
+                        title: L("weather.humidity"),
+                        value: String(format: "%.0f%%", weather.humidity * 100),
+                        textColor: weatherManager.optimalTextColor,
+                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                    )
+
+                    WeatherBadge(
+                        icon: "wind",
+                        title: L("weather.wind"),
+                        value: String(format: "%.0f km/h", weather.wind.speed.value),
+                        textColor: weatherManager.optimalTextColor,
+                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                    )
                 }
-                .padding(.top, 8)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 36)
-        .padding(.horizontal, 24)
-        .glassCard(cornerRadius: 28)
+        .padding(.vertical, 28)
+        .padding(.horizontal, 20)
+        .glassCard(cornerRadius: 24)
     }
-    
-    // MARK: - Tab Selector
-    
+
+    private var metricsGridCard: some View {
+        VStack(spacing: 10) {
+            if let weather = weatherManager.currentWeather {
+                HStack(spacing: 10) {
+                    WeatherMetricTile(
+                        icon: "humidity.fill",
+                        label: L("weather.humidity"),
+                        value: String(format: "%.0f%%", weather.humidity * 100),
+                        textColor: weatherManager.optimalTextColor,
+                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                    )
+
+                    WeatherMetricTile(
+                        icon: "wind",
+                        label: L("weather.wind"),
+                        value: String(format: "%.0f km/h", weather.wind.speed.value),
+                        textColor: weatherManager.optimalTextColor,
+                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                    )
+                }
+
+                HStack(spacing: 10) {
+                    WeatherMetricTile(
+                        icon: "eye.fill",
+                        label: L("weather.visibility"),
+                        value: String(format: "%.0f km", weather.visibility.value / 1000),
+                        textColor: weatherManager.optimalTextColor,
+                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                    )
+
+                    WeatherMetricTile(
+                        icon: "gauge.with.dots.needle.bottom.50percent",
+                        label: L("weather.pressure"),
+                        value: String(format: "%.0f hPa", weather.pressure.value),
+                        textColor: weatherManager.optimalTextColor,
+                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                    )
+                }
+            } else {
+                Text(L("weather.noData"))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(weatherManager.optimalSecondaryTextColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 20)
+    }
+
     private var tabSelector: some View {
         HStack(spacing: 12) {
-            WeatherTabButton(
+            ForecastTabButton(
                 title: L("weather.hourly"),
-                isSelected: selectedTab == 0
+                isSelected: selectedTab == .hourly,
+                textColor: weatherManager.optimalTextColor
             ) {
                 HapticManager.selection()
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedTab = 0
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                    selectedTab = .hourly
                 }
             }
-            
-            WeatherTabButton(
+
+            ForecastTabButton(
                 title: L("weather.daily"),
-                isSelected: selectedTab == 1
+                isSelected: selectedTab == .daily,
+                textColor: weatherManager.optimalTextColor
             ) {
                 HapticManager.selection()
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedTab = 1
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                    selectedTab = .daily
                 }
             }
         }
     }
-    
-    // MARK: - Hourly Forecast
-    
-    private var hourlyForecastView: some View {
-        VStack(alignment: .leading, spacing: 16) {
+
+    private var hourlySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("weather.hourly"))
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(weatherManager.optimalTextColor)
+
             if isLoadingForecast {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .tint(weatherManager.optimalTextColor)
-                    Spacer()
-                }
-                .padding(.vertical, 40)
+                ProgressView()
+                    .tint(weatherManager.optimalTextColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 30)
             } else if hourlyForecast.isEmpty {
                 Text(L("weather.noData"))
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(weatherManager.optimalSecondaryTextColor)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                    .padding(.vertical, 30)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 14) {
-                        ForEach(hourlyForecast.prefix(24), id: \.date) { hour in
-                            HourlyForecastCard(
+                    HStack(spacing: 10) {
+                        ForEach(Array(hourlyForecast.prefix(24)), id: \.date) { hour in
+                            HourlyTile(
                                 hour: hour,
-                                isNow: isCurrentHour(hour.date),
+                                isCurrent: Calendar.current.isDate(hour.date, equalTo: Date(), toGranularity: .hour),
                                 textColor: weatherManager.optimalTextColor,
                                 secondaryColor: weatherManager.optimalSecondaryTextColor
                             )
                         }
                     }
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 6)
                 }
             }
         }
-        .padding(.vertical, 20)
-        .padding(.horizontal, 20)
+        .padding(16)
         .glassCard(cornerRadius: 20)
     }
-    
-    // MARK: - Daily Forecast
-    
-    private var dailyForecastView: some View {
-        VStack(spacing: 12) {
+
+    private var dailySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("weather.daily"))
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(weatherManager.optimalTextColor)
+
             if isLoadingForecast {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .tint(weatherManager.optimalTextColor)
-                    Spacer()
-                }
-                .padding(.vertical, 40)
+                ProgressView()
+                    .tint(weatherManager.optimalTextColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 30)
             } else if dailyForecast.isEmpty {
                 Text(L("weather.noData"))
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(weatherManager.optimalSecondaryTextColor)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                    .padding(.vertical, 30)
             } else {
-                ForEach(dailyForecast.prefix(7), id: \.date) { day in
-                    DailyForecastRow(
-                        day: day,
-                        isToday: isToday(day.date),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
-                    )
-                    
-                    if day.date != dailyForecast.prefix(7).last?.date {
-                        Divider()
-                            .background(weatherManager.optimalSecondaryTextColor.opacity(0.15))
-                            .padding(.horizontal, 8)
+                let days = Array(dailyForecast.prefix(7))
+                let minTemp = days.map { $0.lowTemperature.value }.min() ?? 0
+                let maxTemp = days.map { $0.highTemperature.value }.max() ?? 1
+
+                VStack(spacing: 10) {
+                    ForEach(days, id: \.date) { day in
+                        DailyTile(
+                            day: day,
+                            isToday: Calendar.current.isDateInToday(day.date),
+                            minTemp: minTemp,
+                            maxTemp: maxTemp,
+                            textColor: weatherManager.optimalTextColor,
+                            secondaryColor: weatherManager.optimalSecondaryTextColor
+                        )
                     }
                 }
             }
         }
-        .padding(20)
+        .padding(16)
         .glassCard(cornerRadius: 20)
     }
-    
-    // MARK: - Load Forecast
-    
+
     private func loadForecast() {
+        if isLoadingForecast {
+            return
+        }
+
         isLoadingForecast = true
-        
+
         Task {
             do {
                 let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
                 let weather = try await WeatherService.shared.weather(for: location)
-                
+
                 await MainActor.run {
                     hourlyForecast = Array(weather.hourlyForecast)
                     dailyForecast = Array(weather.dailyForecast)
@@ -313,6 +278,7 @@ struct WeatherDetailView: View {
                 #if DEBUG
                 print("Failed to load forecast: \(error.localizedDescription)")
                 #endif
+
                 await MainActor.run {
                     isLoadingForecast = false
                 }
@@ -321,265 +287,248 @@ struct WeatherDetailView: View {
     }
 }
 
-// MARK: - Weather Detail Item Card
+private enum ForecastTab {
+    case hourly
+    case daily
+}
 
-struct WeatherDetailItemCard: View {
-    @Environment(\.colorScheme) var colorScheme
+struct WeatherBadge: View {
+    let icon: String
+    let title: String
+    let value: String
+    let textColor: Color
+    let secondaryColor: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(textColor.opacity(0.9))
+
+            Text(value)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(textColor)
+
+            Text(title)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(secondaryColor)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.14))
+        )
+    }
+}
+
+struct WeatherMetricTile: View {
     let icon: String
     let label: String
     let value: String
     let textColor: Color
     let secondaryColor: Color
-    
+
     var body: some View {
-        VStack(spacing: 10) {
+        HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 24, weight: .medium))
-                .foregroundColor(textColor.opacity(0.9))
-                .symbolRenderingMode(.hierarchical)
-            
-            Text(value)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(textColor)
-            
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(secondaryColor)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(secondaryColor)
+
+                Text(value)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(textColor)
+            }
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.15))
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.white.opacity(0.14))
         )
     }
 }
 
-// MARK: - Weather Tab Button
-
-struct WeatherTabButton: View {
-    @Environment(\.colorScheme) var colorScheme
-    @Environment(\.adaptiveTextColor) var adaptiveTextColor
+struct ForecastTabButton: View {
     let title: String
     let isSelected: Bool
+    let textColor: Color
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(isSelected ? .white : adaptiveTextColor)
+                .foregroundColor(isSelected ? .white : textColor)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(LiquidGlassStyle.glassBackground(for: colorScheme)))
+                        .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.16)))
                 )
         }
         .buttonStyle(ScaleButtonStyle())
     }
 }
 
-// MARK: - Hourly Forecast Card
-
-struct HourlyForecastCard: View {
-    @Environment(\.colorScheme) var colorScheme
+struct HourlyTile: View {
     let hour: HourWeather
-    let isNow: Bool
+    let isCurrent: Bool
     let textColor: Color
     let secondaryColor: Color
-    
-    private var timeString: String {
-        if isNow {
+
+    private var hourText: String {
+        if isCurrent {
             return L("weather.now")
         }
+
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         return formatter.string(from: hour.date)
     }
-    
-    private var weatherIcon: String {
-        switch hour.condition {
-        case .clear:
-            return hour.isDaylight ? "sun.max.fill" : "moon.stars.fill"
-        case .cloudy:
-            return "cloud.fill"
-        case .mostlyClear:
-            return hour.isDaylight ? "cloud.sun.fill" : "cloud.moon.fill"
-        case .mostlyCloudy:
-            return "cloud.fill"
-        case .partlyCloudy:
-            return hour.isDaylight ? "cloud.sun.fill" : "cloud.moon.fill"
-        case .rain:
-            return "cloud.rain.fill"
-        case .drizzle:
-            return "cloud.drizzle.fill"
-        case .heavyRain:
-            return "cloud.heavyrain.fill"
-        case .snow:
-            return "cloud.snow.fill"
-        case .thunderstorms:
-            return "cloud.bolt.rain.fill"
-        default:
-            return "cloud.fill"
-        }
-    }
-    
+
     var body: some View {
-        VStack(spacing: 14) {
-            // Time or "Now" label
-            Text(timeString)
-                .font(.system(size: isNow ? 14 : 13, weight: isNow ? .bold : .medium))
-                .foregroundColor(isNow ? textColor : secondaryColor)
-            
-            // Weather icon
-            Image(systemName: weatherIcon)
-                .font(.system(size: isNow ? 32 : 28, weight: .medium))
+        VStack(spacing: 10) {
+            Text(hourText)
+                .font(.system(size: 12, weight: isCurrent ? .bold : .medium))
+                .foregroundColor(isCurrent ? textColor : secondaryColor)
+
+            Image(systemName: weatherIconSymbol(for: hour.condition, isDaylight: hour.isDaylight))
+                .font(.system(size: 20, weight: .medium))
                 .foregroundColor(textColor)
-                .symbolRenderingMode(.hierarchical)
-                .frame(height: 36)
-            
-            // Temperature
+                .frame(height: 24)
+
             Text(String(format: "%.0f°", hour.temperature.value))
-                .font(.system(size: isNow ? 18 : 16, weight: isNow ? .bold : .semibold, design: .rounded))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .monospacedDigit()
                 .foregroundColor(textColor)
         }
-        .frame(width: isNow ? 80 : 70)
-        .padding(.vertical, isNow ? 18 : 16)
-        .padding(.horizontal, isNow ? 14 : 12)
+        .frame(width: 76)
+        .padding(.vertical, 12)
         .background(
-            ZStack {
-                if isNow {
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(LiquidGlassStyle.primaryGradient)
-                        .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                } else {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12))
-                }
-            }
+            RoundedRectangle(cornerRadius: 14)
+                .fill(isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.14)))
         )
-        .scaleEffect(isNow ? 1.05 : 1.0)
     }
 }
 
-// MARK: - Daily Forecast Row
-
-struct DailyForecastRow: View {
-    @Environment(\.colorScheme) var colorScheme
+struct DailyTile: View {
     let day: DayWeather
     let isToday: Bool
+    let minTemp: Double
+    let maxTemp: Double
     let textColor: Color
     let secondaryColor: Color
-    
-    private var dayString: String {
+
+    private var dayText: String {
         if isToday {
             return L("weather.today")
         }
+
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE"
         formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage == "zh-Hans" ? "zh-Hans" : "en")
         return formatter.string(from: day.date)
     }
-    
-    private var weatherIcon: String {
-        switch day.condition {
-        case .clear:
-            return "sun.max.fill"
-        case .cloudy:
-            return "cloud.fill"
-        case .mostlyClear:
-            return "cloud.sun.fill"
-        case .mostlyCloudy:
-            return "cloud.fill"
-        case .partlyCloudy:
-            return "cloud.sun.fill"
-        case .rain:
-            return "cloud.rain.fill"
-        case .drizzle:
-            return "cloud.drizzle.fill"
-        case .heavyRain:
-            return "cloud.heavyrain.fill"
-        case .snow:
-            return "cloud.snow.fill"
-        case .thunderstorms:
-            return "cloud.bolt.rain.fill"
-        default:
-            return "cloud.fill"
-        }
+
+    private var normalizedStart: CGFloat {
+        guard maxTemp > minTemp else { return 0 }
+        return CGFloat((day.lowTemperature.value - minTemp) / (maxTemp - minTemp))
     }
-    
+
+    private var normalizedWidth: CGFloat {
+        guard maxTemp > minTemp else { return 1 }
+        return CGFloat((day.highTemperature.value - day.lowTemperature.value) / (maxTemp - minTemp))
+    }
+
     var body: some View {
-        HStack(spacing: 16) {
-            // Day name with badge for today
-            HStack(spacing: 8) {
-                Text(dayString)
-                    .font(.system(size: isToday ? 16 : 15, weight: isToday ? .bold : .medium))
-                    .foregroundColor(isToday ? textColor : textColor.opacity(0.9))
-                
-                if isToday {
-                    Circle()
-                        .fill(LiquidGlassStyle.primaryGradient)
-                        .frame(width: 6, height: 6)
-                }
-            }
-            .frame(width: 110, alignment: .leading)
-            
-            // Weather icon
-            Image(systemName: weatherIcon)
-                .font(.system(size: isToday ? 28 : 26, weight: .medium))
+        HStack(spacing: 12) {
+            Text(dayText)
+                .font(.system(size: 15, weight: isToday ? .bold : .medium))
                 .foregroundColor(textColor)
-                .symbolRenderingMode(.hierarchical)
-                .frame(width: 44)
-            
-            Spacer()
-            
-            // Temperature range with bar
-            HStack(spacing: 12) {
-                // Low temp
-                Text(String(format: "%.0f°", day.lowTemperature.value))
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundColor(secondaryColor)
-                    .frame(width: 36, alignment: .trailing)
-                
-                // Temperature bar
+                .frame(width: 88, alignment: .leading)
+
+            Image(systemName: weatherIconSymbol(for: day.condition, isDaylight: true))
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(textColor)
+                .frame(width: 24)
+
+            Text(String(format: "%.0f°", day.lowTemperature.value))
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(secondaryColor)
+                .frame(width: 34, alignment: .trailing)
+
+            GeometryReader { proxy in
+                let width = max(0, proxy.size.width)
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(secondaryColor.opacity(0.2))
-                        .frame(width: 60, height: 6)
-                    
+                        .fill(secondaryColor.opacity(0.22))
+                        .frame(height: 6)
+
                     Capsule()
                         .fill(
                             LinearGradient(
-                                colors: [
-                                    Color.blue.opacity(0.6),
-                                    Color.orange.opacity(0.8)
-                                ],
+                                colors: [Color.blue.opacity(0.8), Color.orange.opacity(0.9)],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: 60, height: 6)
+                        .frame(width: width * max(0.06, normalizedWidth), height: 6)
+                        .offset(x: width * min(0.94, normalizedStart))
                 }
-                
-                // High temp
-                Text(String(format: "%.0f°", day.highTemperature.value))
-                    .font(.system(size: 15, weight: isToday ? .bold : .semibold, design: .rounded))
-                    .foregroundColor(textColor)
-                    .frame(width: 36, alignment: .leading)
             }
+            .frame(height: 6)
+
+            Text(String(format: "%.0f°", day.highTemperature.value))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(textColor)
+                .frame(width: 34, alignment: .leading)
         }
-        .padding(.vertical, isToday ? 12 : 10)
-        .padding(.horizontal, isToday ? 12 : 8)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
         .background(
-            Group {
-                if isToday {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12))
-                }
-            }
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isToday ? AnyShapeStyle(Color.white.opacity(0.2)) : AnyShapeStyle(Color.white.opacity(0.08)))
         )
+    }
+}
+
+private func weatherIconSymbol(for condition: WeatherCondition, isDaylight: Bool) -> String {
+    switch condition {
+    case .clear:
+        return isDaylight ? "sun.max.fill" : "moon.stars.fill"
+    case .cloudy:
+        return "cloud.fill"
+    case .mostlyClear:
+        return isDaylight ? "cloud.sun.fill" : "cloud.moon.fill"
+    case .mostlyCloudy:
+        return "cloud.fill"
+    case .partlyCloudy:
+        return isDaylight ? "cloud.sun.fill" : "cloud.moon.fill"
+    case .rain:
+        return "cloud.rain.fill"
+    case .drizzle:
+        return "cloud.drizzle.fill"
+    case .heavyRain:
+        return "cloud.heavyrain.fill"
+    case .snow:
+        return "cloud.snow.fill"
+    case .thunderstorms:
+        return "cloud.bolt.rain.fill"
+    default:
+        return "cloud.fill"
     }
 }
 

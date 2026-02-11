@@ -405,6 +405,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Roam Focus";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Tikkuu Focus needs your location to create virtual journeys based on real places and discover nearby landmarks during your focus sessions.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tikkuu Focus saves your journey summary image to your photo library when you tap Save.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -446,6 +447,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Roam Focus";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Tikkuu Focus needs your location to create virtual journeys based on real places and discover nearby landmarks during your focus sessions.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tikkuu Focus saves your journey summary image to your photo library when you tap Save.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

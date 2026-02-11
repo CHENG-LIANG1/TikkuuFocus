@@ -21,106 +21,34 @@ struct OnboardingView: View {
     
     var body: some View {
         ZStack {
-            // Dynamic gradient background
-            AnimatedGradientBackground()
+            onboardingBackground
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                // Top bar
-                HStack {
-                    Spacer()
-                    
-                    if canDismiss {
-                        Button {
-                            HapticManager.light()
-                            dismiss()
-                        } label: {
-                            Text(L("common.done"))
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.primary)
-                        }
-                    } else if currentPage < 2 {
-                        Button {
-                            HapticManager.light()
-                            completeOnboarding()
-                        } label: {
-                            Text(L("onboarding.skip"))
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary.opacity(0.7))
-                        }
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .frame(height: 60)
-                
-                // Content
+                topBar
+
                 TabView(selection: $currentPage) {
-                    page1Content.tag(0)
-                    page2Content.tag(1)
-                    page3Content.tag(2)
+                    ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
+                        pageContent(for: page)
+                            .tag(index)
+                    }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .onChange(of: currentPage) { _, _ in
                     HapticManager.selection()
                     animationPhase = 0
-                    withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
                         animationPhase = 1
                     }
                 }
-                
-                // Bottom controls
-                VStack(spacing: 20) {
-                    // Page indicator
-                    HStack(spacing: 8) {
-                        ForEach(0..<3) { index in
-                            Capsule()
-                                .fill(currentPage == index ? Color.primary : Color.primary.opacity(0.2))
-                                .frame(width: currentPage == index ? 32 : 8, height: 8)
-                                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: currentPage)
-                        }
-                    }
-                    
-                    // Action button
-                    Button {
-                        HapticManager.medium()
-                        if currentPage < 2 {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                currentPage += 1
-                            }
-                        } else {
-                            if canDismiss {
-                                dismiss()
-                            } else {
-                                completeOnboarding()
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Text(currentPage < 2 ? L("onboarding.next") : L("onboarding.getStarted"))
-                                .font(.system(size: 18, weight: .semibold))
-                            
-                            Image(systemName: currentPage < 2 ? "arrow.right" : "checkmark")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(LiquidGlassStyle.primaryGradient)
-                                .shadow(color: Color.black.opacity(0.3), radius: 12, x: 0, y: 6)
-                        )
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+
+                bottomControls
             }
         }
         .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
                 animationPhase = 1
             }
         }
@@ -128,301 +56,373 @@ struct OnboardingView: View {
             refreshID = UUID()
         }
     }
-    
-    // MARK: - Page 1: Journey Exploration
-    
-    private var page1Content: some View {
-        VStack(spacing: 0) {
+
+    private var pages: [OnboardingPageModel] {
+        [
+            OnboardingPageModel(
+                heroIcon: "globe.europe.africa.fill",
+                badgeIcon: "location.fill",
+                badgeTextKey: "onboarding.v2.page1.badge",
+                titleKey: "onboarding.v2.page1.title",
+                subtitleKey: "onboarding.v2.page1.subtitle",
+                gradient: [Color(red: 0.13, green: 0.52, blue: 0.98), Color(red: 0.37, green: 0.28, blue: 0.91)],
+                bullets: [
+                    .init(icon: "paperplane.fill", titleKey: "onboarding.v2.page1.feature1.title", descriptionKey: "onboarding.v2.page1.feature1.desc", tint: .blue),
+                    .init(icon: "bicycle", titleKey: "onboarding.v2.page1.feature2.title", descriptionKey: "onboarding.v2.page1.feature2.desc", tint: .cyan),
+                    .init(icon: "sparkles", titleKey: "onboarding.v2.page1.feature3.title", descriptionKey: "onboarding.v2.page1.feature3.desc", tint: .mint)
+                ]
+            ),
+            OnboardingPageModel(
+                heroIcon: "map.fill",
+                badgeIcon: "bolt.fill",
+                badgeTextKey: "onboarding.v2.page2.badge",
+                titleKey: "onboarding.v2.page2.title",
+                subtitleKey: "onboarding.v2.page2.subtitle",
+                gradient: [Color(red: 0.99, green: 0.56, blue: 0.24), Color(red: 0.94, green: 0.35, blue: 0.52)],
+                bullets: [
+                    .init(icon: "timer", titleKey: "onboarding.v2.page2.feature1.title", descriptionKey: "onboarding.v2.page2.feature1.desc", tint: .orange),
+                    .init(icon: "point.topleft.down.curvedto.point.bottomright.up", titleKey: "onboarding.v2.page2.feature2.title", descriptionKey: "onboarding.v2.page2.feature2.desc", tint: .pink),
+                    .init(icon: "scope", titleKey: "onboarding.v2.page2.feature3.title", descriptionKey: "onboarding.v2.page2.feature3.desc", tint: .red)
+                ]
+            ),
+            OnboardingPageModel(
+                heroIcon: "chart.bar.fill",
+                badgeIcon: "star.fill",
+                badgeTextKey: "onboarding.v2.page3.badge",
+                titleKey: "onboarding.v2.page3.title",
+                subtitleKey: "onboarding.v2.page3.subtitle",
+                gradient: [Color(red: 0.16, green: 0.73, blue: 0.49), Color(red: 0.11, green: 0.61, blue: 0.82)],
+                bullets: [
+                    .init(icon: "clock.fill", titleKey: "onboarding.v2.page3.feature1.title", descriptionKey: "onboarding.v2.page3.feature1.desc", tint: .green),
+                    .init(icon: "flag.pattern.checkered", titleKey: "onboarding.v2.page3.feature2.title", descriptionKey: "onboarding.v2.page3.feature2.desc", tint: .teal),
+                    .init(icon: "trophy.fill", titleKey: "onboarding.v2.page3.feature3.title", descriptionKey: "onboarding.v2.page3.feature3.desc", tint: .yellow)
+                ]
+            ),
+            OnboardingPageModel(
+                heroIcon: "checkmark.seal.fill",
+                badgeIcon: "figure.run",
+                badgeTextKey: "onboarding.v2.page4.badge",
+                titleKey: "onboarding.v2.page4.title",
+                subtitleKey: "onboarding.v2.page4.subtitle",
+                gradient: [Color(red: 0.40, green: 0.36, blue: 0.95), Color(red: 0.24, green: 0.66, blue: 0.98)],
+                bullets: [
+                    .init(icon: "play.fill", titleKey: "onboarding.v2.page4.feature1.title", descriptionKey: "onboarding.v2.page4.feature1.desc", tint: .indigo),
+                    .init(icon: "leaf.fill", titleKey: "onboarding.v2.page4.feature2.title", descriptionKey: "onboarding.v2.page4.feature2.desc", tint: .blue),
+                    .init(icon: "lock.shield.fill", titleKey: "onboarding.v2.page4.feature3.title", descriptionKey: "onboarding.v2.page4.feature3.desc", tint: .mint)
+                ]
+            )
+        ]
+    }
+
+    private var onboardingBackground: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.05, green: 0.08, blue: 0.24), Color(red: 0.11, green: 0.18, blue: 0.42)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Circle()
+                .fill(Color.blue.opacity(0.25))
+                .frame(width: 380, height: 380)
+                .blur(radius: 40)
+                .offset(x: -120 + (animationPhase * 30), y: -300)
+
+            Circle()
+                .fill(Color.cyan.opacity(0.22))
+                .frame(width: 300, height: 300)
+                .blur(radius: 45)
+                .offset(x: 150 - (animationPhase * 25), y: -180)
+
+            Circle()
+                .fill(Color.purple.opacity(0.2))
+                .frame(width: 360, height: 360)
+                .blur(radius: 55)
+                .offset(x: 140, y: 300 - (animationPhase * 20))
+        }
+    }
+
+    private var topBar: some View {
+        HStack {
+            Text(L("onboarding.v2.header"))
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(.white.opacity(0.9))
+
             Spacer()
-            
-            // Visual hero
-            ZStack {
-                // Animated circles
-                ForEach(0..<3) { index in
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.blue.opacity(0.3),
-                                    Color.purple.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 2
-                        )
-                        .frame(width: 120 + CGFloat(index) * 60, height: 120 + CGFloat(index) * 60)
-                        .scaleEffect(1 + animationPhase * 0.1 * CGFloat(index + 1))
-                        .opacity(0.6 - Double(index) * 0.15)
+
+            if canDismiss {
+                topBarButton(title: L("common.done")) {
+                    HapticManager.light()
+                    dismiss()
                 }
-                
-                // Center icon
-                ZStack {
-                    Circle()
+            } else if currentPage < pages.count - 1 {
+                topBarButton(title: L("onboarding.skip")) {
+                    HapticManager.light()
+                    completeOnboarding()
+                }
+            } else {
+                Color.clear.frame(width: 72, height: 36)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
+    }
+
+    private var bottomControls: some View {
+        VStack(spacing: 18) {
+            HStack(spacing: 8) {
+                ForEach(0..<pages.count, id: \.self) { index in
+                    Capsule()
+                        .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
+                        .frame(width: currentPage == index ? 30 : 8, height: 8)
+                        .animation(.spring(response: 0.36, dampingFraction: 0.8), value: currentPage)
+                }
+            }
+
+            Button(action: handlePrimaryAction) {
+                HStack(spacing: 10) {
+                    Text(primaryButtonTitle)
+                        .font(.system(size: 18, weight: .semibold))
+
+                    Image(systemName: currentPage < pages.count - 1 ? "arrow.right" : "checkmark")
+                        .font(.system(size: 16, weight: .bold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 17)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [
-                                    Color.blue.opacity(0.2),
-                                    Color.purple.opacity(0.1)
-                                ],
+                                colors: [Color(red: 0.35, green: 0.53, blue: 0.98), Color(red: 0.45, green: 0.78, blue: 0.95)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 120, height: 120)
-                        .blur(radius: 20)
-                    
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 100, height: 100)
-                    
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 50, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.blue, Color.purple],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .rotationEffect(.degrees(animationPhase * 5))
-                }
-                .shadow(color: Color.blue.opacity(0.3), radius: 30, x: 0, y: 15)
-                
-                // Floating icons
-                FloatingIcon(icon: "location.fill", color: .blue, offset: CGPoint(x: -80, y: -60), phase: animationPhase)
-                FloatingIcon(icon: "figure.walk", color: .green, offset: CGPoint(x: 80, y: -40), phase: animationPhase, delay: 0.3)
-                FloatingIcon(icon: "star.fill", color: .yellow, offset: CGPoint(x: -70, y: 70), phase: animationPhase, delay: 0.6)
+                        .shadow(color: Color.black.opacity(0.25), radius: 16, x: 0, y: 8)
+                )
             }
-            .frame(height: 300)
-            
-            Spacer().frame(height: 60)
-            
-            // Title
-            Text(L("onboarding.page1.title"))
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            
-            Spacer().frame(height: 16)
-            
-            // Subtitle
-            Text(L("onboarding.page1.description"))
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .padding(.horizontal, 40)
-            
-            Spacer()
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 8)
+        .padding(.bottom, 30)
+    }
+
+    private var primaryButtonTitle: String {
+        if currentPage < pages.count - 1 {
+            return L("onboarding.next")
+        }
+        return canDismiss ? L("common.done") : L("onboarding.getStarted")
+    }
+
+    private func handlePrimaryAction() {
+        HapticManager.medium()
+        if currentPage < pages.count - 1 {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
+                currentPage += 1
+            }
+            return
+        }
+        if canDismiss {
+            dismiss()
+        } else {
+            completeOnboarding()
         }
     }
-    
-    // MARK: - Page 2: Real-time Tracking
-    
-    private var page2Content: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            
-            // Visual hero
-            ZStack {
-                // Progress ring
-                Circle()
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 12)
-                    .frame(width: 200, height: 200)
-                
-                Circle()
-                    .trim(from: 0, to: 0.7)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.orange, Color.pink],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
-                    )
-                    .frame(width: 200, height: 200)
-                    .rotationEffect(.degrees(-90))
-                    .rotationEffect(.degrees(animationPhase * 360))
-                
-                // Center content
-                VStack(spacing: 8) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 50, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.orange, Color.pink],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+
+    private func topBarButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(Color.black.opacity(0.24))
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.22), lineWidth: 1)
                         )
-                    
-                    Text("12:34")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
-                }
-                
-                // Orbiting dots
-                ForEach(0..<3) { index in
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.orange, Color.pink],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 12, height: 12)
-                        .offset(y: -110)
-                        .rotationEffect(.degrees(Double(index) * 120 + animationPhase * 360))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func pageContent(for page: OnboardingPageModel) -> some View {
+        VStack(spacing: 20) {
+            heroCard(for: page)
+                .padding(.top, 6)
+
+            VStack(spacing: 10) {
+                Text(L(page.titleKey))
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+
+                Text(L(page.subtitleKey))
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundColor(.white.opacity(0.82))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 34)
+            }
+
+            VStack(spacing: 12) {
+                ForEach(page.bullets, id: \.titleKey) { bullet in
+                    featureRow(bullet: bullet)
                 }
             }
-            .frame(height: 300)
-            
-            Spacer().frame(height: 60)
-            
-            // Title
-            Text(L("onboarding.page2.title"))
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            
-            Spacer().frame(height: 16)
-            
-            // Subtitle
-            Text(L("onboarding.page2.description"))
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .padding(.horizontal, 40)
-            
-            Spacer()
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                    )
+            )
+            .padding(.horizontal, 24)
+
+            Spacer(minLength: 8)
         }
     }
-    
-    // MARK: - Page 3: Achievements
-    
-    private var page3Content: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            
-            // Visual hero
-            ZStack {
-                // Glow effect
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.yellow.opacity(0.3),
-                                Color.clear
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 120
-                        )
+
+    private func heroCard(for page: OnboardingPageModel) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            page.gradient[0].opacity(0.8),
+                            page.gradient[1].opacity(0.58)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                    .frame(width: 240, height: 240)
-                    .scaleEffect(1 + animationPhase * 0.2)
-                
-                // Trophy
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+
+            VStack(spacing: 16) {
+                HStack {
+                    Label(L(page.badgeTextKey), systemImage: page.badgeIcon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(Color.black.opacity(0.25)))
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+
                 ZStack {
                     Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 140, height: 140)
-                    
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 70, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.yellow, Color.orange],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .scaleEffect(1 + animationPhase * 0.1)
-                        .rotationEffect(.degrees(animationPhase * -5))
+                        .fill(Color.white.opacity(0.16))
+                        .frame(width: 122, height: 122)
+                        .blur(radius: 1)
+
+                    Circle()
+                        .fill(.ultraThinMaterial.opacity(0.85))
+                        .frame(width: 102, height: 102)
+
+                    Image(systemName: page.heroIcon)
+                        .font(.system(size: 44, weight: .semibold))
+                        .foregroundColor(.white)
+                        .rotationEffect(.degrees(Double(animationPhase) * 6.0))
                 }
-                .shadow(color: Color.yellow.opacity(0.4), radius: 30, x: 0, y: 15)
-                
-                // Sparkles
-                ForEach(0..<6) { index in
-                    Image(systemName: "sparkle")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.yellow)
-                        .offset(
-                            x: cos(Double(index) * .pi / 3) * 100,
-                            y: sin(Double(index) * .pi / 3) * 100
-                        )
-                        .scaleEffect(0.5 + animationPhase * 0.5)
-                        .opacity(0.3 + animationPhase * 0.7)
-                        .rotationEffect(.degrees(Double(index) * 60 + animationPhase * 360))
+                .shadow(color: page.gradient[0].opacity(0.55), radius: 18, x: 0, y: 10)
+
+                HStack(spacing: 10) {
+                    statChip(title: L("onboarding.v2.hero.chip1"), icon: "clock.fill")
+                    statChip(title: L("onboarding.v2.hero.chip2"), icon: "point.topleft.down.curvedto.point.bottomright.up")
+                    statChip(title: L("onboarding.v2.hero.chip3"), icon: "star.fill")
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .frame(height: 300)
-            
-            Spacer().frame(height: 60)
-            
-            // Title
-            Text(L("onboarding.page4.title"))
-                .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            
-            Spacer().frame(height: 16)
-            
-            // Subtitle
-            Text(L("onboarding.page4.description"))
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .padding(.horizontal, 40)
-            
-            Spacer()
+        }
+        .frame(height: 288)
+        .padding(.horizontal, 24)
+    }
+
+    private func statChip(title: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.black.opacity(0.2))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+
+    private func featureRow(bullet: OnboardingBullet) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(bullet.tint.opacity(0.28))
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: bullet.icon)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L(bullet.titleKey))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(L(bullet.descriptionKey))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.74))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
-    
+
     private func completeOnboarding() {
         HapticManager.success()
         withAnimation {
             settings.hasCompletedOnboarding = true
         }
+        dismiss()
     }
 }
 
-// MARK: - Floating Icon
+private struct OnboardingPageModel {
+    let heroIcon: String
+    let badgeIcon: String
+    let badgeTextKey: String
+    let titleKey: String
+    let subtitleKey: String
+    let gradient: [Color]
+    let bullets: [OnboardingBullet]
+}
 
-struct FloatingIcon: View {
+private struct OnboardingBullet {
     let icon: String
-    let color: Color
-    let offset: CGPoint
-    let phase: CGFloat
-    var delay: Double = 0
-    
-    var body: some View {
-        let yOffset = offset.y + sin((Double(phase) * Double.pi * 2.0) + delay) * 10.0
-        
-        return ZStack {
-            Circle()
-                .fill(color.opacity(0.2))
-                .frame(width: 50, height: 50)
-                .blur(radius: 10)
-            
-            Circle()
-                .fill(.ultraThinMaterial)
-                .frame(width: 44, height: 44)
-            
-            Image(systemName: icon)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(color)
-        }
-        .offset(x: offset.x, y: yOffset)
-        .shadow(color: color.opacity(0.3), radius: 10, x: 0, y: 5)
-    }
+    let titleKey: String
+    let descriptionKey: String
+    let tint: Color
 }
 
 #Preview {

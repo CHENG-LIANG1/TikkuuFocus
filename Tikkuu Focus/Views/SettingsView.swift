@@ -6,14 +6,22 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \JourneyRecord.startTime, order: .reverse) private var records: [JourneyRecord]
     @ObservedObject private var settings = AppSettings.shared
     @State private var showAbout = false
     @State private var showOnboarding = false
     @State private var showPrivacyPolicy = false
     @State private var refreshID = UUID()
+    @State private var showClearDataStep1 = false
+    @State private var showClearDataStep2 = false
+    @State private var clearDataConfirmationText = ""
+
+    private let requiredClearPhrase = "确认清除数据"
     
     var body: some View {
         NavigationView {
@@ -35,6 +43,19 @@ struct SettingsView: View {
                             )
                         ) {
                             languageOptions
+                        }
+
+                        // Data Management Section
+                        modernSection(
+                            icon: "externaldrive.fill.badge.person.crop",
+                            title: L("settings.data"),
+                            gradient: LinearGradient(
+                                colors: [Color.orange, Color.red],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        ) {
+                            dataManagementOptions
                         }
                         
                         // Support Section
@@ -70,6 +91,7 @@ struct SettingsView: View {
             }
             .navigationTitle(L("settings.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -82,13 +104,50 @@ struct SettingsView: View {
         .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .sheet(isPresented: $showAbout) {
-            AboutView()
+            NavigationStack {
+                AboutView()
+                    .navigationTitle(L("settings.about"))
+                    .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button(L("common.done")) {
+                                showAbout = false
+                            }
+                            .fontWeight(.semibold)
+                        }
+                    }
+            }
         }
-        .sheet(isPresented: $showOnboarding) {
-            OnboardingView(canDismiss: true)
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView(canDismiss: false)
         }
         .sheet(isPresented: $showPrivacyPolicy) {
             PrivacyPolicyView()
+        }
+        .alert(L("settings.data.clear.confirm1.title"), isPresented: $showClearDataStep1) {
+            Button(L("common.cancel"), role: .cancel) {}
+            Button(L("settings.data.clear.confirm1.action"), role: .destructive) {
+                clearDataConfirmationText = ""
+                showClearDataStep2 = true
+            }
+        } message: {
+            Text(L("settings.data.clear.confirm1.message"))
+        }
+        .alert(L("settings.data.clear.confirm2.title"), isPresented: $showClearDataStep2) {
+            TextField(L("settings.data.clear.inputPlaceholder"), text: $clearDataConfirmationText)
+            Button(L("common.cancel"), role: .cancel) {}
+            Button(L("settings.data.clear.confirm2.action"), role: .destructive) {
+                clearAllData()
+            }
+            .disabled(clearDataConfirmationText.trimmingCharacters(in: .whitespacesAndNewlines) != requiredClearPhrase)
+        } message: {
+            Text("\(L("settings.data.clear.confirm2.message"))\n\"\(requiredClearPhrase)\"")
+        }
+        .onChange(of: showClearDataStep2) { _, isPresented in
+            if !isPresented {
+                clearDataConfirmationText = ""
+            }
         }
         .onChange(of: settings.selectedLanguage) { _, _ in
             refreshID = UUID()
@@ -180,7 +239,8 @@ struct SettingsView: View {
             ModernActionRow(
                 title: L("settings.contact"),
                 subtitle: "madfool@icloud.com",
-                icon: "envelope.fill"
+                icon: "envelope.fill",
+                showChevron: true
             ) {
                 HapticManager.light()
                 if let url = URL(string: "mailto:madfool@icloud.com") {
@@ -220,6 +280,42 @@ struct SettingsView: View {
                 // No action
             }
         }
+    }
+
+    // MARK: - Data Management Options
+
+    private var dataManagementOptions: some View {
+        VStack(spacing: 12) {
+            ModernActionRow(
+                title: L("settings.data.icloud"),
+                subtitle: L("settings.data.icloud.subtitle"),
+                icon: "icloud"
+            ) {
+                // Reserved for future iCloud sync settings.
+            }
+
+            ModernActionRow(
+                title: L("settings.data.clear"),
+                subtitle: L("settings.data.clear.subtitle"),
+                icon: "trash.fill",
+                showChevron: true
+            ) {
+                HapticManager.light()
+                showClearDataStep1 = true
+            }
+        }
+    }
+
+    private func clearAllData() {
+        for record in records {
+            modelContext.delete(record)
+        }
+        try? modelContext.save()
+
+        settings.hasCompletedFirstJourney = false
+        settings.hasSeenFirstJourneyGuide = false
+
+        HapticManager.success()
     }
 }
 

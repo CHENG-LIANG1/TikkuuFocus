@@ -29,8 +29,7 @@ struct PresetLocation: Identifiable, Equatable {
     }
     
     var localizedName: String {
-        // Check system language
-        if Locale.current.language.languageCode?.identifier == "zh" {
+        if AppSettings.shared.currentLanguage.hasPrefix("zh") {
             return nameZh
         }
         return name
@@ -48,7 +47,7 @@ struct PresetSubwayStation {
     let coordinate: CLLocationCoordinate2D
     
     var localizedName: String {
-        if Locale.current.language.languageCode?.identifier == "zh" {
+        if AppSettings.shared.currentLanguage.hasPrefix("zh") {
             return nameZh
         }
         return name
@@ -269,7 +268,7 @@ enum LocationSource: Equatable {
     var displayName: String {
         switch self {
         case .currentLocation:
-            return NSLocalizedString("location.current", comment: "Current Location")
+            return L("location.current")
         case .preset(let location):
             return location.localizedName
         case .custom(_, let name):

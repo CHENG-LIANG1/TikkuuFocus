@@ -28,6 +28,7 @@ final class JourneyRecord {
     var distanceTraveled: Double
     var progress: Double
     var discoveredPOICount: Int
+    var discoveredPOIsJSON: String
     var isCompleted: Bool
     
     init(
@@ -47,6 +48,7 @@ final class JourneyRecord {
         distanceTraveled: Double,
         progress: Double,
         discoveredPOICount: Int,
+        discoveredPOIsJSON: String = "[]",
         isCompleted: Bool
     ) {
         self.id = id
@@ -65,6 +67,7 @@ final class JourneyRecord {
         self.distanceTraveled = distanceTraveled
         self.progress = progress
         self.discoveredPOICount = discoveredPOICount
+        self.discoveredPOIsJSON = discoveredPOIsJSON
         self.isCompleted = isCompleted
     }
     
@@ -82,5 +85,42 @@ final class JourneyRecord {
     
     var formattedDistance: String {
         FormatUtilities.formatDistance(distanceTraveled)
+    }
+
+    var discoveredPOIs: [StoredDiscoveredPOI] {
+        guard let data = discoveredPOIsJSON.data(using: .utf8) else { return [] }
+        return (try? JSONDecoder().decode([StoredDiscoveredPOI].self, from: data)) ?? []
+    }
+
+    static func encodePOIs(_ pois: [DiscoveredPOI]) -> String {
+        let stored = pois.map { poi in
+            StoredDiscoveredPOI(
+                id: poi.id,
+                name: poi.name,
+                category: poi.category,
+                latitude: poi.coordinate.latitude,
+                longitude: poi.coordinate.longitude,
+                discoveredAt: poi.discoveredAt
+            )
+        }
+
+        guard let data = try? JSONEncoder().encode(stored),
+              let json = String(data: data, encoding: .utf8) else {
+            return "[]"
+        }
+        return json
+    }
+}
+
+struct StoredDiscoveredPOI: Codable, Identifiable, Hashable {
+    let id: UUID
+    let name: String
+    let category: String
+    let latitude: Double
+    let longitude: Double
+    let discoveredAt: Date
+
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 }

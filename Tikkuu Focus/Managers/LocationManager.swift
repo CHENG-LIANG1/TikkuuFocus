@@ -116,9 +116,9 @@ enum LocationError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .permissionDenied:
-            return NSLocalizedString("error.location.permission", comment: "Location permission denied")
+            return L("error.location.permission")
         case .locationUnavailable:
-            return NSLocalizedString("error.location.unavailable", comment: "Location unavailable")
+            return L("error.location.unavailable")
         case .unknown(let message):
             return message
         }

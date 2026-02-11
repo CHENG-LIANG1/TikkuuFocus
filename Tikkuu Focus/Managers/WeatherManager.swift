@@ -205,7 +205,7 @@ class WeatherManager: ObservableObject {
             return condition.description
         }
         
-        return NSLocalizedString(key, comment: "")
+        return L(key)
     }
     
     /// Get temperature string

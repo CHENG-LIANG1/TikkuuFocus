@@ -383,9 +383,9 @@ enum SubwayError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noNearbyLine:
-            return NSLocalizedString("error.subway.noNearbyLine", comment: "No nearby subway line")
+            return L("error.subway.noNearbyLine")
         case .searchFailed:
-            return NSLocalizedString("error.subway.searchFailed", comment: "Search failed")
+            return L("error.subway.searchFailed")
         }
     }
 }

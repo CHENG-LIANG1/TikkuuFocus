@@ -78,6 +78,7 @@ struct TrophyView: View {
             }
             .navigationTitle(L("trophy.title"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(L("common.done")) {
@@ -102,27 +103,48 @@ struct TrophyView: View {
         }
         .sheet(isPresented: $showTrophyDetail) {
             if let trophy = selectedTrophy {
-                TrophyDetailView(trophy: trophy)
-                    .presentationDragIndicator(.visible)
-                    .interactiveDismissDisabled(false)
+                NavigationStack {
+                    TrophyDetailView(trophy: trophy)
+                        .navigationTitle(L("trophy.detail"))
+                        .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(L("common.done")) {
+                                    showTrophyDetail = false
+                                }
+                                .fontWeight(.semibold)
+                            }
+                        }
+                }
+                .presentationDragIndicator(.hidden)
+                .interactiveDismissDisabled(false)
             } else {
                 // Fallback view if trophy is nil
-                VStack(spacing: 20) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 50))
-                        .foregroundColor(.orange)
-                    
-                    Text(L("trophy.notFound"))
-                        .font(.system(size: 18, weight: .semibold))
-                    
-                    Button(L("common.done")) {
-                        showTrophyDetail = false
-                        selectedTrophy = nil
+                NavigationStack {
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+                        
+                        Text(L("trophy.notFound"))
+                            .font(.system(size: 18, weight: .semibold))
                     }
-                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
+                    .navigationTitle(L("trophy.detail"))
+                    .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button(L("common.done")) {
+                                showTrophyDetail = false
+                                selectedTrophy = nil
+                            }
+                            .fontWeight(.semibold)
+                        }
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
             }
         }
         .onChange(of: showTrophyDetail) { _, newValue in
@@ -421,7 +443,6 @@ struct CategoryButton: View {
 // MARK: - Trophy Detail View
 
 struct TrophyDetailView: View {
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject private var settings = AppSettings.shared
     let trophy: Trophy
     @State private var isLoaded = false
@@ -431,51 +452,27 @@ struct TrophyDetailView: View {
             AnimatedGradientBackground()
             
             if isLoaded {
-                VStack(spacing: 0) {
-                    // Custom header
-                    HStack {
-                        Spacer()
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 32) {
+                        // Trophy icon with animation
+                        trophyIconSection
                         
-                        Text(L("trophy.detail"))
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(.primary)
+                        // Trophy info
+                        trophyInfoSection
                         
-                        Spacer()
-                    }
-                    .overlay(alignment: .trailing) {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Text(L("common.done"))
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                        // Progress or unlock info
+                        if trophy.isUnlocked {
+                            unlockedSection
+                        } else {
+                            progressSection
                         }
+                        
+                        // Description
+                        descriptionSection
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 32) {
-                            // Trophy icon with animation
-                            trophyIconSection
-                            
-                            // Trophy info
-                            trophyInfoSection
-                            
-                            // Progress or unlock info
-                            if trophy.isUnlocked {
-                                unlockedSection
-                            } else {
-                                progressSection
-                            }
-                            
-                            // Description
-                            descriptionSection
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 20)
-                        .padding(.bottom, 40)
-                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
                 }
                 .transition(.opacity)
             } else {

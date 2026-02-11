@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct AboutView: View {
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject private var settings = AppSettings.shared
     @State private var refreshID = UUID()
     @State private var heartScale: CGFloat = 1.0
@@ -21,21 +20,6 @@ struct AboutView: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    // Close button
-                    HStack {
-                        Spacer()
-                        Button {
-                            HapticManager.light()
-                            dismiss()
-                        } label: {
-                            Text(L("common.done"))
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(LiquidGlassStyle.primaryGradient)
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 50)
-                    
                     VStack(spacing: 40) {
                         // Hero Section
                         VStack(spacing: 24) {

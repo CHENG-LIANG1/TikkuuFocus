@@ -15,7 +15,7 @@ struct ExplorationMapView: View {
     let discoveredPOIs: [DiscoveredPOI]
     @Binding var currentSpeed: Double
     
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var cameraPosition: MapCameraPosition
     @State private var revealedRouteProgress: Double = 0.0
     @State private var traveledPath: [CLLocationCoordinate2D] = []
     @State private var animatedPosition: CLLocationCoordinate2D?
@@ -23,16 +23,39 @@ struct ExplorationMapView: View {
     @State private var currentStationIndex: Int? = nil
     @State private var showStationToast = false
     @State private var currentStation: SubwayStationInfo? = nil
-    @State private var isUserInteracting = false
-    @State private var lastAutoUpdateTime = Date()
+    @State private var isFollowingUser = true
+    @State private var isProgrammaticCameraChange = false
     @State private var displaySpeed: Double = 0.0
     @State private var showRecenterButton = false
-    @State private var userCameraPosition: CLLocationCoordinate2D?
     @State private var subwayDirection: Int = 1 // 1 for forward, -1 for backward
     @State private var targetStationIndex: Int = 0
     @State private var isApproachingStation = false
     @State private var hideAllBubbles = false
     @State private var hideAllLabels = false
+    @State private var speedTimer: Timer?
+    @Environment(\.scenePhase) private var scenePhase
+
+    init(
+        session: JourneySession,
+        currentPosition: VirtualPosition?,
+        discoveredPOIs: [DiscoveredPOI],
+        currentSpeed: Binding<Double>
+    ) {
+        self.session = session
+        self.currentPosition = currentPosition
+        self.discoveredPOIs = discoveredPOIs
+        self._currentSpeed = currentSpeed
+
+        let initialCenter = currentPosition?.coordinate ?? session.startLocation
+        let initialZoom = Self.defaultZoom(for: session.transportMode)
+        _cameraPosition = State(initialValue: .region(
+            MKCoordinateRegion(
+                center: initialCenter,
+                latitudinalMeters: initialZoom,
+                longitudinalMeters: initialZoom
+            )
+        ))
+    }
     
     // Speed range for each transport mode (in km/h)
     private func speedRange(for mode: TransportMode) -> (min: Double, max: Double) {
@@ -99,13 +122,20 @@ struct ExplorationMapView: View {
     }
     
     // Dynamic zoom based on speed
+    private static func defaultZoom(for mode: TransportMode) -> Double {
+        switch mode {
+        case .walking:
+            return 800
+        case .cycling:
+            return 1500
+        case .driving:
+            return 3000
+        case .subway:
+            return 2000
+        }
+    }
+
     private func zoomLevel(for speed: Double) -> Double {
-        // speed is in meters per second
-        // Walking: ~1.4 m/s → 800m view
-        // Cycling: ~5.5 m/s → 1500m view
-        // Driving: ~16.7 m/s → 3000m view
-        // Subway: ~11.1 m/s → 2000m view
-        
         switch session.transportMode {
         case .walking:
             return 800
@@ -253,44 +283,27 @@ struct ExplorationMapView: View {
             }
         }
         .onMapCameraChange { context in
-            // Detect user interaction
-            if let currentPos = currentPosition?.coordinate {
-                let cameraCenter = context.region.center
-                let distance = currentPos.distance(to: cameraCenter)
-                
-                // If camera moved more than 100 meters from user position, show recenter button
-                if distance > 100 {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        showRecenterButton = true
-                    }
-                    isUserInteracting = true
-                    userCameraPosition = cameraCenter
-                } else {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        showRecenterButton = false
-                    }
-                    isUserInteracting = false
+            // Keep manual mode sticky: once user moves/zooms map, do not auto-follow until recenter is tapped.
+            guard !isProgrammaticCameraChange, let currentPos = currentPosition?.coordinate else { return }
+
+            let cameraCenter = context.region.center
+            let distance = currentPos.distance(to: cameraCenter)
+            let expectedZoomMeters = zoomLevel(for: session.transportMode.speedMps)
+            let currentZoomMeters = max(context.region.span.latitudeDelta * 111_000, 1)
+            let zoomDiffRatio = abs(currentZoomMeters - expectedZoomMeters) / expectedZoomMeters
+
+            if distance > 40 || zoomDiffRatio > 0.12 {
+                isFollowingUser = false
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    showRecenterButton = true
                 }
             }
-            lastAutoUpdateTime = Date()
         }
             } // Close MapReader
         .onAppear {
             if !hasInitialized {
                 hasInitialized = true
                 startPulseAnimation()
-                
-                // Initialize camera position with appropriate zoom
-                if let position = currentPosition {
-                    let zoom = zoomLevel(for: session.transportMode.speedMps)
-                    cameraPosition = .region(
-                        MKCoordinateRegion(
-                            center: position.coordinate,
-                            latitudinalMeters: zoom,
-                            longitudinalMeters: zoom
-                        )
-                    )
-                }
                 
                 // Initialize speed
                 if session.transportMode == .subway {
@@ -303,6 +316,16 @@ struct ExplorationMapView: View {
                 startSpeedUpdateTimer()
             }
         }
+        .onDisappear {
+            stopSpeedUpdateTimer()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                startSpeedUpdateTimer()
+            } else {
+                stopSpeedUpdateTimer()
+            }
+        }
         .onChange(of: currentPosition) { oldPosition, newPosition in
             guard hasInitialized else { return }
             
@@ -311,7 +334,7 @@ struct ExplorationMapView: View {
                 animateToPosition(position.coordinate)
                 
                 // Only auto-follow if user is not interacting
-                if !isUserInteracting {
+                if isFollowingUser {
                     updateCameraToFollowUser(at: position.coordinate)
                 }
                 
@@ -442,9 +465,16 @@ struct ExplorationMapView: View {
     
     // 性能优化：降低速度更新频率从 3s 到 5s
     private func startSpeedUpdateTimer() {
-        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+        guard speedTimer == nil else { return }
+        let interval = PerformanceOptimizer.shared.secondaryUpdateInterval
+        speedTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             updateSpeed()
         }
+    }
+
+    private func stopSpeedUpdateTimer() {
+        speedTimer?.invalidate()
+        speedTimer = nil
     }
     
     private func updateSpeed() {
@@ -491,40 +521,52 @@ struct ExplorationMapView: View {
     }
     
     private func updateCameraToFollowUser(at coordinate: CLLocationCoordinate2D) {
-        // Only follow user if not manually interacting
-        guard !isUserInteracting else { return }
+        // Follow only in explicit follow mode.
+        guard isFollowingUser else { return }
         
         let zoom = zoomLevel(for: session.transportMode.speedMps)
-        
-        // Use linear animation for smooth continuous movement
-        withAnimation(.linear(duration: 1.0)) {
+
+        // Use linear animation for smooth continuous movement.
+        setCamera(center: coordinate, zoom: zoom, animation: .linear(duration: 1.0))
+    }
+    
+    private func recenterCamera() {
+        guard let position = currentPosition?.coordinate else { return }
+
+        isFollowingUser = true
+        let zoom = zoomLevel(for: session.transportMode.speedMps)
+
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+            showRecenterButton = false
+        }
+
+        setCamera(center: position, zoom: zoom, animation: .spring(response: 0.5, dampingFraction: 0.7))
+    }
+
+    private func setCamera(center: CLLocationCoordinate2D, zoom: Double, animation: Animation?) {
+        isProgrammaticCameraChange = true
+
+        let update = {
             cameraPosition = .region(
                 MKCoordinateRegion(
-                    center: coordinate,
+                    center: center,
                     latitudinalMeters: zoom,
                     longitudinalMeters: zoom
                 )
             )
         }
-    }
-    
-    private func recenterCamera() {
-        guard let position = currentPosition?.coordinate else { return }
-        
-        isUserInteracting = false
-        userCameraPosition = nil
-        
-        let zoom = zoomLevel(for: session.transportMode.speedMps)
-        
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-            cameraPosition = .region(
-                MKCoordinateRegion(
-                    center: position,
-                    latitudinalMeters: zoom,
-                    longitudinalMeters: zoom
-                )
-            )
-            showRecenterButton = false
+
+        if let animation {
+            withAnimation(animation) {
+                update()
+            }
+        } else {
+            update()
+        }
+
+        // Release the guard shortly after the camera update settles.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            isProgrammaticCameraChange = false
         }
     }
     

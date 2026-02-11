@@ -52,6 +52,7 @@
 
 // Weather Details
 "weather.humidity" = "Humidity";
+"weather.temperature" = "Temperature";
 "weather.wind" = "Wind";
 "weather.visibility" = "Visibility";
 "weather.pressure" = "Pressure";
@@ -127,9 +128,22 @@
 "settings.contact" = "Contact & Support";
 "settings.privacy" = "Privacy Policy";
 "settings.about" = "About";
+"settings.onboarding" = "Onboarding";
 "settings.about.app" = "About Roam Focus";
 "settings.tutorial" = "View Tutorial";
 "settings.version" = "Version";
+"settings.data" = "Data Management";
+"settings.data.icloud" = "iCloud Sync";
+"settings.data.icloud.subtitle" = "Coming soon";
+"settings.data.clear" = "Clear All Data";
+"settings.data.clear.subtitle" = "Delete records and progress (cannot be restored)";
+"settings.data.clear.confirm1.title" = "Clear All Data?";
+"settings.data.clear.confirm1.message" = "This will remove all local history and progress data.";
+"settings.data.clear.confirm1.action" = "Continue";
+"settings.data.clear.confirm2.title" = "Final Confirmation";
+"settings.data.clear.confirm2.message" = "This action cannot be undone. All data will be permanently deleted.";
+"settings.data.clear.confirm2.action" = "Delete Permanently";
+"settings.data.clear.inputPlaceholder" = "Type confirmation phrase";
 
 // About
 "about.title" = "About";
@@ -170,6 +184,46 @@
 "onboarding.page4.feature1" = "Pause and resume roams anytime";
 "onboarding.page4.feature2" = "Customize your starting location";
 "onboarding.page4.feature3" = "Discover new places while staying focused";
+"onboarding.v2.header" = "Roam Focus";
+"onboarding.v2.hero.chip1" = "Focus";
+"onboarding.v2.hero.chip2" = "Route";
+"onboarding.v2.hero.chip3" = "POIs";
+"onboarding.v2.page1.badge" = "Live Journey";
+"onboarding.v2.page1.title" = "Turn Focus Into Exploration";
+"onboarding.v2.page1.subtitle" = "Start from your city, then roam across real maps while staying in flow.";
+"onboarding.v2.page1.feature1.title" = "Choose a start point";
+"onboarding.v2.page1.feature1.desc" = "Use current location or presets and begin instantly.";
+"onboarding.v2.page1.feature2.title" = "Switch transport modes";
+"onboarding.v2.page1.feature2.desc" = "Walk, cycle, drive, or subway for different journey styles.";
+"onboarding.v2.page1.feature3.title" = "Discover naturally";
+"onboarding.v2.page1.feature3.desc" = "POIs appear along your path, not as distractions.";
+"onboarding.v2.page2.badge" = "During Focus";
+"onboarding.v2.page2.title" = "Stay Smooth While You Move";
+"onboarding.v2.page2.subtitle" = "Pan and zoom freely during focus. Recenter only when you tap.";
+"onboarding.v2.page2.feature1.title" = "Live timeline";
+"onboarding.v2.page2.feature1.desc" = "Track elapsed time and route progress in one glance.";
+"onboarding.v2.page2.feature2.title" = "No forced recenter";
+"onboarding.v2.page2.feature2.desc" = "Camera stays where you set it until you choose to follow again.";
+"onboarding.v2.page2.feature3.title" = "Clean controls";
+"onboarding.v2.page2.feature3.desc" = "Everything important is reachable without interrupting focus.";
+"onboarding.v2.page3.badge" = "After Journey";
+"onboarding.v2.page3.title" = "See Results That Matter";
+"onboarding.v2.page3.subtitle" = "Every session saves a visual summary with time, distance, weather, and route.";
+"onboarding.v2.page3.feature1.title" = "Session stats";
+"onboarding.v2.page3.feature1.desc" = "Duration, distance, completion, and mode in card view.";
+"onboarding.v2.page3.feature2.title" = "History records";
+"onboarding.v2.page3.feature2.desc" = "Review recent journeys with a clearer expanded layout.";
+"onboarding.v2.page3.feature3.title" = "Trophies and milestones";
+"onboarding.v2.page3.feature3.desc" = "Unlock progress rewards as your focus time grows.";
+"onboarding.v2.page4.badge" = "Ready";
+"onboarding.v2.page4.title" = "Start Your Next Focus Journey";
+"onboarding.v2.page4.subtitle" = "One tap to begin. Keep the rhythm, enjoy the route, and finish strong.";
+"onboarding.v2.page4.feature1.title" = "Fast launch";
+"onboarding.v2.page4.feature1.desc" = "Open, choose, and begin in seconds.";
+"onboarding.v2.page4.feature2.title" = "Comfortable visuals";
+"onboarding.v2.page4.feature2.desc" = "Day/night and weather-aware cards keep the UI coherent.";
+"onboarding.v2.page4.feature3.title" = "Localized by design";
+"onboarding.v2.page4.feature3.desc" = "Language and formatting follow your in-app settings.";
 
 // History
 "history.title" = "Roaming History";
@@ -213,6 +267,7 @@
 "common.loading" = "Loading...";
 "common.done" = "Done";
 "common.edit" = "Edit";
+"common.category" = "Category";
 "common.cancel" = "Cancel";
 "common.delete" = "Delete";
 
@@ -656,6 +711,7 @@
 "journey.summary.photoPermission.message" = "Please allow Roam Focus to save photos to your library in Settings.";
 "journey.summary.photoPermission.openSettings" = "Open Settings";
 "journey.summary.photoPermission.cancel" = "Cancel";
+"journey.summary.saved" = "Saved to Photos";
 
 // Activity Heatmap
 "heatmap.less" = "Less";

@@ -34,10 +34,10 @@ enum TransportMode: String, CaseIterable, Identifiable {
     /// Localized display name
     var localizedName: String {
         switch self {
-        case .walking: return NSLocalizedString("transport.walking", comment: "Walking")
-        case .cycling: return NSLocalizedString("transport.cycling", comment: "Cycling")
-        case .driving: return NSLocalizedString("transport.driving", comment: "Driving")
-        case .subway: return NSLocalizedString("transport.subway", comment: "Subway")
+        case .walking: return L("transport.walking")
+        case .cycling: return L("transport.cycling")
+        case .driving: return L("transport.driving")
+        case .subway: return L("transport.subway")
         }
     }
     
