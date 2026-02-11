@@ -65,7 +65,7 @@ struct PrivacyPolicyView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // WebView
                 WebView(url: privacyPolicyURL, isLoading: $isLoading)
@@ -98,7 +98,7 @@ struct PrivacyPolicyView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }

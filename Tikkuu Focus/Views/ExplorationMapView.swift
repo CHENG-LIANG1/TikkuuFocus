@@ -34,6 +34,7 @@ struct ExplorationMapView: View {
     @State private var hideAllLabels = false
     @State private var speedTimer: Timer?
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var settings = AppSettings.shared
 
     init(
         session: JourneySession,
@@ -270,7 +271,7 @@ struct ExplorationMapView: View {
                 .tint(.red)
             }
         }
-        .mapStyle(.standard(elevation: .realistic))
+        .mapStyle(settings.selectedMapMode.style)
         .onTapGesture { screenCoordinate in
             // Hide all bubbles and labels when tapping on empty space
             hideAllBubbles = true
@@ -801,13 +802,10 @@ struct SubwayStationToast: View {
             Spacer()
         }
         .padding(16)
-        .background(
+        .themedRoundedBackground(cornerRadius: 16, depth: .inset)
+        .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-                )
+                .stroke(Color.blue.opacity(0.5), lineWidth: 2)
         )
         .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
     }

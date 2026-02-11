@@ -17,7 +17,6 @@ struct HistoryView: View {
     
     @State private var selectedTab: HistoryTab = .overview
     @State private var showingRecordDetail: JourneyRecord?
-    @State private var refreshID = UUID()
     @State private var showTimeDetail = false
     @State private var showDistanceDetail = false
     @State private var showCompletedDetail = false
@@ -189,7 +188,7 @@ struct HistoryView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -221,7 +220,7 @@ struct HistoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     if selectedTab == .records && !records.isEmpty {
                         Button(isEditMode ? L("common.done") : L("common.edit")) {
                             HapticManager.light()
@@ -236,7 +235,7 @@ struct HistoryView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     if isEditMode && !selectedRecords.isEmpty {
                         Button {
                             HapticManager.light()
@@ -254,7 +253,6 @@ struct HistoryView: View {
                 }
             }
         }
-        .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
             updateCachedStats()
@@ -321,9 +319,6 @@ struct HistoryView: View {
                 records: [fastestSpeedRecord].compactMap { $0 }
             )
         }
-        .onChange(of: settings.selectedLanguage) { _, _ in
-            refreshID = UUID()
-        }
         .alert(L("history.delete.confirmation"), isPresented: $showDeleteConfirmation) {
             Button(L("common.cancel"), role: .cancel) {}
             Button(L("common.delete"), role: .destructive) {
@@ -355,12 +350,12 @@ struct HistoryView: View {
         HapticManager.success()
         let idsToDelete = selectedRecords
 
-        withAnimation(.easeInOut(duration: 0.28)) {
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
             deletingRecordIDs.formUnion(idsToDelete)
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
-            withAnimation(.easeInOut(duration: 0.2)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                 for recordID in idsToDelete {
                     if let record = records.first(where: { $0.id == recordID }) {
                         modelContext.delete(record)
@@ -378,12 +373,12 @@ struct HistoryView: View {
         HapticManager.success()
         let targetID = record.id
 
-        withAnimation(.easeInOut(duration: 0.28)) {
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
             _ = deletingRecordIDs.insert(targetID)
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
-            withAnimation(.easeInOut(duration: 0.2)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                 modelContext.delete(record)
                 deletingRecordIDs.remove(targetID)
                 recordToDelete = nil
@@ -412,10 +407,7 @@ struct HistoryView: View {
             }
         }
         .padding(6)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(.ultraThinMaterial)
-        )
+        .themedRoundedBackground(cornerRadius: 14, depth: .inset)
     }
     
     // MARK: - Overview Content
@@ -543,6 +535,7 @@ struct HistoryView: View {
                 // Use LazyVStack for better performance with large lists
                 LazyVStack(spacing: 12) {
                     ForEach(records.prefix(PerformanceConfig.maxDisplayRecords)) { record in
+                        let isDeleting = deletingRecordIDs.contains(record.id)
                         HStack(spacing: 0) {
                             // Selection checkbox in edit mode
                             if isEditMode {
@@ -586,14 +579,18 @@ struct HistoryView: View {
                             removal: .recordStripPullOut
                         ))
                         .zIndex(expandedRecordID == record.id ? 1 : 0)
-                        .scaleEffect(deletingRecordIDs.contains(record.id) ? 0.78 : 1.0, anchor: .leading)
-                        .offset(x: deletingRecordIDs.contains(record.id) ? 220 : 0)
-                        .rotationEffect(.degrees(deletingRecordIDs.contains(record.id) ? 6 : 0))
-                        .opacity(deletingRecordIDs.contains(record.id) ? 0 : 1)
-                        .animation(.easeInOut(duration: 0.24), value: deletingRecordIDs.contains(record.id))
+                        .scaleEffect(isDeleting ? 0.94 : 1.0, anchor: .topLeading)
+                        .opacity(isDeleting ? 0 : 1)
+                        .frame(maxHeight: isDeleting ? 0 : .infinity, alignment: .top)
+                        .clipped()
+                        .animation(.spring(response: 0.28, dampingFraction: 0.9), value: isDeleting)
                         .id(record.id) // Ensure proper identity for animations
                     }
                 }
+                .animation(
+                    .spring(response: 0.34, dampingFraction: 0.84, blendDuration: 0.12),
+                    value: records.prefix(PerformanceConfig.maxDisplayRecords).map(\.id)
+                )
                 
                 // Show "Load More" if there are more records
                 if records.count > PerformanceConfig.maxDisplayRecords {
@@ -1062,10 +1059,7 @@ struct TabButton: View {
             .foregroundColor(isSelected ? .white : .secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.clear))
-            )
+            .insetSurface(cornerRadius: 10, isActive: isSelected)
         }
     }
 }
@@ -1354,10 +1348,7 @@ struct ExpandableRecordCard: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(.ultraThinMaterial)
-        )
+        .themedRoundedBackground(cornerRadius: 18, depth: .inset)
         .overlay(
             RoundedRectangle(cornerRadius: 18)
                 .strokeBorder(
@@ -1512,7 +1503,7 @@ struct LocationDetailView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -1596,7 +1587,7 @@ struct LocationDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -1637,7 +1628,7 @@ struct TransportModeDetailView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -1742,7 +1733,7 @@ struct TransportModeDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -1935,7 +1926,7 @@ struct RecordDetailView: View {
     let record: JourneyRecord
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -2072,7 +2063,7 @@ struct RecordDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -2150,7 +2141,7 @@ struct RouteMapPreview: View {
                     style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [10, 5])
                 )
         }
-        .mapStyle(.standard(elevation: .realistic))
+        .mapStyle(AppSettings.shared.selectedMapMode.style)
         .onAppear {
             // Calculate region to show both points
             let centerLat = (startCoordinate.latitude + endCoordinate.latitude) / 2
@@ -2565,7 +2556,7 @@ struct TimeDetailView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -2612,7 +2603,7 @@ struct TimeDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -2638,7 +2629,7 @@ struct DistanceDetailView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -2685,7 +2676,7 @@ struct DistanceDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -2711,7 +2702,7 @@ struct CompletedDetailView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -2764,7 +2755,7 @@ struct CompletedDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -2801,7 +2792,7 @@ struct POIsDetailView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -2865,7 +2856,7 @@ struct POIsDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -2935,7 +2926,7 @@ struct POIItemDetailView: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
 
@@ -2978,7 +2969,7 @@ struct POIItemDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -3037,7 +3028,7 @@ struct AchievementDetailView: View {
     let records: [JourneyRecord]
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -3136,7 +3127,7 @@ struct AchievementDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }

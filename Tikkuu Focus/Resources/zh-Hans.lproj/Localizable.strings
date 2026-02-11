@@ -50,6 +50,12 @@
 "label.preparing" = "准备中...";
 "label.custom" = "自定义";
 "label.weather" = "天气";
+"label.mapMode" = "地图模式";
+
+"map.mode.explore" = "探索";
+"map.mode.transit" = "交通";
+"map.mode.satellite" = "卫星地图";
+"map.mode.simple" = "简易版";
 
 // Weather Details
 "weather.humidity" = "湿度";
@@ -120,6 +126,17 @@
 
 // Settings
 "settings.title" = "设置";
+"settings.style" = "视觉风格";
+"settings.style.neumorphism" = "新拟态";
+"settings.style.liquid.subtitle" = "通透液态玻璃，带柔和高光";
+"settings.style.neumorphism.subtitle" = "柔和浮雕层次，立体按压感";
+"settings.theme" = "主题";
+"settings.theme.weather" = "跟随天气";
+"settings.theme.weather.subtitle" = "Liquid Glass 仅支持根据当前天气变化主题色";
+"settings.theme.neumorphism.dark" = "深色";
+"settings.theme.neumorphism.dark.subtitle" = "亮度更低，层次更深";
+"settings.theme.neumorphism.light" = "浅色";
+"settings.theme.neumorphism.light.subtitle" = "更明亮的蓝灰色调，对比更柔和";
 "settings.language" = "语言";
 "settings.language.system" = "跟随系统";
 "settings.support" = "支持";
@@ -139,9 +156,11 @@
 "settings.data.clear.confirm1.message" = "将删除本地所有历史记录与进度数据。";
 "settings.data.clear.confirm1.action" = "继续";
 "settings.data.clear.confirm2.title" = "最终确认";
-"settings.data.clear.confirm2.message" = "此操作不可撤销，所有数据将被永久删除。";
+"settings.data.clear.confirm2.message" = "此操作不可撤销，所有历史记录与进度将被永久删除。";
+"settings.data.clear.confirm2.guide" = "请输入 %@ 以确认（无需输入引号）";
 "settings.data.clear.confirm2.action" = "永久删除";
 "settings.data.clear.inputPlaceholder" = "请输入确认文字";
+"settings.data.clear.confirmPhrase" = "确认清除数据";
 
 // About
 "about.title" = "关于";

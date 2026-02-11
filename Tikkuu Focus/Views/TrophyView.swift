@@ -15,14 +15,13 @@ struct TrophyView: View {
     @ObservedObject private var settings = AppSettings.shared
     
     @State private var selectedCategory: TrophyCategory? = nil
-    @State private var refreshID = UUID()
     @State private var selectedTrophy: Trophy? = nil
     @State private var showTrophyDetail = false
     @State private var isLoading = true
     @State private var previousCategory: TrophyCategory? = nil
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -80,7 +79,7 @@ struct TrophyView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -88,7 +87,6 @@ struct TrophyView: View {
                 }
             }
         }
-        .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
             loadTrophies()
@@ -98,9 +96,6 @@ struct TrophyView: View {
                 await updateTrophiesAsync()
             }
         }
-        .onChange(of: settings.selectedLanguage) { _, _ in
-            refreshID = UUID()
-        }
         .sheet(isPresented: $showTrophyDetail) {
             if let trophy = selectedTrophy {
                 NavigationStack {
@@ -109,7 +104,7 @@ struct TrophyView: View {
                         .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
                         .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
+                            ToolbarItem(placement: .topBarTrailing) {
                                 Button(L("common.done")) {
                                     showTrophyDetail = false
                                 }
@@ -131,12 +126,12 @@ struct TrophyView: View {
                             .font(.system(size: 18, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemBackground))
+                    .background(AnimatedGradientBackground())
                     .navigationTitle(L("trophy.detail"))
                     .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
                     .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button(L("common.done")) {
                                 showTrophyDetail = false
                                 selectedTrophy = nil
@@ -415,6 +410,7 @@ struct StatBadge: View {
 // MARK: - Category Button
 
 struct CategoryButton: View {
+    @ObservedObject private var settings = AppSettings.shared
     let icon: String
     let label: String
     let isSelected: Bool
@@ -432,10 +428,18 @@ struct CategoryButton: View {
             .foregroundColor(isSelected ? .white : .secondary)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.2)))
-            )
+            .background {
+                if settings.selectedVisualStyle == .neumorphism {
+                    NeumorphSurface(
+                        cornerRadius: 999,
+                        depth: isSelected ? .raised : .inset,
+                        fill: isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : nil
+                    )
+                } else {
+                    Capsule()
+                        .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.2)))
+                }
+            }
         }
     }
 }
@@ -558,10 +562,18 @@ struct TrophyDetailView: View {
             .foregroundColor(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(trophy.isUnlocked ? trophy.color : Color.gray)
-            )
+            .background {
+                if settings.selectedVisualStyle == .neumorphism {
+                    NeumorphSurface(
+                        cornerRadius: 999,
+                        depth: .raised,
+                        fill: AnyShapeStyle(trophy.isUnlocked ? trophy.color : Color.gray)
+                    )
+                } else {
+                    Capsule()
+                        .fill(trophy.isUnlocked ? trophy.color : Color.gray)
+                }
+            }
             .shadow(color: trophy.isUnlocked ? trophy.color.opacity(0.3) : Color.clear, radius: 8, x: 0, y: 4)
             
             // Category
@@ -587,14 +599,18 @@ struct TrophyDetailView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.green.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.green.opacity(0.3), lineWidth: 2)
-                    )
-            )
+            .background {
+                if settings.selectedVisualStyle == .neumorphism {
+                    NeumorphSurface(cornerRadius: 12, depth: .inset)
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.green.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.green.opacity(0.3), lineWidth: 2)
+                        )
+                }
+            }
             
             // Unlock date
             if let date = trophy.unlockedDate {

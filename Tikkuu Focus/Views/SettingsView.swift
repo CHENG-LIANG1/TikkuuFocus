@@ -10,21 +10,23 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var records: [JourneyRecord]
     @ObservedObject private var settings = AppSettings.shared
     @State private var showAbout = false
     @State private var showOnboarding = false
     @State private var showPrivacyPolicy = false
-    @State private var refreshID = UUID()
     @State private var showClearDataStep1 = false
     @State private var showClearDataStep2 = false
     @State private var clearDataConfirmationText = ""
-
-    private let requiredClearPhrase = "确认清除数据"
+    
+    private var requiredClearPhrase: String {
+        L("settings.data.clear.confirmPhrase")
+    }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Use same animated gradient as main app
                 AnimatedGradientBackground()
@@ -32,6 +34,31 @@ struct SettingsView: View {
                 // Content
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
+                        // Appearance Section
+                        modernSection(
+                            icon: "paintbrush.pointed.fill",
+                            title: L("settings.style"),
+                            gradient: LinearGradient(
+                                colors: [Color.cyan, Color.blue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        ) {
+                            appearanceOptions
+                        }
+
+                        modernSection(
+                            icon: "paintpalette.fill",
+                            title: L("settings.theme"),
+                            gradient: LinearGradient(
+                                colors: [Color.indigo, Color.cyan],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        ) {
+                            themeOptions
+                        }
+
                         // Language Section
                         modernSection(
                             icon: "globe",
@@ -93,7 +120,7 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -101,7 +128,6 @@ struct SettingsView: View {
                 }
             }
         }
-        .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .sheet(isPresented: $showAbout) {
             NavigationStack {
@@ -110,7 +136,7 @@ struct SettingsView: View {
                     .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
                     .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button(L("common.done")) {
                                 showAbout = false
                             }
@@ -142,15 +168,14 @@ struct SettingsView: View {
             }
             .disabled(clearDataConfirmationText.trimmingCharacters(in: .whitespacesAndNewlines) != requiredClearPhrase)
         } message: {
-            Text("\(L("settings.data.clear.confirm2.message"))\n\"\(requiredClearPhrase)\"")
+            Text(
+                "\(L("settings.data.clear.confirm2.message"))\n\(String(format: L("settings.data.clear.confirm2.guide"), requiredClearPhrase))"
+            )
         }
         .onChange(of: showClearDataStep2) { _, isPresented in
             if !isPresented {
                 clearDataConfirmationText = ""
             }
-        }
-        .onChange(of: settings.selectedLanguage) { _, _ in
-            refreshID = UUID()
         }
     }
     
@@ -184,11 +209,90 @@ struct SettingsView: View {
             }
         }
         .padding(20)
-        .glassCard(cornerRadius: 20)
+        .background(sectionBackground)
+    }
+
+    @ViewBuilder
+    private var sectionBackground: some View {
+        if settings.selectedVisualStyle == .liquidGlass {
+            let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+            ZStack {
+                shape.fill(Color.clear)
+
+                shape
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22), lineWidth: 1)
+            }
+        } else {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.clear)
+                .glassCard(cornerRadius: 20)
+        }
     }
     
     // MARK: - Language Options
-    
+
+    private var appearanceOptions: some View {
+        VStack(spacing: 12) {
+            ModernOptionRow(
+                title: "Liquid Glass",
+                icon: "sparkles",
+                isSelected: settings.selectedVisualStyle == .liquidGlass
+            ) {
+                HapticManager.selection()
+                withAnimation {
+                    settings.selectedVisualStyle = .liquidGlass
+                }
+            }
+
+            ModernOptionRow(
+                title: L("settings.style.neumorphism"),
+                icon: "square.3.layers.3d.down.right",
+                isSelected: settings.selectedVisualStyle == .neumorphism
+            ) {
+                HapticManager.selection()
+                withAnimation {
+                    settings.selectedVisualStyle = .neumorphism
+                }
+            }
+        }
+    }
+
+    private var themeOptions: some View {
+        VStack(spacing: 12) {
+            if settings.selectedVisualStyle == .liquidGlass {
+                ModernOptionRow(
+                    title: L("settings.theme.weather"),
+                    icon: "cloud.sun.fill",
+                    isSelected: true
+                ) {
+                    HapticManager.selection()
+                }
+            } else {
+                ModernOptionRow(
+                    title: L("settings.theme.neumorphism.dark"),
+                    icon: "moon.fill",
+                    isSelected: settings.selectedNeumorphismTone == .dark
+                ) {
+                    HapticManager.selection()
+                    withAnimation {
+                        settings.selectedNeumorphismTone = .dark
+                    }
+                }
+
+                ModernOptionRow(
+                    title: L("settings.theme.neumorphism.light"),
+                    icon: "sun.max.fill",
+                    isSelected: settings.selectedNeumorphismTone == .light
+                ) {
+                    HapticManager.selection()
+                    withAnimation {
+                        settings.selectedNeumorphismTone = .light
+                    }
+                }
+            }
+        }
+    }
+
     private var languageOptions: some View {
         VStack(spacing: 12) {
             ModernOptionRow(
@@ -322,10 +426,17 @@ struct SettingsView: View {
 // MARK: - Modern Option Row
 
 struct ModernOptionRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var settings = AppSettings.shared
     let title: String
+    var subtitle: String? = nil
     var icon: String? = nil
     let isSelected: Bool
     let action: () -> Void
+
+    private var selectedTextColor: Color {
+        settings.isNeumorphismLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+    }
     
     var body: some View {
         Button(action: action) {
@@ -333,13 +444,20 @@ struct ModernOptionRow: View {
                 if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(isSelected ? .white : .secondary)
+                        .foregroundColor(isSelected ? selectedTextColor : .secondary)
                         .frame(width: 24)
                 }
                 
                 Text(title)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(isSelected ? .white : .primary)
+                    .foregroundColor(isSelected ? selectedTextColor : .primary)
+
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(isSelected ? selectedTextColor.opacity(0.82) : .secondary)
+                        .lineLimit(1)
+                }
                 
                 Spacer()
                 
@@ -357,32 +475,52 @@ struct ModernOptionRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? 
-                        AnyShapeStyle(LinearGradient(
-                            colors: [
-                                Color(red: 0.3, green: 0.5, blue: 0.8),
-                                Color(red: 0.5, green: 0.3, blue: 0.7)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )) : 
-                        AnyShapeStyle(Color(uiColor: .secondarySystemBackground).opacity(0.5))
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.clear : Color(uiColor: .separator).opacity(0.2), lineWidth: 1)
-            )
+            .background(optionRowBackground)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+
+    @ViewBuilder
+    private var optionRowBackground: some View {
+        if settings.selectedVisualStyle == .liquidGlass {
+            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+            if isSelected {
+                ZStack {
+                    shape.fill(Color.clear)
+                    shape
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.3, green: 0.5, blue: 0.8).opacity(0.22),
+                                    Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.22)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                    shape
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.18 : 0.30), lineWidth: 1)
+                }
+            } else {
+                ZStack {
+                    shape.fill(Color.clear)
+                    shape
+                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 1)
+                }
+            }
+        } else {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.clear)
+                .insetSurface(cornerRadius: 12, isActive: isSelected)
+        }
     }
 }
 
 // MARK: - Modern Action Row
 
 struct ModernActionRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var settings = AppSettings.shared
     let title: String
     var subtitle: String? = nil
     var icon: String
@@ -428,16 +566,25 @@ struct ModernActionRow: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(uiColor: .secondarySystemBackground).opacity(0.5))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color(uiColor: .separator).opacity(0.2), lineWidth: 1)
-            )
+            .background(actionRowBackground)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+
+    @ViewBuilder
+    private var actionRowBackground: some View {
+        if settings.selectedVisualStyle == .liquidGlass {
+            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+            ZStack {
+                shape.fill(Color.clear)
+                shape
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 1)
+            }
+        } else {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.clear)
+                .insetSurface(cornerRadius: 12, isActive: false)
+        }
     }
 }
 

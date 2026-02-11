@@ -11,6 +11,7 @@ import CoreLocation
 
 struct WeatherDetailView: View {
     @ObservedObject var weatherManager: WeatherManager
+    @ObservedObject private var settings = AppSettings.shared
     let coordinate: CLLocationCoordinate2D
 
     @State private var hourlyForecast: [HourWeather] = []
@@ -18,16 +19,32 @@ struct WeatherDetailView: View {
     @State private var isLoadingForecast = false
     @State private var selectedTab: ForecastTab = .hourly
 
+    private var isNeumorphism: Bool {
+        settings.selectedVisualStyle == .neumorphism
+    }
+
+    private var primaryTextColor: Color {
+        isNeumorphism ? .primary : weatherManager.optimalTextColor
+    }
+
+    private var secondaryTextColor: Color {
+        isNeumorphism ? .secondary : weatherManager.optimalSecondaryTextColor
+    }
+
     var body: some View {
         ZStack {
-            WeatherBackgroundView(
-                colors: weatherManager.weatherGradientColors,
-                weatherCondition: weatherManager.weatherCondition,
-                isDaytime: weatherManager.isDaytime,
-                animationSpeed: weatherManager.gradientAnimationSpeed,
-                overlayIntensity: weatherManager.overlayIntensity
-            )
-            .ignoresSafeArea()
+            if isNeumorphism {
+                AnimatedGradientBackground()
+            } else {
+                WeatherBackgroundView(
+                    colors: weatherManager.weatherGradientColors,
+                    weatherCondition: weatherManager.weatherCondition,
+                    isDaytime: weatherManager.isDaytime,
+                    animationSpeed: weatherManager.gradientAnimationSpeed,
+                    overlayIntensity: weatherManager.overlayIntensity
+                )
+                .ignoresSafeArea()
+            }
 
             VStack(spacing: 0) {
                 ScrollView(showsIndicators: false) {
@@ -55,18 +72,18 @@ struct WeatherDetailView: View {
         VStack(spacing: 14) {
             Image(systemName: weatherManager.weatherIcon)
                 .font(.system(size: 64, weight: .light))
-                .foregroundColor(weatherManager.optimalTextColor)
+                .foregroundColor(primaryTextColor)
                 .symbolRenderingMode(.hierarchical)
 
             Text(weatherManager.temperatureString)
                 .font(.system(size: 66, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundColor(weatherManager.optimalTextColor)
+                .foregroundColor(primaryTextColor)
 
             if !weatherManager.weatherDescription.isEmpty {
                 Text(weatherManager.weatherDescription)
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(weatherManager.optimalSecondaryTextColor)
+                    .foregroundColor(secondaryTextColor)
             }
 
             if let weather = weatherManager.currentWeather {
@@ -75,24 +92,24 @@ struct WeatherDetailView: View {
                         icon: "sun.max.fill",
                         title: L("weather.temperature"),
                         value: String(format: "%.0f°", weather.temperature.value),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                        textColor: primaryTextColor,
+                        secondaryColor: secondaryTextColor
                     )
 
                     WeatherBadge(
                         icon: "humidity.fill",
                         title: L("weather.humidity"),
                         value: String(format: "%.0f%%", weather.humidity * 100),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                        textColor: primaryTextColor,
+                        secondaryColor: secondaryTextColor
                     )
 
                     WeatherBadge(
                         icon: "wind",
                         title: L("weather.wind"),
                         value: String(format: "%.0f km/h", weather.wind.speed.value),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                        textColor: primaryTextColor,
+                        secondaryColor: secondaryTextColor
                     )
                 }
             }
@@ -111,16 +128,16 @@ struct WeatherDetailView: View {
                         icon: "humidity.fill",
                         label: L("weather.humidity"),
                         value: String(format: "%.0f%%", weather.humidity * 100),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                        textColor: primaryTextColor,
+                        secondaryColor: secondaryTextColor
                     )
 
                     WeatherMetricTile(
                         icon: "wind",
                         label: L("weather.wind"),
                         value: String(format: "%.0f km/h", weather.wind.speed.value),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                        textColor: primaryTextColor,
+                        secondaryColor: secondaryTextColor
                     )
                 }
 
@@ -129,22 +146,22 @@ struct WeatherDetailView: View {
                         icon: "eye.fill",
                         label: L("weather.visibility"),
                         value: String(format: "%.0f km", weather.visibility.value / 1000),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                        textColor: primaryTextColor,
+                        secondaryColor: secondaryTextColor
                     )
 
                     WeatherMetricTile(
                         icon: "gauge.with.dots.needle.bottom.50percent",
                         label: L("weather.pressure"),
                         value: String(format: "%.0f hPa", weather.pressure.value),
-                        textColor: weatherManager.optimalTextColor,
-                        secondaryColor: weatherManager.optimalSecondaryTextColor
+                        textColor: primaryTextColor,
+                        secondaryColor: secondaryTextColor
                     )
                 }
             } else {
                 Text(L("weather.noData"))
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(weatherManager.optimalSecondaryTextColor)
+                    .foregroundColor(secondaryTextColor)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
             }
@@ -158,7 +175,7 @@ struct WeatherDetailView: View {
             ForecastTabButton(
                 title: L("weather.hourly"),
                 isSelected: selectedTab == .hourly,
-                textColor: weatherManager.optimalTextColor
+                textColor: primaryTextColor
             ) {
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
@@ -169,7 +186,7 @@ struct WeatherDetailView: View {
             ForecastTabButton(
                 title: L("weather.daily"),
                 isSelected: selectedTab == .daily,
-                textColor: weatherManager.optimalTextColor
+                textColor: primaryTextColor
             ) {
                 HapticManager.selection()
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
@@ -183,17 +200,17 @@ struct WeatherDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L("weather.hourly"))
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(weatherManager.optimalTextColor)
+                .foregroundColor(primaryTextColor)
 
             if isLoadingForecast {
                 ProgressView()
-                    .tint(weatherManager.optimalTextColor)
+                    .tint(primaryTextColor)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
             } else if hourlyForecast.isEmpty {
                 Text(L("weather.noData"))
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(weatherManager.optimalSecondaryTextColor)
+                    .foregroundColor(secondaryTextColor)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
             } else {
@@ -203,8 +220,8 @@ struct WeatherDetailView: View {
                             HourlyTile(
                                 hour: hour,
                                 isCurrent: Calendar.current.isDate(hour.date, equalTo: Date(), toGranularity: .hour),
-                                textColor: weatherManager.optimalTextColor,
-                                secondaryColor: weatherManager.optimalSecondaryTextColor
+                                textColor: primaryTextColor,
+                                secondaryColor: secondaryTextColor
                             )
                         }
                     }
@@ -221,17 +238,17 @@ struct WeatherDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L("weather.daily"))
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(weatherManager.optimalTextColor)
+                .foregroundColor(primaryTextColor)
 
             if isLoadingForecast {
                 ProgressView()
-                    .tint(weatherManager.optimalTextColor)
+                    .tint(primaryTextColor)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
             } else if dailyForecast.isEmpty {
                 Text(L("weather.noData"))
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(weatherManager.optimalSecondaryTextColor)
+                    .foregroundColor(secondaryTextColor)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
             } else {
@@ -246,8 +263,8 @@ struct WeatherDetailView: View {
                             isToday: Calendar.current.isDateInToday(day.date),
                             minTemp: minTemp,
                             maxTemp: maxTemp,
-                            textColor: weatherManager.optimalTextColor,
-                            secondaryColor: weatherManager.optimalSecondaryTextColor
+                            textColor: primaryTextColor,
+                            secondaryColor: secondaryTextColor
                         )
                     }
                 }
@@ -293,6 +310,7 @@ private enum ForecastTab {
 }
 
 struct WeatherBadge: View {
+    @ObservedObject private var settings = AppSettings.shared
     let icon: String
     let title: String
     let value: String
@@ -316,14 +334,19 @@ struct WeatherBadge: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.14))
-        )
+        .background {
+            if settings.selectedVisualStyle == .neumorphism {
+                NeumorphSurface(cornerRadius: 12, depth: .inset)
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.14))
+            }
+        }
     }
 }
 
 struct WeatherMetricTile: View {
+    @ObservedObject private var settings = AppSettings.shared
     let icon: String
     let label: String
     let value: String
@@ -352,14 +375,19 @@ struct WeatherMetricTile: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.14))
-        )
+        .background {
+            if settings.selectedVisualStyle == .neumorphism {
+                NeumorphSurface(cornerRadius: 14, depth: .inset)
+            } else {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.white.opacity(0.14))
+            }
+        }
     }
 }
 
 struct ForecastTabButton: View {
+    @ObservedObject private var settings = AppSettings.shared
     let title: String
     let isSelected: Bool
     let textColor: Color
@@ -372,16 +400,14 @@ struct ForecastTabButton: View {
                 .foregroundColor(isSelected ? .white : textColor)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.16)))
-                )
+                .insetSurface(cornerRadius: 12, isActive: isSelected)
         }
         .buttonStyle(ScaleButtonStyle())
     }
 }
 
 struct HourlyTile: View {
+    @ObservedObject private var settings = AppSettings.shared
     let hour: HourWeather
     let isCurrent: Bool
     let textColor: Color
@@ -415,14 +441,23 @@ struct HourlyTile: View {
         }
         .frame(width: 76)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.14)))
-        )
+        .background {
+            if settings.selectedVisualStyle == .neumorphism {
+                NeumorphSurface(
+                    cornerRadius: 14,
+                    depth: isCurrent ? .raised : .inset,
+                    fill: isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : nil
+                )
+            } else {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.14)))
+            }
+        }
     }
 }
 
 struct DailyTile: View {
+    @ObservedObject private var settings = AppSettings.shared
     let day: DayWeather
     let isToday: Bool
     let minTemp: Double
@@ -472,20 +507,43 @@ struct DailyTile: View {
             GeometryReader { proxy in
                 let width = max(0, proxy.size.width)
                 ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(secondaryColor.opacity(0.22))
-                        .frame(height: 6)
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.blue.opacity(0.8), Color.orange.opacity(0.9)],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                    if settings.selectedVisualStyle == .neumorphism {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(secondaryColor.opacity(0.18))
+                            .frame(height: 6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 0.8)
                             )
-                        )
-                        .frame(width: width * max(0.06, normalizedWidth), height: 6)
-                        .offset(x: width * min(0.94, normalizedStart))
+                    } else {
+                        Capsule()
+                            .fill(secondaryColor.opacity(0.22))
+                            .frame(height: 6)
+                    }
+
+                    Group {
+                        if settings.selectedVisualStyle == .neumorphism {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.blue.opacity(0.75), Color.orange.opacity(0.85)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        } else {
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.blue.opacity(0.8), Color.orange.opacity(0.9)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        }
+                    }
+                    .frame(width: width * max(0.06, normalizedWidth), height: 6)
+                    .offset(x: width * min(0.94, normalizedStart))
                 }
             }
             .frame(height: 6)
@@ -498,10 +556,14 @@ struct DailyTile: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isToday ? AnyShapeStyle(Color.white.opacity(0.2)) : AnyShapeStyle(Color.white.opacity(0.08)))
-        )
+        .background {
+            if settings.selectedVisualStyle == .neumorphism {
+                NeumorphSurface(cornerRadius: 12, depth: isToday ? .raised : .inset)
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isToday ? AnyShapeStyle(Color.white.opacity(0.2)) : AnyShapeStyle(Color.white.opacity(0.08)))
+            }
+        }
     }
 }
 

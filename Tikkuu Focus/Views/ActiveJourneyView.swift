@@ -80,6 +80,11 @@ struct ActiveJourneyView: View {
         .sheet(isPresented: $showHistory) {
             HistoryView()
         }
+        .onAppear {
+            if !AppMapMode.focusSelectableModes.contains(settings.selectedMapMode) {
+                settings.selectedMapMode = .explore
+            }
+        }
         .task {
             // Fetch weather when view appears
             if let session = journeyManager.state.session {
@@ -175,13 +180,22 @@ struct ActiveJourneyView: View {
             
             Spacer()
             
-            // Pause/Resume button
-            if case .active = journeyManager.state {
-                Button {
-                    HapticManager.medium()
-                    journeyManager.pauseJourney()
+            HStack(spacing: 10) {
+                Menu {
+                    ForEach(AppMapMode.focusSelectableModes, id: \.self) { mode in
+                        Button {
+                            HapticManager.selection()
+                            settings.selectedMapMode = mode
+                        } label: {
+                            Label {
+                                Text(mode.title)
+                            } icon: {
+                                Image(systemName: settings.selectedMapMode == mode ? "checkmark.circle.fill" : mode.iconName)
+                            }
+                        }
+                    }
                 } label: {
-                    Image(systemName: "pause.fill")
+                    Image(systemName: "map.fill")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 40, height: 40)
@@ -195,24 +209,46 @@ struct ActiveJourneyView: View {
                         )
                         .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                 }
-            } else if case .paused = journeyManager.state {
-                Button {
-                    HapticManager.medium()
-                    journeyManager.resumeJourney()
-                } label: {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
-                        .background(
-                            Circle()
-                                .fill(Color.black.opacity(0.4))
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        )
-                        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+
+                // Pause/Resume button
+                if case .active = journeyManager.state {
+                    Button {
+                        HapticManager.medium()
+                        journeyManager.pauseJourney()
+                    } label: {
+                        Image(systemName: "pause.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 40, height: 40)
+                            .background(
+                                Circle()
+                                    .fill(Color.black.opacity(0.4))
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    }
+                } else if case .paused = journeyManager.state {
+                    Button {
+                        HapticManager.medium()
+                        journeyManager.resumeJourney()
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 40, height: 40)
+                            .background(
+                                Circle()
+                                    .fill(Color.black.opacity(0.4))
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            )
+                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    }
                 }
             }
         }
@@ -336,11 +372,7 @@ struct ActiveJourneyView: View {
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
-        )
+        .themedRoundedBackground(cornerRadius: 20, depth: .inset)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
                 .stroke(Color.white.opacity(0.4), lineWidth: 1.5)

@@ -316,7 +316,7 @@ struct JourneySummaryView: View {
                         .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
                 }
             }
-            .mapStyle(.standard(elevation: .realistic))
+            .mapStyle(settings.selectedMapMode.style)
             .disabled(true)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
@@ -435,7 +435,7 @@ struct JourneySummaryView: View {
                     .overlay(Circle().stroke(Color.white, lineWidth: 2))
             }
         }
-        .mapStyle(.standard(elevation: .realistic))
+        .mapStyle(settings.selectedMapMode.style)
         .allowsHitTesting(false)
         .ignoresSafeArea()
     }
@@ -508,35 +508,36 @@ struct JourneySummaryView: View {
 
     // MARK: - Actions
 
-    @MainActor
     private func saveAsImage() {
-        guard let image = renderAsImage() else { return }
+        Task { @MainActor in
+            guard let image = await renderAsImage() else { return }
 
-        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
-        switch status {
-        case .authorized, .limited:
-            saveImageToLibrary(image)
-        case .notDetermined:
-            PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
-                DispatchQueue.main.async {
-                    if newStatus == .authorized || newStatus == .limited {
-                        self.saveImageToLibrary(image)
-                    } else {
-                        self.showPhotoPermissionAlert = true
-                        HapticManager.error()
+            let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+            switch status {
+            case .authorized, .limited:
+                saveImageToLibrary(image)
+            case .notDetermined:
+                PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
+                    DispatchQueue.main.async {
+                        if newStatus == .authorized || newStatus == .limited {
+                            self.saveImageToLibrary(image)
+                        } else {
+                            self.showPhotoPermissionAlert = true
+                            HapticManager.error()
+                        }
                     }
                 }
+            case .denied, .restricted:
+                showPhotoPermissionAlert = true
+                HapticManager.error()
+            @unknown default:
+                break
             }
-        case .denied, .restricted:
-            showPhotoPermissionAlert = true
-            HapticManager.error()
-        @unknown default:
-            break
         }
     }
 
     private func saveImageToLibrary(_ image: UIImage) {
-        let optimizedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 1000) ?? image
+        let optimizedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 450) ?? image
 
         PHPhotoLibrary.shared().performChanges({
             PHAssetChangeRequest.creationRequestForAsset(from: optimizedImage)
@@ -560,26 +561,30 @@ struct JourneySummaryView: View {
     }
 
     private func shareImage() {
-        guard let image = renderAsImage() else { return }
-        renderedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 800) ?? image
-        showShareSheet = true
+        Task { @MainActor in
+            guard let image = await renderAsImage() else { return }
+            renderedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 600) ?? image
+            showShareSheet = true
+        }
     }
 
     @MainActor
-    private func renderAsImage() -> UIImage? {
-        let renderer = ImageRenderer(content: exportCard)
-        renderer.scale = 2.0
+    private func renderAsImage() async -> UIImage? {
+        let snapshotSize = CGSize(width: 332, height: 180)
+        let mapSnapshot = await generateRouteSnapshot(size: snapshotSize)
+        let renderer = ImageRenderer(content: exportCard(snapshotImage: mapSnapshot))
+        renderer.scale = PerformanceOptimizer.shared.isEnergySavingMode ? 1.2 : 1.35
         return renderer.uiImage
     }
 
-    private var exportCard: some View {
+    private func exportCard(snapshotImage: UIImage?) -> some View {
         VStack(spacing: 12) {
             statusHeader(isCompact: false)
                 .padding(.top, 24)
 
             metricsGrid(isCompact: false)
 
-            exportRouteCard
+            exportRouteCard(snapshotImage: snapshotImage)
                 .frame(height: 180)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 14)
@@ -589,13 +594,21 @@ struct JourneySummaryView: View {
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 
-    private var exportRouteCard: some View {
+    private func exportRouteCard(snapshotImage: UIImage?) -> some View {
         ZStack(alignment: .bottomLeading) {
-            StaticRoutePreview(
-                route: session.route,
-                start: session.startLocation,
-                end: session.destinationLocation
-            )
+            Group {
+                if let snapshotImage {
+                    Image(uiImage: snapshotImage)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    StaticRoutePreview(
+                        route: session.route,
+                        start: session.startLocation,
+                        end: session.destinationLocation
+                    )
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             HStack(spacing: 6) {
@@ -622,6 +635,76 @@ struct JourneySummaryView: View {
                         .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
                 )
         )
+    }
+
+    private func generateRouteSnapshot(size: CGSize) async -> UIImage? {
+        let options = MKMapSnapshotter.Options()
+        options.region = mapRegion
+        options.size = size
+        options.scale = UIScreen.main.scale
+        options.mapType = settings.selectedMapMode.snapshotMapType
+        options.showsBuildings = true
+        options.pointOfInterestFilter = .excludingAll
+
+        let snapshotter = MKMapSnapshotter(options: options)
+
+        let snapshot: MKMapSnapshotter.Snapshot
+        do {
+            snapshot = try await withCheckedThrowingContinuation { continuation in
+                snapshotter.start { snapshot, error in
+                    if let snapshot {
+                        continuation.resume(returning: snapshot)
+                    } else if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(throwing: NSError(domain: "SnapshotError", code: -1, userInfo: nil))
+                    }
+                }
+            }
+        } catch {
+            return nil
+        }
+
+        let routeCoordinates = session.route.isEmpty ? [session.startLocation, session.destinationLocation] : session.route
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { context in
+            snapshot.image.draw(at: .zero)
+
+            guard routeCoordinates.count >= 2 else { return }
+            let cgContext = context.cgContext
+
+            let points = routeCoordinates.map { snapshot.point(for: $0) }
+            cgContext.setLineCap(.round)
+            cgContext.setLineJoin(.round)
+            cgContext.setLineWidth(4.5)
+            cgContext.setStrokeColor(UIColor.systemBlue.withAlphaComponent(0.92).cgColor)
+
+            cgContext.beginPath()
+            cgContext.move(to: points[0])
+            for point in points.dropFirst() {
+                cgContext.addLine(to: point)
+            }
+            cgContext.strokePath()
+
+            let startPoint = snapshot.point(for: session.startLocation)
+            let endPoint = snapshot.point(for: session.destinationLocation)
+            let startRect = CGRect(x: startPoint.x - 6, y: startPoint.y - 6, width: 12, height: 12)
+            let endRect = CGRect(x: endPoint.x - 6, y: endPoint.y - 6, width: 12, height: 12)
+
+            cgContext.setFillColor(UIColor.systemGreen.cgColor)
+            cgContext.fillEllipse(in: startRect)
+            cgContext.setStrokeColor(UIColor.white.cgColor)
+            cgContext.setLineWidth(2)
+            cgContext.strokeEllipse(in: startRect)
+
+            cgContext.setFillColor(UIColor.systemRed.cgColor)
+            cgContext.fillEllipse(in: endRect)
+            cgContext.setStrokeColor(UIColor.white.cgColor)
+            cgContext.setLineWidth(2)
+            cgContext.strokeEllipse(in: endRect)
+        }
+
+        return image
     }
 
     private var saveToastView: some View {

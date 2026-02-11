@@ -49,6 +49,12 @@
 "label.preparing" = "Preparing...";
 "label.custom" = "Custom";
 "label.weather" = "Weather";
+"label.mapMode" = "Map Mode";
+
+"map.mode.explore" = "Explore";
+"map.mode.transit" = "Transit";
+"map.mode.satellite" = "Satellite";
+"map.mode.simple" = "Simple";
 
 // Weather Details
 "weather.humidity" = "Humidity";
@@ -122,6 +128,17 @@
 
 // Settings
 "settings.title" = "Settings";
+"settings.style" = "Visual Style";
+"settings.style.neumorphism" = "Neumorphism";
+"settings.style.liquid.subtitle" = "Translucent glass, glowing highlights";
+"settings.style.neumorphism.subtitle" = "Soft depth, embossed surfaces";
+"settings.theme" = "Theme";
+"settings.theme.weather" = "Weather Adaptive";
+"settings.theme.weather.subtitle" = "Liquid Glass colors follow current weather";
+"settings.theme.neumorphism.dark" = "Dark";
+"settings.theme.neumorphism.dark.subtitle" = "Lower luminance with stronger depth";
+"settings.theme.neumorphism.light" = "Light";
+"settings.theme.neumorphism.light.subtitle" = "Brighter navy tone with softer contrast";
 "settings.language" = "Language";
 "settings.language.system" = "System Default";
 "settings.support" = "Support";
@@ -141,9 +158,11 @@
 "settings.data.clear.confirm1.message" = "This will remove all local history and progress data.";
 "settings.data.clear.confirm1.action" = "Continue";
 "settings.data.clear.confirm2.title" = "Final Confirmation";
-"settings.data.clear.confirm2.message" = "This action cannot be undone. All data will be permanently deleted.";
+"settings.data.clear.confirm2.message" = "This action cannot be undone. All history and progress data will be permanently deleted.";
+"settings.data.clear.confirm2.guide" = "Type %@ to confirm (no quotation marks).";
 "settings.data.clear.confirm2.action" = "Delete Permanently";
 "settings.data.clear.inputPlaceholder" = "Type confirmation phrase";
+"settings.data.clear.confirmPhrase" = "CONFIRM CLEAR";
 
 // About
 "about.title" = "About";

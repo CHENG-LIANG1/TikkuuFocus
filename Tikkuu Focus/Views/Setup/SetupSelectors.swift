@@ -45,41 +45,55 @@ struct TransportModeSelector: View {
 // MARK: - Transport Mode Button
 
 struct TransportModeButton: View {
+    @ObservedObject private var settings = AppSettings.shared
     let mode: TransportMode
     let isSelected: Bool
     let action: () -> Void
+
+    private var selectedTextColor: Color {
+        settings.isNeumorphismLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+    }
     
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
                 Image(systemName: mode.iconName)
                     .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(isSelected ? .white : .primary)
+                    .foregroundColor(isSelected ? selectedTextColor : .primary)
                     .frame(height: 24)
                 
                 Text(L("transport.\(mode.rawValue.lowercased())"))
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(isSelected ? .white : .secondary)
+                    .foregroundColor(isSelected ? selectedTextColor : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, minHeight: 80)
             .padding(.vertical, 12)
             .padding(.horizontal, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? 
-                        AnyShapeStyle(GradientStyles.primaryGradient) : 
-                        AnyShapeStyle(.ultraThinMaterial)
+            .background {
+                if settings.selectedVisualStyle == .neumorphism {
+                    NeumorphSurface(
+                        cornerRadius: 16,
+                        depth: isSelected ? .raised : .inset,
+                        fill: isSelected ? AnyShapeStyle(GradientStyles.primaryGradient) : nil
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(
-                                isSelected ? Color.clear : Color.primary.opacity(0.1),
-                                lineWidth: 1
-                            )
-                    )
-            )
+                } else {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            isSelected ?
+                            AnyShapeStyle(GradientStyles.primaryGradient) :
+                            AnyShapeStyle(.ultraThinMaterial)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .strokeBorder(
+                                    isSelected ? Color.clear : Color.primary.opacity(0.1),
+                                    lineWidth: 1
+                                )
+                        )
+                }
+            }
             .shadow(
                 color: isSelected ? Color.blue.opacity(0.3) : Color.clear,
                 radius: 10,
@@ -142,37 +156,51 @@ struct DurationSelector: View {
 // MARK: - Duration Button
 
 struct DurationButton: View {
+    @ObservedObject private var settings = AppSettings.shared
     let duration: Int
     let isSelected: Bool
     let action: () -> Void
+
+    private var selectedTextColor: Color {
+        settings.isNeumorphismLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+    }
     
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Text("\(duration)")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(isSelected ? .white : .primary)
+                    .foregroundColor(isSelected ? selectedTextColor : .primary)
                 
                 Text(L("time.unit.min"))
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                    .foregroundColor(isSelected ? selectedTextColor.opacity(0.82) : .secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? 
-                        AnyShapeStyle(GradientStyles.accentGradient) : 
-                        AnyShapeStyle(.ultraThinMaterial)
+            .background {
+                if settings.selectedVisualStyle == .neumorphism {
+                    NeumorphSurface(
+                        cornerRadius: 16,
+                        depth: isSelected ? .raised : .inset,
+                        fill: isSelected ? AnyShapeStyle(GradientStyles.accentGradient) : nil
                     )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(
-                                isSelected ? Color.clear : Color.primary.opacity(0.1),
-                                lineWidth: 1
-                            )
-                    )
-            )
+                } else {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            isSelected ?
+                            AnyShapeStyle(GradientStyles.accentGradient) :
+                            AnyShapeStyle(.ultraThinMaterial)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .strokeBorder(
+                                    isSelected ? Color.clear : Color.primary.opacity(0.1),
+                                    lineWidth: 1
+                                )
+                        )
+                }
+            }
             .shadow(
                 color: isSelected ? Color.orange.opacity(0.3) : Color.clear,
                 radius: 10,
@@ -218,14 +246,7 @@ struct LocationSourceSelector: View {
                 }
             }
             .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.blue.opacity(0.2), lineWidth: 1)
-                    )
-            )
+            .themedRoundedBackground(cornerRadius: 12, depth: .inset)
         }
     }
 }
@@ -237,7 +258,7 @@ struct CustomDurationPicker: View {
     @Binding var isPresented: Bool
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
                 Text("\(duration) \(L("time.unit.min"))")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
@@ -278,7 +299,7 @@ struct CustomDurationPicker: View {
             .navigationTitle(L("label.selectDuration"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("journey.summary.done")) {
                         isPresented = false
                     }

@@ -11,6 +11,7 @@ import SwiftData
 import MapKit
 
 struct SetupView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var locationManager = LocationManager()
     @StateObject private var journeyManager = JourneyManager()
     @StateObject private var weatherManager = WeatherManager()
@@ -54,60 +55,68 @@ struct SetupView: View {
     }
     
     var body: some View {
+        let isNeumorphism = settings.selectedVisualStyle == .neumorphism
         let weatherColors = weatherManager.weatherGradientColors
         let weatherCondition = weatherManager.weatherCondition
         let isDaytime = weatherManager.isDaytime
         let animSpeed = weatherManager.gradientAnimationSpeed
         let overlayInt = weatherManager.overlayIntensity
+        let baseTextColor: Color = isNeumorphism ? .primary : weatherManager.optimalTextColor
+        let baseSecondaryTextColor: Color = isNeumorphism ? .secondary : weatherManager.optimalSecondaryTextColor
         
         return ZStack {
-            // Weather-based background with decorations
-            WeatherBackgroundView(
-                colors: weatherColors,
-                weatherCondition: weatherCondition,
-                isDaytime: isDaytime,
-                animationSpeed: animSpeed,
-                overlayIntensity: overlayInt
-            )
-            .animation(.easeInOut(duration: 1.5), value: weatherColors)
-            .animation(.easeInOut(duration: 1.5), value: isDaytime)
+            if isNeumorphism {
+                AnimatedGradientBackground()
+            } else {
+                // Weather-based background with decorations
+                WeatherBackgroundView(
+                    colors: weatherColors,
+                    weatherCondition: weatherCondition,
+                    isDaytime: isDaytime,
+                    animationSpeed: animSpeed,
+                    overlayIntensity: overlayInt
+                )
+                .animation(.easeInOut(duration: 1.5), value: weatherColors)
+                .animation(.easeInOut(duration: 1.5), value: isDaytime)
+            }
             
-            VStack(spacing: 0) {
-                // Header
-                headerView
-                    .padding(.top, 20)
-                    .padding(.bottom, 20)
-                
-                // Weather & History Row
-                weatherAndHistoryRow
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 20)
-                
-                // Main content
-                VStack(spacing: 20) {
-                    locationSelectionCard
-                        .scaleEffect(cardsAppeared ? 1 : 0.9)
-                        .opacity(cardsAppeared ? 1 : 0)
-                        .offset(y: cardsAppeared ? 0 : 20)
-                        .blur(radius: cardsAppeared ? 0 : 4)
-                        .animation(AnimationConfig.smoothSpring.delay(0.08), value: cardsAppeared)
-                        // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    // Header
+                    headerView
+                        .padding(.top, 20)
+                        .padding(.bottom, 20)
                     
+                    // Weather & History Row
+                    weatherAndHistoryRow
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
+                    
+                    // Main content
+                    VStack(spacing: 20) {
+                        locationSelectionCard
+                            .scaleEffect(cardsAppeared ? 1 : 0.9)
+                            .opacity(cardsAppeared ? 1 : 0)
+                            .offset(y: cardsAppeared ? 0 : 20)
+                            .blur(radius: cardsAppeared ? 0 : 4)
+                            .animation(AnimationConfig.smoothSpring.delay(0.08), value: cardsAppeared)
+                            // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
+
                     transportSelectionCard
                         .scaleEffect(cardsAppeared ? 1 : 0.9)
                         .opacity(cardsAppeared ? 1 : 0)
                         .offset(y: cardsAppeared ? 0 : 20)
                         .blur(radius: cardsAppeared ? 0 : 4)
                         .animation(AnimationConfig.smoothSpring.delay(0.12), value: cardsAppeared)
-                        // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
-                    
+                            // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
+                        
                     durationSelectionCard
                         .scaleEffect(cardsAppeared ? 1 : 0.9)
                         .opacity(cardsAppeared ? 1 : 0)
                         .offset(y: cardsAppeared ? 0 : 20)
                         .blur(radius: cardsAppeared ? 0 : 4)
                         .animation(AnimationConfig.smoothSpring.delay(0.16), value: cardsAppeared)
-                    
+                        
                     startButton
                         .scaleEffect(cardsAppeared ? 1 : 0.9)
                         .opacity(cardsAppeared ? 1 : 0)
@@ -115,12 +124,12 @@ struct SetupView: View {
                         .blur(radius: cardsAppeared ? 0 : 4)
                         .animation(AnimationConfig.smoothSpring.delay(0.20), value: cardsAppeared)
                 }
-                .padding(.horizontal, 24)
-                
-                Spacer(minLength: 0)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+                }
             }
-            .environment(\.adaptiveTextColor, weatherManager.optimalTextColor)
-            .environment(\.adaptiveSecondaryTextColor, weatherManager.optimalSecondaryTextColor)
+            .environment(\.adaptiveTextColor, baseTextColor)
+            .environment(\.adaptiveSecondaryTextColor, baseSecondaryTextColor)
 
             if let preloadCoordinate = mapPreloadCoordinate {
                 MapPreloadView(center: preloadCoordinate)
@@ -247,7 +256,7 @@ struct SetupView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button(L("common.done")) {
                             showWeatherDetail = false
                         }
@@ -274,7 +283,7 @@ struct SetupView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button(L("common.done")) {
                             journeyManager.pendingSummaryPayload = nil
                         }
@@ -399,9 +408,18 @@ struct SetupView: View {
                         )
                         .frame(width: 44, height: 44)
                         .background(
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                            Group {
+                                if settings.selectedVisualStyle == .neumorphism {
+                                    Circle()
+                                        .fill(NeumorphismStyle.surface(for: colorScheme))
+                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 11, x: 7, y: 7)
+                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 8, x: -6, y: -6)
+                                } else {
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                }
+                            }
                         )
                 }
                 .buttonStyle(PressableButtonStyle())
@@ -437,9 +455,18 @@ struct SetupView: View {
                         .foregroundColor(weatherManager.optimalTextColor)
                         .frame(width: 44, height: 44)
                         .background(
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                            Group {
+                                if settings.selectedVisualStyle == .neumorphism {
+                                    Circle()
+                                        .fill(NeumorphismStyle.surface(for: colorScheme))
+                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 11, x: 7, y: 7)
+                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 8, x: -6, y: -6)
+                                } else {
+                                    Circle()
+                                        .fill(.ultraThinMaterial)
+                                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                }
+                            }
                         )
                 }
                 .buttonStyle(PressableButtonStyle())
@@ -645,7 +672,11 @@ struct SetupView: View {
     // MARK: - Start Button (优化尺寸)
     
     private var startButton: some View {
-        Button {
+        let ctaTextColor: Color = settings.isNeumorphismLight
+            ? Color(red: 0.18, green: 0.22, blue: 0.32)
+            : .white
+
+        return Button {
             HapticManager.medium()
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                 buttonScale = 0.95
@@ -662,13 +693,13 @@ struct SetupView: View {
                     // Preparing state with custom spinner
                     ZStack {
                         Circle()
-                            .stroke(Color.white.opacity(0.3), lineWidth: 2.5)
+                            .stroke(ctaTextColor.opacity(0.3), lineWidth: 2.5)
                             .frame(width: 20, height: 20)
                         
                         Circle()
                             .trim(from: 0, to: 0.7)
                             .stroke(
-                                Color.white,
+                                ctaTextColor,
                                 style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
                             )
                             .frame(width: 20, height: 20)
@@ -691,61 +722,106 @@ struct SetupView: View {
                         .transition(.opacity)
                 }
             }
-            .foregroundColor(.white)
+            .foregroundColor(ctaTextColor)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            canStartJourney ?
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.3, green: 0.6, blue: 1.0),
-                                    Color(red: 0.4, green: 0.5, blue: 0.95)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ) :
-                            LinearGradient(
-                                colors: [Color.gray.opacity(0.4)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                    
-                    // Shimmer effect (only when not preparing)
-                    if canStartJourney && !isStarting {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0),
-                                        Color.white.opacity(0.25),
-                                        Color.white.opacity(0)
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                Group {
+                    if settings.selectedVisualStyle == .neumorphism {
+                        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        ZStack {
+                            NeumorphSurface(
+                                cornerRadius: 16,
+                                depth: canStartJourney ? .inset : .raised,
+                                fill: AnyShapeStyle(
+                                    canStartJourney
+                                    ? LinearGradient(
+                                        colors: [
+                                            Color(red: 0.48, green: 0.60, blue: 0.95),
+                                            Color(red: 0.40, green: 0.52, blue: 0.86)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                    : LinearGradient(
+                                        colors: [Color.gray.opacity(0.35)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
                             )
-                            .offset(x: -200 + buttonGlow * 400)
-                            .mask(RoundedRectangle(cornerRadius: 16))
+
+                            shape
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 0.30, green: 0.38, blue: 0.62).opacity(0.55),
+                                            Color(red: 0.10, green: 0.14, blue: 0.24).opacity(0.75)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.2
+                                )
+                        }
+                    } else {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(
+                                    canStartJourney ?
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 0.3, green: 0.6, blue: 1.0),
+                                            Color(red: 0.4, green: 0.5, blue: 0.95)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    ) :
+                                    LinearGradient(
+                                        colors: [Color.gray.opacity(0.4)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+
+                            // Shimmer effect (only when not preparing)
+                            if canStartJourney && !isStarting {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0),
+                                                Color.white.opacity(0.25),
+                                                Color.white.opacity(0)
+                                            ],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .offset(x: -200 + buttonGlow * 400)
+                                    .mask(RoundedRectangle(cornerRadius: 16))
+                            }
+                        }
                     }
                 }
             )
             .shadow(
-                color: canStartJourney ?
-                    Color(red: 0.3, green: 0.5, blue: 0.9).opacity(0.3 + buttonGlow * 0.15) :
-                    Color.clear,
-                radius: 12 + buttonGlow * 6,
+                color: settings.selectedVisualStyle == .neumorphism
+                    ? Color.clear
+                    : (canStartJourney
+                        ? Color(red: 0.3, green: 0.5, blue: 0.9).opacity(0.3 + buttonGlow * 0.15)
+                        : Color.clear),
+                radius: settings.selectedVisualStyle == .neumorphism ? 0 : (12 + buttonGlow * 6),
                 x: 0,
-                y: 6 + buttonGlow * 2
+                y: settings.selectedVisualStyle == .neumorphism ? 0 : (6 + buttonGlow * 2)
             )
             .shadow(
-                color: Color.black.opacity(canStartJourney ? 0.2 : 0.08),
-                radius: 10,
+                color: settings.selectedVisualStyle == .neumorphism
+                    ? Color.clear
+                    : Color.black.opacity(canStartJourney ? 0.2 : 0.08),
+                radius: settings.selectedVisualStyle == .neumorphism ? 0 : 10,
                 x: 0,
-                y: 5
+                y: settings.selectedVisualStyle == .neumorphism ? 0 : 5
             )
         }
         .disabled(!canStartJourney)
@@ -874,24 +950,7 @@ struct SetupView: View {
             }
             .padding(.vertical, 40)
             .padding(.horizontal, 24)
-            .background(
-                RoundedRectangle(cornerRadius: 28)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.3),
-                                        Color.white.opacity(0.1)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                    )
-            )
+            .themedRoundedBackground(cornerRadius: 28, depth: .inset)
             .padding(.horizontal, 32)
         }
     }
@@ -955,11 +1014,13 @@ struct SetupView: View {
 }
 
 private struct MapPreloadView: View {
+    @ObservedObject private var settings = AppSettings.shared
     let center: CLLocationCoordinate2D
     @State private var cameraPosition: MapCameraPosition = .automatic
 
     var body: some View {
         Map(position: $cameraPosition) {}
+            .mapStyle(settings.selectedMapMode.style)
             .frame(width: 1, height: 1)
             .opacity(0.01)
             .onAppear {
@@ -1152,30 +1213,7 @@ struct HistorySummaryWidget: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                LiquidGlassStyle.innerGlow(for: colorScheme),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .blendMode(colorScheme == .dark ? .plusLighter : .overlay)
-                
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(LiquidGlassStyle.glassBorder(for: colorScheme), lineWidth: 1)
-            }
-        )
-        .shadow(color: LiquidGlassStyle.shadowColor(for: colorScheme), radius: 12, x: 0, y: 6)
-        .shadow(color: LiquidGlassStyle.shadowColor(for: colorScheme).opacity(0.3), radius: 3, x: 0, y: 1)
+        .glassCard(cornerRadius: 16)
     }
 }
 
@@ -1245,30 +1283,7 @@ struct WeatherWidget: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                LiquidGlassStyle.innerGlow(for: colorScheme),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .blendMode(colorScheme == .dark ? .plusLighter : .overlay)
-                
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(LiquidGlassStyle.glassBorder(for: colorScheme), lineWidth: 1)
-            }
-        )
-        .shadow(color: LiquidGlassStyle.shadowColor(for: colorScheme), radius: 12, x: 0, y: 6)
-        .shadow(color: LiquidGlassStyle.shadowColor(for: colorScheme).opacity(0.3), radius: 3, x: 0, y: 1)
+        .glassCard(cornerRadius: 16)
     }
 }
 

@@ -16,10 +16,9 @@ struct LocationPickerView: View {
     
     @State private var showMapPicker = false
     @State private var searchText = ""
-    @State private var refreshID = UUID()
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AnimatedGradientBackground()
                 
@@ -42,7 +41,7 @@ struct LocationPickerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -50,11 +49,7 @@ struct LocationPickerView: View {
                 }
             }
         }
-        .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
-        .onChange(of: settings.selectedLanguage) { _, _ in
-            refreshID = UUID()
-        }
         .sheet(isPresented: $showMapPicker) {
             MapPickerView(selectedLocation: $selectedLocation)
         }
@@ -276,7 +271,7 @@ struct MapPickerView: View {
     @State private var previewName: String = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Map with zoom and pan enabled
                 MapReader { proxy in
@@ -296,7 +291,7 @@ struct MapPickerView: View {
                             }
                         }
                     }
-                    .mapStyle(.standard(elevation: .realistic))
+                    .mapStyle(settings.selectedMapMode.style)
                     .onTapGesture { screenCoordinate in
                         if let coordinate = proxy.convert(screenCoordinate, from: .local) {
                             selectLocation(coordinate: coordinate)
@@ -311,13 +306,13 @@ struct MapPickerView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
                         .padding(.bottom, 12)
-                        .background(.ultraThinMaterial)
+                        .background(Rectangle().fill(.ultraThinMaterial))
                     
                     // Search results
                     if showSearchResults && !searchResults.isEmpty {
                         searchResultsList
                             .frame(maxHeight: 300)
-                            .background(.ultraThinMaterial)
+                            .background(Rectangle().fill(.ultraThinMaterial))
                     }
                     
                     Spacer()
@@ -334,7 +329,7 @@ struct MapPickerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(L("common.done")) {
                         dismiss()
                     }
@@ -399,7 +394,11 @@ struct MapPickerView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(uiColor: .secondarySystemBackground))
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
         )
     }
     

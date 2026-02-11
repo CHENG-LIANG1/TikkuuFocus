@@ -191,18 +191,26 @@ class PerformanceOptimizer {
     func compressImage(_ image: UIImage, maxSizeKB: Int) -> UIImage? {
         let maxBytes = maxSizeKB * 1024
         guard maxBytes > 0 else { return nil }
+        var bestData: Data?
 
         // Quick path: already small enough at high quality
         if let data = image.jpegData(compressionQuality: 0.9), data.count <= maxBytes {
             return UIImage(data: data)
+        } else if let data = image.jpegData(compressionQuality: 0.9) {
+            bestData = data
         }
 
         var quality: CGFloat = 0.85
         var currentImage = image
 
         for _ in 0..<6 {
-            if let data = currentImage.jpegData(compressionQuality: quality), data.count <= maxBytes {
-                return UIImage(data: data)
+            if let data = currentImage.jpegData(compressionQuality: quality) {
+                if bestData == nil || data.count < bestData!.count {
+                    bestData = data
+                }
+                if data.count <= maxBytes {
+                    return UIImage(data: data)
+                }
             }
 
             // Reduce dimensions if still too large
@@ -219,10 +227,18 @@ class PerformanceOptimizer {
         }
 
         // Final attempt with lower quality
-        if let data = currentImage.jpegData(compressionQuality: 0.5), data.count <= maxBytes {
-            return UIImage(data: data)
+        if let data = currentImage.jpegData(compressionQuality: 0.5) {
+            if bestData == nil || data.count < bestData!.count {
+                bestData = data
+            }
+            if data.count <= maxBytes {
+                return UIImage(data: data)
+            }
         }
 
+        if let bestData, let image = UIImage(data: bestData) {
+            return image
+        }
         return nil
     }
     

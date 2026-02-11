@@ -10,10 +10,15 @@ import SwiftUI
 // MARK: - Primary Button
 
 struct PrimaryButton: View {
+    @ObservedObject private var settings = AppSettings.shared
     let title: String
     let icon: String?
     let action: () -> Void
     let isLoading: Bool
+
+    private var accentTextColor: Color {
+        settings.isNeumorphismLight ? Color(red: 0.18, green: 0.22, blue: 0.32) : .white
+    }
     
     init(title: String, icon: String? = nil, isLoading: Bool = false, action: @escaping () -> Void) {
         self.title = title
@@ -27,7 +32,7 @@ struct PrimaryButton: View {
             HStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .progressViewStyle(CircularProgressViewStyle(tint: accentTextColor))
                 } else if let icon = icon {
                     Image(systemName: icon)
                         .font(.system(size: 16, weight: .semibold))
@@ -36,14 +41,22 @@ struct PrimaryButton: View {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
             }
-            .foregroundColor(.white)
+            .foregroundColor(accentTextColor)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(GradientStyles.primaryGradient)
-            )
-            .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+            .background {
+                if settings.selectedVisualStyle == .neumorphism {
+                    NeumorphSurface(
+                        cornerRadius: 16,
+                        depth: .raised,
+                        fill: AnyShapeStyle(GradientStyles.primaryGradient)
+                    )
+                } else {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(GradientStyles.primaryGradient)
+                }
+            }
+            .shadow(color: Color.blue.opacity(settings.selectedVisualStyle == .neumorphism ? 0.2 : 0.3), radius: 10, x: 0, y: 5)
         }
         .disabled(isLoading)
     }
@@ -76,14 +89,7 @@ struct SecondaryButton: View {
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.primary.opacity(0.2), lineWidth: 1)
-                    )
-            )
+            .insetSurface(cornerRadius: 12, isActive: false)
         }
     }
 }
@@ -107,14 +113,7 @@ struct IconButton: View {
                 .font(.system(size: size * 0.4, weight: .semibold))
                 .foregroundColor(.primary)
                 .frame(width: size, height: size)
-                .background(
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            Circle()
-                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                        )
-                )
+                .glassCard(cornerRadius: size / 2)
         }
     }
 }
@@ -122,10 +121,15 @@ struct IconButton: View {
 // MARK: - Gradient Button
 
 struct GradientButton: View {
+    @ObservedObject private var settings = AppSettings.shared
     let title: String
     let icon: String?
     let gradient: LinearGradient
     let action: () -> Void
+
+    private var accentTextColor: Color {
+        settings.isNeumorphismLight ? Color(red: 0.18, green: 0.22, blue: 0.32) : .white
+    }
     
     init(title: String, icon: String? = nil, gradient: LinearGradient = GradientStyles.primaryGradient, action: @escaping () -> Void) {
         self.title = title
@@ -145,13 +149,21 @@ struct GradientButton: View {
                 Text(title)
                     .font(.system(size: 14, weight: .semibold))
             }
-            .foregroundColor(.white)
+            .foregroundColor(accentTextColor)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .background(
-                Capsule()
-                    .fill(gradient)
-            )
+            .background {
+                if settings.selectedVisualStyle == .neumorphism {
+                    NeumorphSurface(
+                        cornerRadius: 999,
+                        depth: .raised,
+                        fill: AnyShapeStyle(gradient)
+                    )
+                } else {
+                    Capsule()
+                        .fill(gradient)
+                }
+            }
             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
         }
     }
