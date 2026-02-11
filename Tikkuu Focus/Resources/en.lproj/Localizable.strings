@@ -1,0 +1,693 @@
+/* 
+  Localizable.strings (English)
+  Tikkuu Focus
+*/
+
+// Transport Modes
+"transport.walking" = "Walking";
+"transport.cycling" = "Cycling";
+"transport.driving" = "Driving";
+"transport.subway" = "Subway";
+
+// Subway
+"subway.arriving" = "Arriving at";
+"subway.station" = "Station";
+
+// Journey States
+"journey.idle" = "Ready to Roam";
+"journey.preparing" = "Preparing Roam...";
+"journey.active" = "Roaming";
+"journey.paused" = "Paused";
+"journey.completed" = "Roam Complete!";
+"journey.state.active" = "Active";
+"journey.state.paused" = "Paused";
+"journey.stop.title" = "Stop Roaming?";
+"journey.stop.cancel" = "Cancel";
+"journey.stop.confirm" = "Stop";
+"journey.stop.message" = "Your progress will be saved to history.";
+"journey.completed.duration" = "Duration: %@";
+"journey.completed.pois" = "%d POIs discovered";
+"journey.viewSummary" = "View Summary";
+"journey.summary.complete" = "Roam Complete";
+"journey.summary.stopped" = "Roam Stopped";
+"journey.summary.completed" = "%.0f%% Completed";
+"journey.summary.stopped.badge" = "Stopped";
+
+// UI Labels
+"label.selectTransport" = "Select Transport";
+"label.selectDuration" = "Select Duration";
+"label.startJourney" = "Start Roaming";
+"label.pauseJourney" = "Pause";
+"label.resumeJourney" = "Resume Roaming";
+"label.cancelJourney" = "Cancel";
+"label.newJourney" = "New Roam";
+"label.timeRemaining" = "Time Remaining";
+"label.distanceTraveled" = "Distance Traveled";
+"label.currentSpeed" = "Current Speed";
+"label.destination" = "Destination";
+"label.progress" = "Progress";
+"label.preparing" = "Preparing...";
+"label.custom" = "Custom";
+"label.weather" = "Weather";
+
+// Weather Details
+"weather.humidity" = "Humidity";
+"weather.wind" = "Wind";
+"weather.visibility" = "Visibility";
+"weather.pressure" = "Pressure";
+"weather.hourly" = "Hourly";
+"weather.daily" = "Daily";
+"weather.noData" = "No forecast data available";
+"weather.now" = "Now";
+"weather.today" = "Today";
+
+// Map Controls
+"map.recenter" = "Back to Position";
+
+// POI Messages
+"poi.discovered" = "Discovered: %@";
+"poi.passing" = "Passing by %@";
+"poi.nearby" = "Nearby: %@";
+"poi.title" = "POI";
+
+// Errors
+"error.location.permission" = "Location permission denied. Please enable in Settings.";
+"error.location.unavailable" = "Location unavailable. Please try again.";
+"error.journey.noRoute" = "Could not find a route to destination.";
+"error.journey.invalidDestination" = "Invalid destination. Please try again.";
+"error.subway.noNearbyLine" = "No subway lines found within 10 km. Please choose another transport mode or change your starting location.";
+"error.subway.searchFailed" = "Failed to search for subway lines. Please try again.";
+"error.subway.noNearbyLine.detailed" = "No subway lines found within 10 km. Please confirm there are subway stations near your location, or try selecting another transport mode.";
+
+// Permissions
+"permission.location.title" = "Location Access Required";
+"permission.location.message" = "Roam Focus needs your location to create virtual journeys based on real places.";
+"permission.location.settings" = "Open Settings";
+"permission.location.cancel" = "Cancel";
+
+// Time Units
+"time.minutes" = "%d min";
+"time.hours" = "%d hr";
+"time.seconds" = "%d sec";
+"time.unit.min" = "min";
+"time.25min" = "25 min";
+"time.45min" = "45 min";
+"time.60min" = "60 min";
+"time.90min" = "90 min";
+
+// Distance Units
+"distance.meters" = "%.0f m";
+"distance.kilometers" = "%.1f km";
+
+// Speed Units
+"speed.kmh" = "%.1f km/h";
+
+// Location Selection
+"location.current" = "Current Location";
+"location.preset" = "Preset Locations";
+"location.custom" = "Custom Location";
+"location.selectStart" = "Select Start Location";
+"location.useCurrentLocation" = "Use Current Location";
+"location.chooseFromMap" = "Choose from Map";
+"location.selectOnMap" = "Tap on map to select location";
+"location.search" = "Search";
+"location.selected" = "Selected Location";
+"location.confirm" = "Confirm Location";
+"location.status.permissionNeeded" = "Location permission needed";
+"location.status.ready" = "Location ready";
+"location.status.getting" = "Getting location...";
+"location.status.gpsReady" = "GPS Ready";
+"location.status.waiting" = "Waiting...";
+
+// Settings
+"settings.title" = "Settings";
+"settings.language" = "Language";
+"settings.language.system" = "System Default";
+"settings.support" = "Support";
+"settings.contact" = "Contact & Support";
+"settings.privacy" = "Privacy Policy";
+"settings.about" = "About";
+"settings.about.app" = "About Roam Focus";
+"settings.tutorial" = "View Tutorial";
+"settings.version" = "Version";
+
+// About
+"about.title" = "About";
+"about.tagline" = "Focus as a Journey";
+"about.description.title" = "What is Roam Focus?";
+"about.description.text" = "Roam Focus transforms your focus time into virtual journeys. Choose a transport mode, set your duration, and embark on a roam to discover new places while staying focused on your tasks.";
+"about.features.title" = "Features";
+"about.feature.journey" = "Virtual Roaming";
+"about.feature.journey.desc" = "Travel to random destinations based on your focus duration and transport mode.";
+"about.feature.poi" = "Discover POIs";
+"about.feature.poi.desc" = "Find interesting places along your roaming route.";
+"about.feature.history" = "Roaming History";
+"about.feature.history.desc" = "Track your focus sessions with detailed statistics and insights.";
+"about.version" = "Version 1.3.2";
+"about.version.full" = "Version %@";
+
+// Onboarding
+"onboarding.skip" = "Skip";
+"onboarding.next" = "Next";
+"onboarding.getStarted" = "Start Roaming";
+"onboarding.page1.title" = "Welcome to Roam Focus";
+"onboarding.page1.description" = "Transform your focus time into exciting virtual roaming adventures";
+"onboarding.page1.feature1" = "Choose your transport mode and duration";
+"onboarding.page1.feature2" = "Roam to random destinations worldwide";
+"onboarding.page1.feature3" = "Stay focused while exploring new places";
+"onboarding.page2.title" = "Discover Points of Interest";
+"onboarding.page2.description" = "Find interesting places along your roaming route";
+"onboarding.page2.feature1" = "Discover landmarks and attractions";
+"onboarding.page2.feature2" = "Find restaurants and cafes nearby";
+"onboarding.page2.feature3" = "Explore parks and cultural sites";
+"onboarding.page3.title" = "Track Your Progress";
+"onboarding.page3.description" = "View detailed statistics and insights";
+"onboarding.page3.feature1" = "See your total focus time and distance";
+"onboarding.page3.feature2" = "Track completion rates and achievements";
+"onboarding.page3.feature3" = "Review your roaming history anytime";
+"onboarding.page4.title" = "Ready to Begin?";
+"onboarding.page4.description" = "Start your first focus roam now";
+"onboarding.page4.feature1" = "Pause and resume roams anytime";
+"onboarding.page4.feature2" = "Customize your starting location";
+"onboarding.page4.feature3" = "Discover new places while staying focused";
+
+// History
+"history.title" = "Roaming History";
+"history.journeys" = "%d roams";
+"history.overview" = "Overview";
+"history.records" = "Records";
+"history.stats" = "Stats";
+"history.totalTime" = "Total Time";
+"history.totalDistance" = "Total Distance";
+"history.completed" = "Completed";
+"history.poisFound" = "POIs Found";
+"history.topLocations" = "Top Locations";
+"history.transportModes" = "Transport Modes";
+"history.averages" = "Averages";
+"history.achievements" = "Achievements";
+"history.longestJourney" = "Longest Roam";
+"history.farthestDistance" = "Farthest Distance";
+"history.mostPOIs" = "Most POIs";
+"history.empty.title" = "No Roams Yet";
+"history.empty.message" = "Start your first focus roam to see your history here";
+"history.detail.title" = "Roam Details";
+"history.detail.completed" = "Completed";
+"history.detail.stopped" = "Interrupted";
+"history.detail.duration" = "Duration";
+"history.detail.distanceTraveled" = "Distance Traveled";
+"history.detail.progress" = "Progress";
+"history.detail.poisDiscovered" = "POIs Discovered";
+"history.detail.routeInfo" = "Route Information";
+"history.detail.start" = "Start";
+"history.detail.destination" = "Destination";
+"history.detail.transport" = "Transport";
+"history.detail.timeInfo" = "Time Information";
+"history.detail.started" = "Started";
+"history.detail.ended" = "Ended";
+"history.detail.plannedDuration" = "Planned Duration";
+
+// Common
+"common.times" = "times";
+"common.journeys" = "roams";
+"common.journey" = "roam";
+"common.loading" = "Loading...";
+"common.done" = "Done";
+"common.edit" = "Edit";
+"common.cancel" = "Cancel";
+"common.delete" = "Delete";
+
+// Stats
+"history.stats.completionRate" = "Completion Rate";
+"history.stats.averageSpeed" = "Average Speed";
+"history.stats.fastestJourney" = "Fastest Journey";
+"history.stats.timeDistribution" = "Time Distribution";
+"history.stats.morning" = "Morning (6-12)";
+"history.stats.afternoon" = "Afternoon (12-18)";
+"history.stats.evening" = "Evening (18-22)";
+"history.stats.night" = "Night (22-6)";
+"history.stats.weeklyActivity" = "Weekly Activity";
+"history.stats.sunday" = "Sunday";
+"history.stats.monday" = "Monday";
+"history.stats.tuesday" = "Tuesday";
+"history.stats.wednesday" = "Wednesday";
+"history.stats.thursday" = "Thursday";
+"history.stats.friday" = "Friday";
+"history.stats.saturday" = "Saturday";
+"history.stats.milestones" = "Milestones";
+"history.stats.totalDays" = "Active Days";
+"history.stats.totalSteps" = "Estimated Steps";
+"history.stats.caloriesBurned" = "Calories Burned";
+"history.stats.co2Saved" = "CO₂ Saved";
+
+// History Delete
+"history.delete.confirmation" = "Delete Records?";
+"history.delete.message" = "Are you sure you want to delete %d record(s)? This action cannot be undone.";
+"history.delete.single.confirmation" = "Delete Record?";
+"history.delete.single.message" = "Are you sure you want to delete this record? This action cannot be undone.";
+
+// Weather Conditions
+"weather.condition.clear" = "Clear";
+"weather.condition.clearNight" = "Clear Night";
+"weather.condition.cloudy" = "Cloudy";
+"weather.condition.mostlyClear" = "Mostly Clear";
+"weather.condition.mostlyCloudy" = "Mostly Cloudy";
+"weather.condition.partlyCloudy" = "Partly Cloudy";
+"weather.condition.rain" = "Rain";
+"weather.condition.drizzle" = "Drizzle";
+"weather.condition.heavyRain" = "Heavy Rain";
+"weather.condition.snow" = "Snow";
+"weather.condition.sleet" = "Sleet";
+"weather.condition.hail" = "Hail";
+"weather.condition.thunderstorms" = "Thunderstorms";
+"weather.condition.tropicalStorm" = "Tropical Storm";
+"weather.condition.hurricane" = "Hurricane";
+"weather.condition.blizzard" = "Blizzard";
+"weather.condition.blowingSnow" = "Blowing Snow";
+"weather.condition.freezingDrizzle" = "Freezing Drizzle";
+"weather.condition.freezingRain" = "Freezing Rain";
+"weather.condition.flurries" = "Flurries";
+"weather.condition.foggy" = "Foggy";
+"weather.condition.haze" = "Haze";
+"weather.condition.smoky" = "Smoky";
+"weather.condition.breezy" = "Breezy";
+"weather.condition.windy" = "Windy";
+"weather.condition.blowingDust" = "Blowing Dust";
+
+// History Stats - Milestones
+"history.stats.totalTime" = "Total Time";
+"history.stats.timeSpent" = "spent";
+"history.stats.daysActive" = "days";
+"history.stats.stepsEstimated" = "steps";
+"history.stats.poisDiscovered" = "POIs";
+"history.stats.totalPOIs" = "Total POIs";
+"history.stats.uniqueLocations" = "Unique Locations";
+"history.stats.placesVisited" = "places";
+"history.stats.longestStreak" = "Longest Streak";
+"history.stats.daysInRow" = "days in a row";
+
+// First Journey Guide
+"guide.firstJourney.title" = "Congratulations! 🎉";
+"guide.firstJourney.message" = "You've completed your first focus roam! Check out your roaming history to see your progress.";
+"guide.firstJourney.feature1" = "View all your completed roams";
+"guide.firstJourney.feature2" = "Track your focus time and statistics";
+"guide.firstJourney.feature3" = "See all the POIs you've discovered";
+"guide.firstJourney.button" = "View History";
+"guide.firstJourney.tapHistory" = "Tap here to view your history";
+"guide.firstJourney.gotIt" = "Got It!";
+
+// Trophy System
+"trophy.title" = "Trophies";
+"trophy.unlocked" = "%d / %d unlocked";
+"trophy.unlocked.short" = "Unlocked";
+"trophy.locked" = "Locked";
+"trophy.completion" = "Completion";
+"trophy.status.unlocked" = "Unlocked";
+"trophy.unlockedOn" = "Unlocked on";
+"trophy.progress" = "Progress";
+"trophy.complete" = "Complete";
+"trophy.requirement" = "Requirement";
+
+// Trophy Categories
+"trophy.category.all" = "All";
+"trophy.category.distance" = "Distance";
+"trophy.category.journey" = "Journeys";
+"trophy.category.location" = "Locations";
+"trophy.category.time" = "Time";
+"trophy.category.poi" = "POIs";
+"trophy.category.streak" = "Streaks";
+"trophy.category.speed" = "Speed";
+"trophy.category.weather" = "Weather";
+
+// Trophy Tiers
+"trophy.tier.bronze" = "Bronze";
+"trophy.tier.silver" = "Silver";
+"trophy.tier.gold" = "Gold";
+"trophy.tier.platinum" = "Platinum";
+"trophy.tier.diamond" = "Diamond";
+
+// Trophy Titles & Descriptions
+"trophy.distance_1km.title" = "First Steps";
+"trophy.distance_1km.description" = "Travel 1 km";
+"trophy.distance_10km.title" = "Explorer";
+"trophy.distance_10km.description" = "Travel 10 km";
+"trophy.distance_50km.title" = "Adventurer";
+"trophy.distance_50km.description" = "Travel 50 km";
+"trophy.distance_100km.title" = "Voyager";
+"trophy.distance_100km.description" = "Travel 100 km";
+"trophy.distance_500km.title" = "World Traveler";
+"trophy.distance_500km.description" = "Travel 500 km";
+
+"trophy.journey_1.title" = "Beginner";
+"trophy.journey_1.description" = "Complete 1 journey";
+"trophy.journey_10.title" = "Regular";
+"trophy.journey_10.description" = "Complete 10 journeys";
+"trophy.journey_50.title" = "Dedicated";
+"trophy.journey_50.description" = "Complete 50 journeys";
+"trophy.journey_100.title" = "Committed";
+"trophy.journey_100.description" = "Complete 100 journeys";
+"trophy.journey_500.title" = "Master";
+"trophy.journey_500.description" = "Complete 500 journeys";
+
+"trophy.location_3.title" = "Curious";
+"trophy.location_3.description" = "Visit 3 different locations";
+"trophy.location_10.title" = "Wanderer";
+"trophy.location_10.description" = "Visit 10 different locations";
+"trophy.location_20.title" = "Globetrotter";
+"trophy.location_20.description" = "Visit 20 different locations";
+"trophy.location_50.title" = "World Explorer";
+"trophy.location_50.description" = "Visit 50 different locations";
+
+"trophy.time_1h.title" = "First Hour";
+"trophy.time_1h.description" = "Focus for 1 hour total";
+"trophy.time_10h.title" = "Focused";
+"trophy.time_10h.description" = "Focus for 10 hours total";
+"trophy.time_50h.title" = "Dedicated";
+"trophy.time_50h.description" = "Focus for 50 hours total";
+"trophy.time_100h.title" = "Expert";
+"trophy.time_100h.description" = "Focus for 100 hours total";
+"trophy.time_500h.title" = "Zen Master";
+"trophy.time_500h.description" = "Focus for 500 hours total";
+
+"trophy.poi_10.title" = "Scout";
+"trophy.poi_10.description" = "Discover 10 POIs";
+"trophy.poi_50.title" = "Discoverer";
+"trophy.poi_50.description" = "Discover 50 POIs";
+"trophy.poi_100.title" = "Collector";
+"trophy.poi_100.description" = "Discover 100 POIs";
+"trophy.poi_500.title" = "Curator";
+"trophy.poi_500.description" = "Discover 500 POIs";
+"trophy.poi_1000.title" = "Encyclopedia";
+"trophy.poi_1000.description" = "Discover 1000 POIs";
+
+"trophy.streak_3.title" = "Getting Started";
+"trophy.streak_3.description" = "3-day streak";
+"trophy.streak_7.title" = "Week Warrior";
+"trophy.streak_7.description" = "7-day streak";
+"trophy.streak_30.title" = "Monthly Master";
+"trophy.streak_30.description" = "30-day streak";
+"trophy.streak_100.title" = "Centurion";
+"trophy.streak_100.description" = "100-day streak";
+"trophy.streak_365.title" = "Year Legend";
+"trophy.streak_365.description" = "365-day streak";
+
+"trophy.speed_fast.title" = "Speed Demon";
+"trophy.speed_fast.description" = "Reach 18 km/h average";
+"trophy.speed_faster.title" = "Velocity Master";
+"trophy.speed_faster.description" = "Reach 28.8 km/h average";
+"trophy.speed_fastest.title" = "Lightning";
+"trophy.speed_fastest.description" = "Reach 43.2 km/h average";
+
+"trophy.weather_rain.title" = "Rain Warrior";
+"trophy.weather_rain.description" = "Journey in the rain";
+"trophy.weather_night.title" = "Night Owl";
+"trophy.weather_night.description" = "Complete 5 night journeys";
+"trophy.weather_allseasons.title" = "Four Seasons";
+"trophy.weather_allseasons.description" = "Journey in all 4 seasons";
+
+"trophy.distance_5km.title" = "Starter";
+"trophy.distance_5km.description" = "Travel 5 km";
+"trophy.distance_25km.title" = "Long Hauler";
+"trophy.distance_25km.description" = "Travel 25 km";
+"trophy.distance_250km.title" = "Distance Runner";
+"trophy.distance_250km.description" = "Travel 250 km";
+"trophy.distance_1000km.title" = "Thousand Miles";
+"trophy.distance_1000km.description" = "Travel 1000 km";
+
+"trophy.journey_5.title" = "Newcomer";
+"trophy.journey_5.description" = "Complete 5 journeys";
+"trophy.journey_25.title" = "Skilled";
+"trophy.journey_25.description" = "Complete 25 journeys";
+"trophy.journey_250.title" = "Veteran";
+"trophy.journey_250.description" = "Complete 250 journeys";
+"trophy.journey_1000.title" = "Legend";
+"trophy.journey_1000.description" = "Complete 1000 journeys";
+
+"trophy.location_5.title" = "Pathfinder";
+"trophy.location_5.description" = "Visit 5 different locations";
+"trophy.location_30.title" = "Geographer";
+"trophy.location_30.description" = "Visit 30 different locations";
+"trophy.location_100.title" = "Around the World";
+"trophy.location_100.description" = "Visit 100 different locations";
+
+"trophy.time_30min.title" = "First Steps";
+"trophy.time_30min.description" = "Focus for 30 minutes total";
+"trophy.time_5h.title" = "Starter";
+"trophy.time_5h.description" = "Focus for 5 hours total";
+"trophy.time_25h.title" = "Diligent";
+"trophy.time_25h.description" = "Focus for 25 hours total";
+"trophy.time_250h.title" = "Master Level";
+"trophy.time_250h.description" = "Focus for 250 hours total";
+
+"trophy.poi_5.title" = "Observer";
+"trophy.poi_5.description" = "Discover 5 POIs";
+"trophy.poi_25.title" = "Explorer";
+"trophy.poi_25.description" = "Discover 25 POIs";
+"trophy.poi_250.title" = "Connoisseur";
+"trophy.poi_250.description" = "Discover 250 POIs";
+
+"trophy.streak_2.title" = "Building Habit";
+"trophy.streak_2.description" = "2-day streak";
+"trophy.streak_14.title" = "Two Week Champion";
+"trophy.streak_14.description" = "14-day streak";
+"trophy.streak_60.title" = "Two Month Hero";
+"trophy.streak_60.description" = "60-day streak";
+
+"trophy.speed_walker.title" = "Walker";
+"trophy.speed_walker.description" = "Reach 7.2 km/h average";
+"trophy.speed_jogger.title" = "Jogger";
+"trophy.speed_jogger.description" = "Reach 18 km/h average";
+"trophy.speed_cyclist.title" = "Cyclist";
+"trophy.speed_cyclist.description" = "Reach 28.8 km/h average";
+"trophy.speed_racer.title" = "Racer";
+"trophy.speed_racer.description" = "Reach 43.2 km/h average";
+"trophy.speed_sonic.title" = "Sonic Speed";
+"trophy.speed_sonic.description" = "Reach 61.2 km/h average";
+
+"trophy.weather_night_owl.title" = "Night Rider";
+"trophy.weather_night_owl.description" = "Complete 20 night journeys";
+"trophy.weather_year_round.title" = "Year Round";
+"trophy.weather_year_round.description" = "Journey in all 12 months";
+
+"trophy.special_marathon.title" = "Marathon Warrior";
+"trophy.special_marathon.description" = "Travel 42.195 km total (marathon distance)";
+"trophy.special_century.title" = "Century Challenge";
+"trophy.special_century.description" = "Travel 160.9 km total (100 miles)";
+"trophy.special_early_bird.title" = "Early Bird";
+"trophy.special_early_bird.description" = "Complete 10 early morning journeys (5-7 AM)";
+"trophy.special_night_rider.title" = "Midnight Rider";
+"trophy.special_night_rider.description" = "Complete 50 late night journeys (12-4 AM)";
+"trophy.special_weekend_warrior.title" = "Weekend Warrior";
+"trophy.special_weekend_warrior.description" = "Complete 20 weekend journeys";
+"trophy.special_daily_habit.title" = "Half Year Dedication";
+"trophy.special_daily_habit.description" = "180-day streak";
+"trophy.special_explorer.title" = "Ultimate Explorer";
+"trophy.special_explorer.description" = "Visit 200 different locations";
+"trophy.special_poi_hunter.title" = "POI Hunter";
+"trophy.special_poi_hunter.description" = "Discover 2000 POIs";
+"trophy.special_speed_demon.title" = "Speed Demon";
+"trophy.special_speed_demon.description" = "Reach 90 km/h average";
+"trophy.special_all_transport.title" = "All-Rounder";
+"trophy.special_all_transport.description" = "Use all 4 transport modes";
+"trophy.special_long_journey.title" = "Marathon Focus";
+"trophy.special_long_journey.description" = "Focus for 2 hours in a single journey";
+"trophy.special_dedication.title" = "Ultimate Dedication";
+"trophy.special_dedication.description" = "Complete 2000 journeys";
+
+// Festival Trophies
+"trophy.category.festival" = "Festival";
+"trophy.category.special" = "Special";
+
+"trophy.festival_spring.title" = "Spring Festival";
+"trophy.festival_spring.description" = "Complete a journey during Spring Festival";
+"trophy.festival_lantern.title" = "Lantern Festival";
+"trophy.festival_lantern.description" = "Complete a journey on Lantern Festival";
+"trophy.festival_qingming.title" = "Qingming Festival";
+"trophy.festival_qingming.description" = "Complete a journey on Qingming Festival";
+"trophy.festival_dragon_boat.title" = "Dragon Boat Festival";
+"trophy.festival_dragon_boat.description" = "Complete a journey on Dragon Boat Festival";
+"trophy.festival_qixi.title" = "Qixi Festival";
+"trophy.festival_qixi.description" = "Complete a journey on Qixi Festival";
+"trophy.festival_mid_autumn.title" = "Mid-Autumn Festival";
+"trophy.festival_mid_autumn.description" = "Complete a journey on Mid-Autumn Festival";
+"trophy.festival_double_nine.title" = "Double Ninth Festival";
+"trophy.festival_double_nine.description" = "Complete a journey on Double Ninth Festival";
+"trophy.festival_national_day.title" = "National Day";
+"trophy.festival_national_day.description" = "Complete a journey on National Day";
+"trophy.festival_new_year.title" = "New Year's Day";
+"trophy.festival_new_year.description" = "Complete a journey on New Year's Day";
+"trophy.festival_labor_day.title" = "Labor Day";
+"trophy.festival_labor_day.description" = "Complete a journey on Labor Day";
+"trophy.festival_youth_day.title" = "Youth Day";
+"trophy.festival_youth_day.description" = "Complete a journey on Youth Day";
+"trophy.festival_children_day.title" = "Children's Day";
+"trophy.festival_children_day.description" = "Complete a journey on Children's Day";
+"trophy.festival_christmas.title" = "Merry Christmas";
+"trophy.festival_christmas.description" = "Complete a journey on Christmas";
+"trophy.festival_halloween.title" = "Halloween";
+"trophy.festival_halloween.description" = "Complete a journey on Halloween";
+"trophy.festival_valentines.title" = "Valentine's Day";
+"trophy.festival_valentines.description" = "Complete a journey on Valentine's Day";
+
+// Time-based Special Trophies
+"trophy.special_sunrise.title" = "Sunrise";
+"trophy.special_sunrise.description" = "Complete 5 journeys at sunrise (5-6 AM)";
+"trophy.special_golden_hour.title" = "Golden Hour";
+"trophy.special_golden_hour.description" = "Complete 10 journeys in golden hour (6-8 AM)";
+"trophy.special_lunch_break.title" = "Lunch Break";
+"trophy.special_lunch_break.description" = "Complete 10 journeys during lunch (12-2 PM)";
+"trophy.special_afternoon_tea.title" = "Afternoon Tea";
+"trophy.special_afternoon_tea.description" = "Complete 10 journeys during tea time (3-5 PM)";
+"trophy.special_sunset.title" = "Sunset";
+"trophy.special_sunset.description" = "Complete 5 journeys at sunset (6-7 PM)";
+"trophy.special_midnight.title" = "Midnight";
+"trophy.special_midnight.description" = "Complete 3 journeys at midnight (12 AM)";
+"trophy.special_all_hours.title" = "All Hours";
+"trophy.special_all_hours.description" = "Complete journeys in all 24 hours";
+"trophy.special_workday.title" = "Workday Warrior";
+"trophy.special_workday.description" = "Complete 50 journeys on weekdays";
+"trophy.special_weekend_only.title" = "Weekend Only";
+"trophy.special_weekend_only.description" = "Complete 10 journeys on weekends";
+"trophy.special_every_weekday.title" = "Every Day";
+"trophy.special_every_weekday.description" = "Complete journeys on all 7 days of the week";
+
+// Transport-based Special Trophies
+"trophy.special_walking_master.title" = "Walking Master";
+"trophy.special_walking_master.description" = "Complete 100 walking journeys";
+"trophy.special_cycling_pro.title" = "Cycling Pro";
+"trophy.special_cycling_pro.description" = "Complete 100 cycling journeys";
+"trophy.special_driving_expert.title" = "Driving Expert";
+"trophy.special_driving_expert.description" = "Complete 100 driving journeys";
+"trophy.special_subway_rider.title" = "Subway Rider";
+"trophy.special_subway_rider.description" = "Complete 100 subway journeys";
+"trophy.special_walking_only.title" = "Walking Only";
+"trophy.special_walking_only.description" = "Complete 50 journeys using only walking";
+"trophy.special_no_driving.title" = "Eco-Friendly";
+"trophy.special_no_driving.description" = "Complete 50 journeys without driving";
+"trophy.special_transport_variety.title" = "Transport Variety";
+"trophy.special_transport_variety.description" = "Complete 10 journeys using 3+ transport modes";
+"trophy.special_single_transport.title" = "Single Transport";
+"trophy.special_single_transport.description" = "Complete 30 journeys using only one transport mode";
+
+// Distance-based Special Trophies
+"trophy.special_short_trips.title" = "Short Trip Expert";
+"trophy.special_short_trips.description" = "Complete 50 short trips (<5km)";
+"trophy.special_medium_trips.title" = "Medium Trips";
+"trophy.special_medium_trips.description" = "Complete 30 medium trips (5-20km)";
+"trophy.special_long_trips.title" = "Long Distance";
+"trophy.special_long_trips.description" = "Complete 10 long trips (>20km)";
+"trophy.special_ultra_distance.title" = "Ultra Distance";
+"trophy.special_ultra_distance.description" = "Complete 5 ultra trips (>50km)";
+"trophy.special_consistent.title" = "Consistent";
+"trophy.special_consistent.description" = "Complete 20 journeys with similar distances";
+"trophy.special_distance_variety.title" = "Distance Variety";
+"trophy.special_distance_variety.description" = "Complete short, medium, and long trips";
+"trophy.special_incremental.title" = "Incremental";
+"trophy.special_incremental.description" = "Complete 10 consecutive journeys with increasing distance";
+"trophy.special_distance_king.title" = "Distance King";
+"trophy.special_distance_king.description" = "Complete a single journey of 100km";
+
+// Social & Fun Trophies
+"trophy.special_birthday.title" = "Happy Birthday";
+"trophy.special_birthday.description" = "Complete a journey on your birthday";
+"trophy.special_lucky_seven.title" = "Lucky Seven";
+"trophy.special_lucky_seven.description" = "Complete 7 journeys";
+"trophy.special_perfect_ten.title" = "Perfect Ten";
+"trophy.special_perfect_ten.description" = "Complete 10 journeys";
+"trophy.special_double_eleven.title" = "Double Eleven";
+"trophy.special_double_eleven.description" = "Complete a journey on November 11";
+"trophy.special_520.title" = "I Love You";
+"trophy.special_520.description" = "Complete a journey on May 20";
+"trophy.special_618.title" = "618 Shopping";
+"trophy.special_618.description" = "Complete a journey on June 18";
+"trophy.special_first_snow.title" = "First Snow";
+"trophy.special_first_snow.description" = "Complete a journey during first snow";
+"trophy.special_full_moon.title" = "Full Moon";
+"trophy.special_full_moon.description" = "Complete 3 journeys during full moon";
+"trophy.special_rainy_day.title" = "Rainy Day";
+"trophy.special_rainy_day.description" = "Complete 5 journeys in the rain";
+"trophy.special_perfect_weather.title" = "Perfect Weather";
+"trophy.special_perfect_weather.description" = "Complete 10 journeys in perfect weather";
+
+// Achievement Milestones
+"trophy.special_first_week.title" = "First Week";
+"trophy.special_first_week.description" = "Active for 7 days";
+"trophy.special_first_month.title" = "First Month";
+"trophy.special_first_month.description" = "Active for 30 days";
+"trophy.special_first_season.title" = "First Season";
+"trophy.special_first_season.description" = "Active for 90 days";
+"trophy.special_half_year.title" = "Half Year";
+"trophy.special_half_year.description" = "Active for 180 days";
+"trophy.special_full_year.title" = "Full Year";
+"trophy.special_full_year.description" = "Active for 365 days";
+"trophy.special_veteran.title" = "Veteran";
+"trophy.special_veteran.description" = "Active for 730 days (2 years)";
+
+"Done" = "Done";
+"trophy.detail" = "Trophy Detail";
+
+// Onboarding Feature Descriptions
+"onboarding.page1.feature1.desc" = "Explore virtual destinations based on real locations";
+"onboarding.page1.feature2.desc" = "Choose walking, cycling, driving, or subway";
+"onboarding.page1.feature3.desc" = "Start from your current location or preset cities";
+
+"onboarding.page2.feature1.desc" = "Discover landmarks, restaurants, and attractions";
+"onboarding.page2.feature2.desc" = "Track your focus time and distance traveled";
+"onboarding.page2.feature3.desc" = "View detailed statistics and achievements";
+
+"onboarding.page4.feature1.desc" = "Unlock achievements and collect trophies";
+"onboarding.page4.feature2.desc" = "Dynamic weather and day/night backgrounds";
+"onboarding.page4.feature3.desc" = "Switch between light and dark themes";
+
+"history.stats.activityHeatmap" = "Activity Heatmap";
+
+// Journey Summary
+"journey.summary.focusTime" = "Focus Time";
+"journey.summary.distance" = "Distance";
+"journey.summary.pois" = "POIs";
+"journey.summary.route" = "Route";
+"journey.summary.save" = "Save";
+"journey.summary.share" = "Share";
+"journey.summary.done" = "Done";
+"journey.summary.day" = "Day";
+"journey.summary.night" = "Night";
+"journey.summary.subway" = "Subway";
+"journey.summary.line" = "Line";
+"journey.summary.photoPermission.title" = "Photo Library Access Required";
+"journey.summary.photoPermission.message" = "Please allow Roam Focus to save photos to your library in Settings.";
+"journey.summary.photoPermission.openSettings" = "Open Settings";
+"journey.summary.photoPermission.cancel" = "Cancel";
+
+// Activity Heatmap
+"heatmap.less" = "Less";
+"heatmap.more" = "More";
+
+// History Empty States
+"history.location.empty.title" = "No Roams from This Location";
+"history.location.empty.message" = "Start a roam from %@ to see details!";
+"history.mode.empty.title" = "No %@ Roams";
+"history.mode.empty.message" = "Start a roam using %@ to see details!";
+"history.time.empty.title" = "No Roam Records";
+"history.time.empty.message" = "Start your first roam to see time statistics!";
+"history.distance.empty.title" = "No Distance Recorded";
+"history.distance.empty.message" = "Start roaming to track your distance!";
+"history.completed.empty.title" = "No Completed Roams";
+"history.completed.empty.message" = "Complete your first roam to see it here!";
+"history.poi.empty.title" = "No POIs Discovered Yet";
+"history.poi.empty.message" = "Start roaming to discover interesting places!";
+"history.achievement.empty.title" = "No Achievement Yet";
+"history.achievement.empty.message" = "Keep roaming to unlock this achievement!";
+"history.detail.journeyDetails" = "Roam Details";
+
+// Trophy
+"trophy.loading" = "Loading Trophies...";
+"trophy.notFound" = "Trophy not found";
+"trophy.done" = "Done";
+
+// About
+"about.appName" = "Roam Focus";
+"about.copyright" = "© 2026 Roam Focus";
+
+// Common UI
+"common.bullet" = "•";
+"common.slash" = "/";
+"common.dash" = "—";

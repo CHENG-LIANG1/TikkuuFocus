@@ -1,0 +1,717 @@
+/* 
+  Localizable.strings (Chinese)
+  Roam Focus
+*/
+
+// Transport Modes
+"transport.walking" = "步行";
+"transport.cycling" = "骑行";
+"transport.driving" = "驾驶";
+"transport.subway" = "地铁";
+
+// Subway
+"subway.arriving" = "到达站点";
+"subway.station" = "站";
+
+// Journey States
+"journey.idle" = "准备漫游";
+"journey.preparing" = "准备漫游中...";
+"journey.active" = "漫游中";
+"journey.paused" = "已暂停";
+"journey.completed" = "漫游完成！";
+"journey.state.active" = "进行中";
+"journey.state.paused" = "已暂停";
+"journey.stop.title" = "停止漫游？";
+"journey.stop.cancel" = "取消";
+"journey.stop.confirm" = "停止";
+"journey.stop.message" = "你的进度将保存到历史记录。";
+"journey.completed.duration" = "时长：%@";
+"journey.completed.pois" = "发现了 %d 个兴趣点";
+"journey.viewSummary" = "查看总结";
+"journey.viewSummary" = "查看总结";
+"journey.summary.complete" = "旅程完成";
+"journey.summary.stopped" = "旅程中断";
+"journey.summary.completed" = "%.0f%% 达成";
+"journey.summary.stopped.badge" = "已中断";
+
+// UI Labels
+"label.selectTransport" = "选择交通方式";
+"label.selectDuration" = "选择时长";
+"label.startJourney" = "开始漫游";
+"label.pauseJourney" = "暂停";
+"label.resumeJourney" = "继续漫游";
+"label.cancelJourney" = "取消";
+"label.newJourney" = "新漫游";
+"label.timeRemaining" = "剩余时间";
+"label.distanceTraveled" = "已行驶距离";
+"label.currentSpeed" = "当前速度";
+"label.destination" = "目的地";
+"label.progress" = "进度";
+"label.preparing" = "准备中...";
+"label.custom" = "自定义";
+"label.weather" = "天气";
+
+// Weather Details
+"weather.humidity" = "湿度";
+"weather.wind" = "风速";
+"weather.visibility" = "能见度";
+"weather.pressure" = "气压";
+"weather.hourly" = "每小时";
+"weather.daily" = "每日";
+"weather.noData" = "暂无预报数据";
+"weather.now" = "现在";
+"weather.today" = "今天";
+
+// POI Messages
+"poi.discovered" = "发现景点：%@";
+"poi.passing" = "路过 %@";
+"poi.nearby" = "附近：%@";
+"poi.title" = "景点";
+
+// Errors
+"error.location.permission" = "位置权限被拒绝。请在设置中启用。";
+"error.location.unavailable" = "位置不可用。请重试。";
+"error.journey.noRoute" = "无法找到到达目的地的路线。";
+"error.journey.invalidDestination" = "无效的目的地。请重试。";
+"error.subway.noNearbyLine" = "附近 10 公里内没有地铁线路。请选择其他出行方式或更换出发地点。";
+"error.subway.searchFailed" = "搜索地铁线路失败。请重试。";
+"error.subway.noNearbyLine.detailed" = "未找到附近的地铁线路（搜索范围：10公里）。请确认您的位置附近有地铁站，或尝试选择其他交通方式。";
+
+// Permissions
+"permission.location.title" = "需要位置访问权限";
+"permission.location.message" = "Roam Focus 需要您的位置来创建基于真实地点的虚拟旅程。";
+"permission.location.settings" = "打开设置";
+"permission.location.cancel" = "取消";
+
+// Time Units
+"time.minutes" = "%d 分钟";
+"time.hours" = "%d 小时";
+"time.seconds" = "%d 秒";
+"time.unit.min" = "分钟";
+"time.25min" = "25 分钟";
+"time.45min" = "45 分钟";
+"time.60min" = "60 分钟";
+"time.90min" = "90 分钟";
+
+// Distance Units
+"distance.meters" = "%.0f 米";
+"distance.kilometers" = "%.1f 公里";
+
+// Speed Units
+"speed.kmh" = "%.1f 公里/小时";
+
+// Location Selection
+"location.current" = "当前位置";
+"location.preset" = "预设地点";
+"location.custom" = "自定义地点";
+"location.selectStart" = "选择出发地点";
+"location.useCurrentLocation" = "使用当前位置";
+"location.chooseFromMap" = "从地图选择";
+"location.selectOnMap" = "点击地图选择位置";
+"location.search" = "搜索";
+"location.selected" = "已选位置";
+"location.confirm" = "确认位置";
+"location.status.permissionNeeded" = "需要位置权限";
+"location.status.ready" = "位置已就绪";
+"location.status.getting" = "正在获取位置...";
+"location.status.gpsReady" = "GPS 已就绪";
+"location.status.waiting" = "等待中...";
+
+// Settings
+"settings.title" = "设置";
+"settings.language" = "语言";
+"settings.language.system" = "跟随系统";
+"settings.support" = "支持";
+"settings.contact" = "联系与支持";
+"settings.privacy" = "隐私政策";
+"settings.about" = "关于";
+"settings.about.app" = "关于 Roam Focus";
+"settings.tutorial" = "查看教程";
+"settings.version" = "版本";
+
+// About
+"about.title" = "关于";
+"about.tagline" = "专注即漫游";
+"about.description.title" = "什么是 Roam Focus？";
+"about.description.text" = "Roam Focus 将你的专注时间转化为虚拟旅程。选择交通方式，设定时长，开启一段旅程，在保持专注的同时探索新地方。";
+"about.features.title" = "功能特色";
+"about.feature.journey" = "虚拟漫游";
+"about.feature.journey.desc" = "根据你的专注时长和交通方式前往随机目的地。";
+"about.feature.poi" = "发现兴趣点";
+"about.feature.poi.desc" = "在旅程路线上发现有趣的地点。";
+"about.feature.history" = "漫游历史";
+"about.feature.history.desc" = "通过详细的统计数据和洞察追踪你的专注记录。";
+"about.version" = "版本 1.3.2";
+"about.version.full" = "版本 %@";
+
+// Onboarding
+"onboarding.skip" = "跳过";
+"onboarding.next" = "下一步";
+"onboarding.getStarted" = "开始漫游";
+"onboarding.page1.title" = "欢迎使用 Roam Focus";
+"onboarding.page1.description" = "将你的专注时间转化为激动人心的虚拟旅程";
+"onboarding.page1.feature1" = "选择交通方式和时长";
+"onboarding.page1.feature2" = "前往世界各地的随机目的地";
+"onboarding.page1.feature3" = "在探索新地方的同时保持专注";
+"onboarding.page2.title" = "发现兴趣点";
+"onboarding.page2.description" = "在旅程路线上发现有趣的地点";
+"onboarding.page2.feature1" = "发现地标和景点";
+"onboarding.page2.feature2" = "找到附近的餐厅和咖啡馆";
+"onboarding.page2.feature3" = "探索公园和文化场所";
+"onboarding.page3.title" = "追踪你的进度";
+"onboarding.page3.description" = "查看详细的统计数据和洞察";
+"onboarding.page3.feature1" = "查看总专注时间和距离";
+"onboarding.page3.feature2" = "追踪完成率和成就";
+"onboarding.page3.feature3" = "随时回顾你的旅程历史";
+"onboarding.page4.title" = "准备好开始了吗？";
+"onboarding.page4.description" = "现在开始你的第一次专注旅程";
+"onboarding.page4.feature1" = "随时暂停和继续旅程";
+"onboarding.page4.feature2" = "自定义你的出发地点";
+"onboarding.page4.feature3" = "在专注的同时发现新地方";
+
+// History
+"history.title" = "漫游历史";
+"history.journeys" = "%d 次旅程";
+"history.overview" = "概览";
+"history.records" = "记录";
+"history.stats" = "统计";
+"history.totalTime" = "总时长";
+"history.totalDistance" = "总距离";
+"history.completed" = "已完成";
+"history.poisFound" = "发现的景点";
+"history.topLocations" = "常去地点";
+"history.transportModes" = "交通方式";
+"history.averages" = "平均值";
+"history.achievements" = "成就";
+"history.longestJourney" = "最长漫游";
+"history.farthestDistance" = "最远距离";
+"history.mostPOIs" = "最多景点";
+"history.empty.title" = "还没有漫游";
+"history.empty.message" = "开始你的第一次专注旅程，在这里查看历史记录";
+"history.detail.title" = "漫游详情";
+"history.detail.completed" = "已完成";
+"history.detail.stopped" = "已中断";
+"history.detail.duration" = "时长";
+"history.detail.distanceTraveled" = "已行驶距离";
+"history.detail.progress" = "进度";
+"history.detail.poisDiscovered" = "发现的景点";
+"history.detail.routeInfo" = "路线信息";
+"history.detail.start" = "起点";
+"history.detail.destination" = "目的地";
+"history.detail.transport" = "交通方式";
+"history.detail.timeInfo" = "时间信息";
+"history.detail.started" = "开始时间";
+"history.detail.ended" = "结束时间";
+"history.detail.plannedDuration" = "计划时长";
+
+// Common
+"common.times" = "次";
+"common.journeys" = "次漫游";
+"common.journey" = "次漫游";
+"common.loading" = "加载中...";
+"common.done" = "完成";
+"common.edit" = "编辑";
+"common.cancel" = "取消";
+"common.delete" = "删除";
+
+// Stats
+"history.stats.completionRate" = "完成率";
+"history.stats.averageSpeed" = "平均速度";
+"history.stats.fastestJourney" = "最快漫游";
+"history.stats.timeDistribution" = "时间分布";
+"history.stats.morning" = "早晨 (6-12)";
+"history.stats.afternoon" = "下午 (12-18)";
+"history.stats.evening" = "傍晚 (18-22)";
+"history.stats.night" = "夜晚 (22-6)";
+"history.stats.weeklyActivity" = "每周活动";
+"history.stats.sunday" = "周日";
+"history.stats.monday" = "周一";
+"history.stats.tuesday" = "周二";
+"history.stats.wednesday" = "周三";
+"history.stats.thursday" = "周四";
+"history.stats.friday" = "周五";
+"history.stats.saturday" = "周六";
+"history.stats.milestones" = "里程碑";
+"history.stats.totalDays" = "活跃天数";
+"history.stats.totalSteps" = "预估步数";
+"history.stats.caloriesBurned" = "消耗卡路里";
+"history.stats.co2Saved" = "减少碳排放";
+
+// History Delete
+"history.delete.confirmation" = "删除记录？";
+"history.delete.message" = "确定要删除 %d 条记录吗？此操作无法撤销。";
+"history.delete.single.confirmation" = "删除记录？";
+"history.delete.single.message" = "确定要删除这条记录吗？此操作无法撤销。";
+
+// Weather Conditions
+"weather.condition.clear" = "晴朗";
+"weather.condition.clearNight" = "晴朗夜晚";
+"weather.condition.cloudy" = "多云";
+"weather.condition.mostlyClear" = "大部分晴朗";
+"weather.condition.mostlyCloudy" = "大部分多云";
+"weather.condition.partlyCloudy" = "局部多云";
+"weather.condition.rain" = "雨";
+"weather.condition.drizzle" = "毛毛雨";
+"weather.condition.heavyRain" = "大雨";
+"weather.condition.snow" = "雪";
+"weather.condition.sleet" = "雨夹雪";
+"weather.condition.hail" = "冰雹";
+"weather.condition.thunderstorms" = "雷暴";
+"weather.condition.tropicalStorm" = "热带风暴";
+"weather.condition.hurricane" = "飓风";
+"weather.condition.blizzard" = "暴风雪";
+"weather.condition.blowingSnow" = "吹雪";
+"weather.condition.freezingDrizzle" = "冻毛毛雨";
+"weather.condition.freezingRain" = "冻雨";
+"weather.condition.flurries" = "小雪";
+"weather.condition.foggy" = "有雾";
+"weather.condition.haze" = "霾";
+"weather.condition.smoky" = "烟雾";
+"weather.condition.breezy" = "微风";
+"weather.condition.windy" = "大风";
+"weather.condition.blowingDust" = "扬尘";
+
+// History Stats - Milestones
+"history.stats.totalTime" = "总时长";
+"history.stats.timeSpent" = "已花费";
+"history.stats.daysActive" = "天";
+"history.stats.stepsEstimated" = "步";
+"history.stats.poisDiscovered" = "个景点";
+"history.stats.totalPOIs" = "总景点数";
+"history.stats.uniqueLocations" = "独特地点";
+"history.stats.placesVisited" = "个地点";
+"history.stats.longestStreak" = "最长连续";
+"history.stats.daysInRow" = "天连续";
+
+// First Journey Guide
+"guide.firstJourney.title" = "恭喜你！🎉";
+"guide.firstJourney.message" = "你已完成第一次专注旅程！快去查看旅程历史，了解你的进度吧。";
+"guide.firstJourney.feature1" = "查看所有已完成的旅程";
+"guide.firstJourney.feature2" = "追踪你的专注时间和统计数据";
+"guide.firstJourney.feature3" = "查看你发现的所有景点";
+"guide.firstJourney.button" = "查看历史";
+"guide.firstJourney.tapHistory" = "点击这里查看历史记录";
+"guide.firstJourney.gotIt" = "知道了！";
+
+// Trophy System
+"trophy.title" = "奖杯";
+"trophy.unlocked" = "已解锁 %d / %d";
+"trophy.unlocked.short" = "已解锁";
+"trophy.locked" = "未解锁";
+"trophy.completion" = "完成度";
+"trophy.status.unlocked" = "已解锁";
+"trophy.unlockedOn" = "解锁时间";
+"trophy.progress" = "进度";
+"trophy.complete" = "完成";
+"trophy.requirement" = "达成条件";
+
+// Trophy Categories
+"trophy.category.all" = "全部";
+"trophy.category.distance" = "里程";
+"trophy.category.journey" = "旅程";
+"trophy.category.location" = "地点";
+"trophy.category.time" = "时间";
+"trophy.category.poi" = "景点";
+"trophy.category.streak" = "连续";
+"trophy.category.speed" = "速度";
+"trophy.category.weather" = "天气";
+
+// Trophy Tiers
+"trophy.tier.bronze" = "铜";
+"trophy.tier.silver" = "银";
+"trophy.tier.gold" = "金";
+"trophy.tier.platinum" = "铂金";
+"trophy.tier.diamond" = "钻石";
+
+// Trophy Titles & Descriptions
+"trophy.distance_1km.title" = "初次尝试";
+"trophy.distance_1km.description" = "旅行 1 公里";
+"trophy.distance_10km.title" = "探索者";
+"trophy.distance_10km.description" = "旅行 10 公里";
+"trophy.distance_50km.title" = "冒险家";
+"trophy.distance_50km.description" = "旅行 50 公里";
+"trophy.distance_100km.title" = "旅行者";
+"trophy.distance_100km.description" = "旅行 100 公里";
+"trophy.distance_500km.title" = "环球旅行家";
+"trophy.distance_500km.description" = "旅行 500 公里";
+
+"trophy.journey_1.title" = "新手";
+"trophy.journey_1.description" = "完成 1 次漫游";
+"trophy.journey_10.title" = "常客";
+"trophy.journey_10.description" = "完成 10 次漫游";
+"trophy.journey_50.title" = "专注者";
+"trophy.journey_50.description" = "完成 50 次漫游";
+"trophy.journey_100.title" = "坚持者";
+"trophy.journey_100.description" = "完成 100 次漫游";
+"trophy.journey_500.title" = "大师";
+"trophy.journey_500.description" = "完成 500 次漫游";
+
+"trophy.location_3.title" = "好奇宝宝";
+"trophy.location_3.description" = "访问 3 个不同地点";
+"trophy.location_10.title" = "漫游者";
+"trophy.location_10.description" = "访问 10 个不同地点";
+"trophy.location_20.title" = "环球旅行者";
+"trophy.location_20.description" = "访问 20 个不同地点";
+"trophy.location_50.title" = "世界探险家";
+"trophy.location_50.description" = "访问 50 个不同地点";
+
+"trophy.time_1h.title" = "第一小时";
+"trophy.time_1h.description" = "累计专注 1 小时";
+"trophy.time_10h.title" = "专注者";
+"trophy.time_10h.description" = "累计专注 10 小时";
+"trophy.time_50h.title" = "投入者";
+"trophy.time_50h.description" = "累计专注 50 小时";
+"trophy.time_100h.title" = "专家";
+"trophy.time_100h.description" = "累计专注 100 小时";
+"trophy.time_500h.title" = "禅宗大师";
+"trophy.time_500h.description" = "累计专注 500 小时";
+
+"trophy.poi_10.title" = "侦察兵";
+"trophy.poi_10.description" = "发现 10 个景点";
+"trophy.poi_50.title" = "发现者";
+"trophy.poi_50.description" = "发现 50 个景点";
+"trophy.poi_100.title" = "收藏家";
+"trophy.poi_100.description" = "发现 100 个景点";
+"trophy.poi_500.title" = "策展人";
+"trophy.poi_500.description" = "发现 500 个景点";
+"trophy.poi_1000.title" = "百科全书";
+"trophy.poi_1000.description" = "发现 1000 个景点";
+
+"trophy.streak_3.title" = "初露锋芒";
+"trophy.streak_3.description" = "连续 3 天";
+"trophy.streak_7.title" = "周战士";
+"trophy.streak_7.description" = "连续 7 天";
+"trophy.streak_30.title" = "月度大师";
+"trophy.streak_30.description" = "连续 30 天";
+"trophy.streak_100.title" = "百日勇士";
+"trophy.streak_100.description" = "连续 100 天";
+"trophy.streak_365.title" = "年度传奇";
+"trophy.streak_365.description" = "连续 365 天";
+
+"trophy.speed_fast.title" = "速度恶魔";
+"trophy.speed_fast.description" = "平均速度达到 18 公里/小时";
+"trophy.speed_faster.title" = "速度大师";
+"trophy.speed_faster.description" = "平均速度达到 28.8 公里/小时";
+"trophy.speed_fastest.title" = "闪电侠";
+"trophy.speed_fastest.description" = "平均速度达到 43.2 公里/小时";
+
+"trophy.weather_rain.title" = "雨中战士";
+"trophy.weather_rain.description" = "在雨中旅行";
+"trophy.weather_night.title" = "夜猫子";
+"trophy.weather_night.description" = "完成 5 次夜间旅程";
+"trophy.weather_allseasons.title" = "四季旅人";
+"trophy.weather_allseasons.description" = "在四个季节中旅行";
+
+// Festival Trophies (节日奖杯)
+"trophy.category.festival" = "节日";
+"trophy.category.special" = "特殊";
+
+"trophy.festival_spring.title" = "春节快乐";
+"trophy.festival_spring.description" = "在春节期间完成旅程";
+"trophy.festival_lantern.title" = "元宵佳节";
+"trophy.festival_lantern.description" = "在元宵节完成旅程";
+"trophy.festival_qingming.title" = "清明踏青";
+"trophy.festival_qingming.description" = "在清明节完成旅程";
+"trophy.festival_dragon_boat.title" = "端午安康";
+"trophy.festival_dragon_boat.description" = "在端午节完成旅程";
+"trophy.festival_qixi.title" = "七夕情缘";
+"trophy.festival_qixi.description" = "在七夕节完成旅程";
+"trophy.festival_mid_autumn.title" = "中秋团圆";
+"trophy.festival_mid_autumn.description" = "在中秋节完成旅程";
+"trophy.festival_double_nine.title" = "重阳登高";
+"trophy.festival_double_nine.description" = "在重阳节完成旅程";
+"trophy.festival_national_day.title" = "国庆献礼";
+"trophy.festival_national_day.description" = "在国庆节完成旅程";
+"trophy.festival_new_year.title" = "新年新气象";
+"trophy.festival_new_year.description" = "在元旦完成旅程";
+"trophy.festival_labor_day.title" = "劳动光荣";
+"trophy.festival_labor_day.description" = "在劳动节完成旅程";
+"trophy.festival_youth_day.title" = "青春无悔";
+"trophy.festival_youth_day.description" = "在青年节完成旅程";
+"trophy.festival_children_day.title" = "童心未泯";
+"trophy.festival_children_day.description" = "在儿童节完成旅程";
+"trophy.festival_christmas.title" = "圣诞快乐";
+"trophy.festival_christmas.description" = "在圣诞节完成旅程";
+"trophy.festival_halloween.title" = "万圣节惊喜";
+"trophy.festival_halloween.description" = "在万圣节完成旅程";
+"trophy.festival_valentines.title" = "情人节浪漫";
+"trophy.festival_valentines.description" = "在情人节完成旅程";
+
+// Time-based Special Trophies (时间特殊奖杯)
+"trophy.special_sunrise.title" = "日出时分";
+"trophy.special_sunrise.description" = "在日出时段（5-6点）完成 5 次旅程";
+"trophy.special_golden_hour.title" = "黄金时段";
+"trophy.special_golden_hour.description" = "在清晨黄金时段（6-8点）完成 10 次旅程";
+"trophy.special_lunch_break.title" = "午休时光";
+"trophy.special_lunch_break.description" = "在午休时段（12-14点）完成 10 次旅程";
+"trophy.special_afternoon_tea.title" = "下午茶时间";
+"trophy.special_afternoon_tea.description" = "在下午茶时段（15-17点）完成 10 次旅程";
+"trophy.special_sunset.title" = "日落余晖";
+"trophy.special_sunset.description" = "在日落时段（18-19点）完成 5 次旅程";
+"trophy.special_midnight.title" = "午夜时分";
+"trophy.special_midnight.description" = "在午夜（0点）完成 3 次旅程";
+"trophy.special_all_hours.title" = "全天候战士";
+"trophy.special_all_hours.description" = "在 24 个不同小时完成旅程";
+"trophy.special_workday.title" = "工作日战士";
+"trophy.special_workday.description" = "在工作日完成 50 次旅程";
+"trophy.special_weekend_only.title" = "周末专属";
+"trophy.special_weekend_only.description" = "在周末完成 10 次旅程";
+"trophy.special_every_weekday.title" = "一周七天";
+"trophy.special_every_weekday.description" = "在一周的每一天都完成旅程";
+
+// Transport-based Special Trophies (交通特殊奖杯)
+"trophy.special_walking_master.title" = "步行大师";
+"trophy.special_walking_master.description" = "完成 100 次步行旅程";
+"trophy.special_cycling_pro.title" = "骑行专家";
+"trophy.special_cycling_pro.description" = "完成 100 次骑行旅程";
+"trophy.special_driving_expert.title" = "驾驶专家";
+"trophy.special_driving_expert.description" = "完成 100 次驾驶旅程";
+"trophy.special_subway_rider.title" = "地铁达人";
+"trophy.special_subway_rider.description" = "完成 100 次地铁旅程";
+"trophy.special_walking_only.title" = "纯步行者";
+"trophy.special_walking_only.description" = "仅使用步行完成 50 次旅程";
+"trophy.special_no_driving.title" = "环保出行";
+"trophy.special_no_driving.description" = "不使用驾驶完成 50 次旅程";
+"trophy.special_transport_variety.title" = "交通多样性";
+"trophy.special_transport_variety.description" = "使用 3 种以上交通方式完成 10 次旅程";
+"trophy.special_single_transport.title" = "专一出行";
+"trophy.special_single_transport.description" = "仅使用一种交通方式完成 30 次旅程";
+
+// Distance-based Special Trophies (距离特殊奖杯)
+"trophy.special_short_trips.title" = "短途专家";
+"trophy.special_short_trips.description" = "完成 50 次短途旅程（<5公里）";
+"trophy.special_medium_trips.title" = "中途旅行";
+"trophy.special_medium_trips.description" = "完成 30 次中途旅程（5-20公里）";
+"trophy.special_long_trips.title" = "长途跋涉";
+"trophy.special_long_trips.description" = "完成 10 次长途旅程（>20公里）";
+"trophy.special_ultra_distance.title" = "超长距离";
+"trophy.special_ultra_distance.description" = "完成 5 次超长旅程（>50公里）";
+"trophy.special_consistent.title" = "稳定输出";
+"trophy.special_consistent.description" = "完成 20 次距离相近的旅程";
+"trophy.special_distance_variety.title" = "距离多样";
+"trophy.special_distance_variety.description" = "完成短、中、长各类距离的旅程";
+"trophy.special_incremental.title" = "循序渐进";
+"trophy.special_incremental.description" = "连续 10 次旅程距离递增";
+"trophy.special_distance_king.title" = "里程之王";
+"trophy.special_distance_king.description" = "单次旅程达到 100 公里";
+
+// Social & Fun Trophies (社交趣味奖杯)
+"trophy.special_birthday.title" = "生日快乐";
+"trophy.special_birthday.description" = "在生日当天完成旅程";
+"trophy.special_lucky_seven.title" = "幸运七";
+"trophy.special_lucky_seven.description" = "完成 7 次旅程";
+"trophy.special_perfect_ten.title" = "完美十";
+"trophy.special_perfect_ten.description" = "完成 10 次漫游";
+"trophy.special_double_eleven.title" = "双十一狂欢";
+"trophy.special_double_eleven.description" = "在双十一（11月11日）完成旅程";
+"trophy.special_520.title" = "我爱你";
+"trophy.special_520.description" = "在 5 月 20 日完成旅程";
+"trophy.special_618.title" = "618购物节";
+"trophy.special_618.description" = "在 6 月 18 日完成旅程";
+"trophy.special_first_snow.title" = "初雪";
+"trophy.special_first_snow.description" = "在初雪时完成旅程";
+"trophy.special_full_moon.title" = "满月之夜";
+"trophy.special_full_moon.description" = "在满月时完成 3 次旅程";
+"trophy.special_rainy_day.title" = "雨天旅行";
+"trophy.special_rainy_day.description" = "在雨天完成 5 次旅程";
+"trophy.special_perfect_weather.title" = "完美天气";
+"trophy.special_perfect_weather.description" = "在晴朗天气完成 10 次旅程";
+
+// Achievement Milestones (成就里程碑)
+"trophy.special_first_week.title" = "第一周";
+"trophy.special_first_week.description" = "活跃 7 天";
+"trophy.special_first_month.title" = "第一月";
+"trophy.special_first_month.description" = "活跃 30 天";
+"trophy.special_first_season.title" = "第一季";
+"trophy.special_first_season.description" = "活跃 90 天";
+"trophy.special_half_year.title" = "半年坚持";
+"trophy.special_half_year.description" = "活跃 180 天";
+"trophy.special_full_year.title" = "一整年";
+"trophy.special_full_year.description" = "活跃 365 天";
+"trophy.special_veteran.title" = "资深老兵";
+"trophy.special_veteran.description" = "活跃 730 天（2年）";
+
+// Missing Distance Trophies
+"trophy.distance_5km.title" = "起步者";
+"trophy.distance_5km.description" = "旅行 5 公里";
+"trophy.distance_25km.title" = "远行者";
+"trophy.distance_25km.description" = "旅行 25 公里";
+"trophy.distance_250km.title" = "长途旅客";
+"trophy.distance_250km.description" = "旅行 250 公里";
+"trophy.distance_1000km.title" = "千里之行";
+"trophy.distance_1000km.description" = "旅行 1000 公里";
+
+// Missing Journey Trophies
+"trophy.journey_5.title" = "入门者";
+"trophy.journey_5.description" = "完成 5 次漫游";
+"trophy.journey_25.title" = "熟练者";
+"trophy.journey_25.description" = "完成 25 次漫游";
+"trophy.journey_250.title" = "资深旅行家";
+"trophy.journey_250.description" = "完成 250 次漫游";
+"trophy.journey_1000.title" = "传奇";
+"trophy.journey_1000.description" = "完成 1000 次漫游";
+
+// Missing Location Trophies
+"trophy.location_5.title" = "探路者";
+"trophy.location_5.description" = "访问 5 个不同地点";
+"trophy.location_30.title" = "地理学家";
+"trophy.location_30.description" = "访问 30 个不同地点";
+"trophy.location_100.title" = "环游世界";
+"trophy.location_100.description" = "访问 100 个不同地点";
+
+// Missing Time Trophies
+"trophy.time_30min.title" = "初试锋芒";
+"trophy.time_30min.description" = "累计专注 30 分钟";
+"trophy.time_5h.title" = "入门者";
+"trophy.time_5h.description" = "累计专注 5 小时";
+"trophy.time_25h.title" = "勤奋者";
+"trophy.time_25h.description" = "累计专注 25 小时";
+"trophy.time_250h.title" = "大师级";
+"trophy.time_250h.description" = "累计专注 250 小时";
+
+// Missing POI Trophies
+"trophy.poi_5.title" = "观察者";
+"trophy.poi_5.description" = "发现 5 个景点";
+"trophy.poi_25.title" = "探险者";
+"trophy.poi_25.description" = "发现 25 个景点";
+"trophy.poi_250.title" = "鉴赏家";
+"trophy.poi_250.description" = "发现 250 个景点";
+
+// Missing Streak Trophies
+"trophy.streak_2.title" = "开始习惯";
+"trophy.streak_2.description" = "连续 2 天";
+"trophy.streak_14.title" = "双周冠军";
+"trophy.streak_14.description" = "连续 14 天";
+"trophy.streak_60.title" = "双月英雄";
+"trophy.streak_60.description" = "连续 60 天";
+
+// Missing Speed Trophies
+"trophy.speed_walker.title" = "漫步者";
+"trophy.speed_walker.description" = "平均速度达到 7.2 公里/小时";
+"trophy.speed_jogger.title" = "速度恶魔";
+"trophy.speed_jogger.description" = "平均速度达到 18 公里/小时";
+"trophy.speed_cyclist.title" = "速度大师";
+"trophy.speed_cyclist.description" = "平均速度达到 28.8 公里/小时";
+"trophy.speed_racer.title" = "闪电侠";
+"trophy.speed_racer.description" = "平均速度达到 43.2 公里/小时";
+"trophy.speed_sonic.title" = "音速战士";
+"trophy.speed_sonic.description" = "平均速度达到 61.2 公里/小时";
+
+// Missing Weather Trophies
+"trophy.weather_night_owl.title" = "深夜行者";
+"trophy.weather_night_owl.description" = "完成 20 次夜间旅程";
+"trophy.weather_year_round.title" = "全年无休";
+"trophy.weather_year_round.description" = "在全部 12 个月中旅行";
+
+// Missing Special Trophies
+"trophy.special_marathon.title" = "马拉松勇士";
+"trophy.special_marathon.description" = "累计旅行 42.195 公里（马拉松距离）";
+"trophy.special_century.title" = "百英里挑战";
+"trophy.special_century.description" = "累计旅行 160.9 公里（100 英里）";
+"trophy.special_early_bird.title" = "早起的鸟儿";
+"trophy.special_early_bird.description" = "完成 10 次清晨旅程（5-7点）";
+"trophy.special_night_rider.title" = "午夜骑士";
+"trophy.special_night_rider.description" = "完成 50 次深夜旅程（0-4点）";
+"trophy.special_weekend_warrior.title" = "周末战士";
+"trophy.special_weekend_warrior.description" = "完成 20 次周末旅程";
+"trophy.special_daily_habit.title" = "半年坚持";
+"trophy.special_daily_habit.description" = "连续 180 天";
+"trophy.special_explorer.title" = "终极探险家";
+"trophy.special_explorer.description" = "访问 200 个不同地点";
+"trophy.special_poi_hunter.title" = "景点猎人";
+"trophy.special_poi_hunter.description" = "发现 2000 个景点";
+"trophy.special_speed_demon.title" = "极速狂飙";
+"trophy.special_speed_demon.description" = "平均速度达到 90 公里/小时";
+"trophy.special_all_transport.title" = "全能旅行家";
+"trophy.special_all_transport.description" = "使用所有 4 种交通方式";
+"trophy.special_long_journey.title" = "马拉松专注";
+"trophy.special_long_journey.description" = "单次旅程专注 2 小时";
+"trophy.special_dedication.title" = "终极奉献";
+"trophy.special_dedication.description" = "完成 2000 次漫游";
+
+"Done" = "完成";
+"trophy.detail" = "奖杯详情";
+
+// Onboarding Feature Descriptions
+"onboarding.page1.feature1.desc" = "基于真实地点探索虚拟目的地";
+"onboarding.page1.feature2.desc" = "选择步行、骑行、驾驶或地铁";
+"onboarding.page1.feature3.desc" = "从当前位置或预设城市出发";
+
+"onboarding.page2.feature1.desc" = "发现地标、餐厅和景点";
+"onboarding.page2.feature2.desc" = "追踪专注时间和行驶距离";
+"onboarding.page2.feature3.desc" = "查看详细统计数据和成就";
+
+"onboarding.page4.feature1.desc" = "解锁成就并收集奖杯";
+"onboarding.page4.feature2.desc" = "动态天气和昼夜背景";
+"onboarding.page4.feature3.desc" = "在专注的同时发现新地方";
+
+// Map Controls
+"map.recenter" = "回到当前位置";
+
+"Done" = "完成";
+"trophy.detail" = "奖杯详情";
+"common.journey" = "次漫游";
+"journey.viewSummary" = "查看总结";
+"journey.summary.complete" = "旅程完成";
+"journey.summary.stopped" = "旅程已停止";
+"journey.summary.completed" = "已完成 %.0f%%";
+"journey.summary.stopped.badge" = "已停止";
+"guide.firstJourney.tapHistory" = "点击这里查看历史";
+"guide.firstJourney.gotIt" = "知道了！";
+"error.subway.noNearbyLine.detailed" = "未找到附近的地铁线路（搜索范围：10公里）。请确认您的位置附近有地铁站，或尝试选择其他交通方式。";
+
+
+"history.stats.activityHeatmap" = "活动热力图";
+
+// Journey Summary
+"journey.summary.focusTime" = "专注时间";
+"journey.summary.distance" = "距离";
+"journey.summary.pois" = "景点";
+"journey.summary.route" = "路线";
+"journey.summary.save" = "保存";
+"journey.summary.share" = "分享";
+"journey.summary.done" = "完成";
+"journey.summary.day" = "白天";
+"journey.summary.night" = "夜晚";
+"journey.summary.subway" = "地铁";
+"journey.summary.line" = "号线";
+"journey.summary.photoPermission.title" = "需要相册访问权限";
+"journey.summary.photoPermission.message" = "请在设置中允许 Roam Focus 保存照片到您的相册。";
+"journey.summary.photoPermission.openSettings" = "打开设置";
+"journey.summary.photoPermission.cancel" = "取消";
+
+// Activity Heatmap
+"heatmap.less" = "少";
+"heatmap.more" = "多";
+
+// History Empty States
+"history.location.empty.title" = "此地点暂无旅程";
+"history.location.empty.message" = "从 %@ 开始一次旅程来查看详情！";
+"history.mode.empty.title" = "暂无%@旅程";
+"history.mode.empty.message" = "使用%@开始一次旅程来查看详情！";
+"history.time.empty.title" = "暂无旅程记录";
+"history.time.empty.message" = "开始你的第一次旅程来查看时间统计！";
+"history.distance.empty.title" = "暂无距离记录";
+"history.distance.empty.message" = "开始探索来追踪你的距离！";
+"history.completed.empty.title" = "暂无已完成旅程";
+"history.completed.empty.message" = "完成你的第一次旅程来查看！";
+"history.poi.empty.title" = "暂未发现景点";
+"history.poi.empty.message" = "开始旅程来发现有趣的地方！";
+"history.achievement.empty.title" = "暂无成就";
+"history.achievement.empty.message" = "继续探索来解锁这个成就！";
+"history.detail.journeyDetails" = "漫游详情";
+
+// Trophy
+"trophy.loading" = "加载奖杯中...";
+"trophy.notFound" = "未找到奖杯";
+"trophy.done" = "完成";
+
+// About
+"about.appName" = "Roam Focus";
+"about.copyright" = "© 2026 Roam Focus";
+
+// Common UI
+"common.bullet" = "•";
+"common.slash" = "/";
+"common.dash" = "—";
+

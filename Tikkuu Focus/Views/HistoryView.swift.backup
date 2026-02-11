@@ -1,0 +1,2917 @@
+//
+//  HistoryView.swift
+//  Tikkuu Focus
+//
+//  Created by Tikkuu on 2026/2/8.
+//
+
+import SwiftUI
+import SwiftData
+import MapKit
+
+struct HistoryView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \JourneyRecord.startTime, order: .reverse) private var records: [JourneyRecord]
+    @ObservedObject private var settings = AppSettings.shared
+    
+    @State private var selectedTab: HistoryTab = .overview
+    @State private var showingRecordDetail: JourneyRecord?
+    @State private var refreshID = UUID()
+    @State private var showTimeDetail = false
+    @State private var showDistanceDetail = false
+    @State private var showCompletedDetail = false
+    @State private var showPOIsDetail = false
+    @State private var selectedLocation: String?
+    @State private var selectedTransportMode: String?
+    @State private var showLongestJourneyDetail = false
+    @State private var showFarthestDistanceDetail = false
+    @State private var showMostPOIsDetail = false
+    @State private var showFastestSpeedDetail = false
+    @State private var expandedRecordID: UUID?
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                VStack(spacing: 0) {
+                    // Tab selector
+                    tabSelector
+                        .padding(.horizontal, 24)
+                        .padding(.top, 16)
+                        .padding(.bottom, 16)
+                    
+                    // Content
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 20) {
+                            switch selectedTab {
+                            case .overview:
+                                overviewContent
+                            case .records:
+                                recordsContent
+                            case .stats:
+                                statsContent
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 40)
+                    }
+                }
+            }
+            .navigationTitle(L("history.title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .id(refreshID)
+        .preferredColorScheme(settings.currentColorScheme)
+        .sheet(item: $showingRecordDetail) { record in
+            RecordDetailView(record: record)
+        }
+        .sheet(isPresented: $showTimeDetail) {
+            TimeDetailView(records: records)
+        }
+        .sheet(isPresented: $showDistanceDetail) {
+            DistanceDetailView(records: records)
+        }
+        .sheet(isPresented: $showCompletedDetail) {
+            CompletedDetailView(records: records.filter { $0.isCompleted })
+        }
+        .sheet(isPresented: $showPOIsDetail) {
+            POIsDetailView(records: records)
+        }
+        .sheet(item: Binding(
+            get: { selectedLocation.map { LocationDetailWrapper(location: $0) } },
+            set: { selectedLocation = $0?.location }
+        )) { wrapper in
+            LocationDetailView(location: wrapper.location, records: records)
+        }
+        .sheet(item: Binding(
+            get: { selectedTransportMode.map { TransportModeDetailWrapper(mode: $0) } },
+            set: { selectedTransportMode = $0?.mode }
+        )) { wrapper in
+            TransportModeDetailView(mode: wrapper.mode, records: records)
+        }
+        .sheet(isPresented: $showLongestJourneyDetail) {
+            AchievementDetailView(
+                title: L("history.longestJourney"),
+                icon: "flame.fill",
+                color: .orange,
+                records: [longestJourneyRecord].compactMap { $0 }
+            )
+        }
+        .sheet(isPresented: $showFarthestDistanceDetail) {
+            AchievementDetailView(
+                title: L("history.farthestDistance"),
+                icon: "arrow.up.right",
+                color: .blue,
+                records: [farthestDistanceRecord].compactMap { $0 }
+            )
+        }
+        .sheet(isPresented: $showMostPOIsDetail) {
+            AchievementDetailView(
+                title: L("history.mostPOIs"),
+                icon: "star.fill",
+                color: .yellow,
+                records: [mostPOIsRecord].compactMap { $0 }
+            )
+        }
+        .sheet(isPresented: $showFastestSpeedDetail) {
+            AchievementDetailView(
+                title: L("history.stats.fastestJourney"),
+                icon: "speedometer",
+                color: .purple,
+                records: [fastestSpeedRecord].compactMap { $0 }
+            )
+        }
+        .onChange(of: settings.selectedLanguage) { _, _ in
+            refreshID = UUID()
+        }
+    }
+    
+    // MARK: - Tab Selector
+    
+    private var tabSelector: some View {
+        HStack(spacing: 8) {
+            ForEach(HistoryTab.allCases) { tab in
+                TabButton(
+                    tab: tab,
+                    isSelected: selectedTab == tab
+                ) {
+                    HapticManager.selection()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedTab = tab
+                    }
+                }
+            }
+        }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(.ultraThinMaterial)
+        )
+    }
+    
+    // MARK: - Overview Content
+    
+    private var overviewContent: some View {
+        VStack(spacing: 16) {
+            // Summary cards
+            HStack(spacing: 12) {
+                Button {
+                    HapticManager.light()
+                    showTimeDetail = true
+                } label: {
+                    SummaryCard(
+                        icon: "clock.fill",
+                        title: L("history.totalTime"),
+                        value: FormatUtilities.formatTime(totalDuration),
+                        gradient: LiquidGlassStyle.primaryGradient
+                    )
+                }
+                
+                Button {
+                    HapticManager.light()
+                    showDistanceDetail = true
+                } label: {
+                    SummaryCard(
+                        icon: "location.fill",
+                        title: L("history.totalDistance"),
+                        value: FormatUtilities.formatDistance(totalDistance),
+                        gradient: LiquidGlassStyle.accentGradient
+                    )
+                }
+            }
+            
+            HStack(spacing: 12) {
+                Button {
+                    HapticManager.light()
+                    showCompletedDetail = true
+                } label: {
+                    SummaryCard(
+                        icon: "flag.checkered",
+                        title: L("history.completed"),
+                        value: "\(completedCount)",
+                        gradient: LinearGradient(
+                            colors: [Color.green, Color.green.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                }
+                
+                Button {
+                    HapticManager.light()
+                    showPOIsDetail = true
+                } label: {
+                    SummaryCard(
+                        icon: "star.fill",
+                        title: L("history.poisFound"),
+                        value: "\(totalPOIs)",
+                        gradient: LinearGradient(
+                            colors: [Color.yellow, Color.orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                }
+            }
+            
+            // Favorite locations
+            if !topLocations.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(L("history.topLocations"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    ForEach(topLocations, id: \.location) { item in
+                        Button {
+                            HapticManager.light()
+                            selectedLocation = item.location
+                        } label: {
+                            LocationFrequencyRow(
+                                location: item.location,
+                                count: item.count,
+                                totalTime: item.totalTime
+                            )
+                        }
+                    }
+                }
+                .padding(20)
+                .glassCard(cornerRadius: 20)
+            }
+            
+            // Transport mode breakdown
+            if !transportModeStats.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(L("history.transportModes"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    ForEach(transportModeStats, id: \.mode) { stat in
+                        Button {
+                            HapticManager.light()
+                            selectedTransportMode = stat.mode
+                        } label: {
+                            TransportModeRow(
+                                mode: stat.mode,
+                                count: stat.count,
+                                distance: stat.distance
+                            )
+                        }
+                    }
+                }
+                .padding(20)
+                .glassCard(cornerRadius: 20)
+            }
+        }
+    }
+    
+    // MARK: - Records Content
+    
+    private var recordsContent: some View {
+        VStack(spacing: 12) {
+            if records.isEmpty {
+                EmptyStateView()
+            } else {
+                ForEach(records) { record in
+                    ExpandableRecordCard(
+                        record: record,
+                        isExpanded: expandedRecordID == record.id
+                    ) {
+                        HapticManager.medium()
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
+                            if expandedRecordID == record.id {
+                                expandedRecordID = nil
+                            } else {
+                                expandedRecordID = record.id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Stats Content
+    
+    private var statsContent: some View {
+        VStack(spacing: 16) {
+            // Average stats
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L("history.averages"))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                StatRow(label: L("history.detail.duration"), value: FormatUtilities.formatTime(averageDuration))
+                StatRow(label: L("history.detail.distanceTraveled"), value: FormatUtilities.formatDistance(averageDistance))
+                StatRow(label: L("history.stats.completionRate"), value: "\(Int(completionRate * 100))%")
+                StatRow(label: L("history.detail.poisDiscovered"), value: String(format: "%.1f", averagePOIs))
+                StatRow(label: L("history.stats.averageSpeed"), value: FormatUtilities.formatSpeed(averageSpeed))
+            }
+            .padding(20)
+            .glassCard(cornerRadius: 20)
+            
+            // Streaks and achievements
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L("history.achievements"))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Button {
+                    HapticManager.light()
+                    showLongestJourneyDetail = true
+                } label: {
+                    AchievementRow(
+                        icon: "flame.fill",
+                        title: L("history.longestJourney"),
+                        value: FormatUtilities.formatTime(longestDuration),
+                        color: .orange
+                    )
+                }
+                
+                Button {
+                    HapticManager.light()
+                    showFarthestDistanceDetail = true
+                } label: {
+                    AchievementRow(
+                        icon: "arrow.up.right",
+                        title: L("history.farthestDistance"),
+                        value: FormatUtilities.formatDistance(farthestDistance),
+                        color: .blue
+                    )
+                }
+                
+                Button {
+                    HapticManager.light()
+                    showMostPOIsDetail = true
+                } label: {
+                    AchievementRow(
+                        icon: "star.fill",
+                        title: L("history.mostPOIs"),
+                        value: "\(mostPOIsInJourney)",
+                        color: .yellow
+                    )
+                }
+                
+                Button {
+                    HapticManager.light()
+                    showFastestSpeedDetail = true
+                } label: {
+                    AchievementRow(
+                        icon: "speedometer",
+                        title: L("history.stats.fastestJourney"),
+                        value: FormatUtilities.formatSpeed(fastestSpeed),
+                        color: .purple
+                    )
+                }
+            }
+            .padding(20)
+            .glassCard(cornerRadius: 20)
+            
+            // Time distribution
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L("history.stats.timeDistribution"))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                TimeDistributionBar(
+                    morning: morningJourneys,
+                    afternoon: afternoonJourneys,
+                    evening: eveningJourneys,
+                    night: nightJourneys
+                )
+                
+                VStack(spacing: 8) {
+                    TimeDistributionRow(
+                        icon: "sunrise.fill",
+                        label: L("history.stats.morning"),
+                        count: morningJourneys,
+                        color: .orange
+                    )
+                    TimeDistributionRow(
+                        icon: "sun.max.fill",
+                        label: L("history.stats.afternoon"),
+                        count: afternoonJourneys,
+                        color: .yellow
+                    )
+                    TimeDistributionRow(
+                        icon: "sunset.fill",
+                        label: L("history.stats.evening"),
+                        count: eveningJourneys,
+                        color: .pink
+                    )
+                    TimeDistributionRow(
+                        icon: "moon.stars.fill",
+                        label: L("history.stats.night"),
+                        count: nightJourneys,
+                        color: .indigo
+                    )
+                }
+            }
+            .padding(20)
+            .glassCard(cornerRadius: 20)
+            
+            // Weekly activity
+            if !weeklyActivity.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(L("history.stats.weeklyActivity"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    WeeklyActivityChart(data: weeklyActivity)
+                }
+                .padding(20)
+                .glassCard(cornerRadius: 20)
+            }
+            
+            // Milestones
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L("history.stats.milestones"))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                MilestoneRow(
+                    icon: "calendar.badge.clock",
+                    title: L("history.stats.totalDays"),
+                    value: "\(totalActiveDays)",
+                    color: .cyan
+                )
+                
+                MilestoneRow(
+                    icon: "figure.walk.motion",
+                    title: L("history.stats.totalSteps"),
+                    value: FormatUtilities.formatNumber(estimatedSteps),
+                    color: .green
+                )
+                
+                MilestoneRow(
+                    icon: "flame.fill",
+                    title: L("history.stats.caloriesBurned"),
+                    value: FormatUtilities.formatNumber(estimatedCalories),
+                    color: .red
+                )
+                
+                MilestoneRow(
+                    icon: "leaf.fill",
+                    title: L("history.stats.co2Saved"),
+                    value: String(format: "%.1f kg", co2Saved),
+                    color: .mint
+                )
+            }
+            .padding(20)
+            .glassCard(cornerRadius: 20)
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var totalDuration: TimeInterval {
+        records.reduce(0) { $0 + $1.duration }
+    }
+    
+    private var totalDistance: Double {
+        records.reduce(0) { $0 + $1.distanceTraveled }
+    }
+    
+    private var completedCount: Int {
+        records.filter { $0.isCompleted }.count
+    }
+    
+    private var totalPOIs: Int {
+        records.reduce(0) { $0 + $1.discoveredPOICount }
+    }
+    
+    private var averageDuration: TimeInterval {
+        records.isEmpty ? 0 : totalDuration / Double(records.count)
+    }
+    
+    private var averageDistance: Double {
+        records.isEmpty ? 0 : totalDistance / Double(records.count)
+    }
+    
+    private var completionRate: Double {
+        records.isEmpty ? 0 : Double(completedCount) / Double(records.count)
+    }
+    
+    private var averagePOIs: Double {
+        records.isEmpty ? 0 : Double(totalPOIs) / Double(records.count)
+    }
+    
+    private var longestDuration: TimeInterval {
+        records.map { $0.duration }.max() ?? 0
+    }
+    
+    private var farthestDistance: Double {
+        records.map { $0.distanceTraveled }.max() ?? 0
+    }
+    
+    private var mostPOIsInJourney: Int {
+        records.map { $0.discoveredPOICount }.max() ?? 0
+    }
+    
+    private var longestJourneyRecord: JourneyRecord? {
+        records.max(by: { $0.duration < $1.duration })
+    }
+    
+    private var farthestDistanceRecord: JourneyRecord? {
+        records.max(by: { $0.distanceTraveled < $1.distanceTraveled })
+    }
+    
+    private var mostPOIsRecord: JourneyRecord? {
+        records.max(by: { $0.discoveredPOICount < $1.discoveredPOICount })
+    }
+    
+    private var fastestSpeedRecord: JourneyRecord? {
+        records.max { record1, record2 in
+            let speed1 = record1.duration > 0 ? record1.distanceTraveled / record1.duration : 0
+            let speed2 = record2.duration > 0 ? record2.distanceTraveled / record2.duration : 0
+            return speed1 < speed2
+        }
+    }
+    
+    private var topLocations: [(location: String, count: Int, totalTime: TimeInterval)] {
+        let grouped = Dictionary(grouping: records) { $0.startLocationName }
+        return grouped.map { (location: $0.key, count: $0.value.count, totalTime: $0.value.reduce(0) { $0 + $1.duration }) }
+            .sorted { $0.count > $1.count }
+            .prefix(5)
+            .map { $0 }
+    }
+    
+    private var transportModeStats: [(mode: String, count: Int, distance: Double)] {
+        let grouped = Dictionary(grouping: records) { $0.transportMode }
+        return grouped.map { (mode: $0.key, count: $0.value.count, distance: $0.value.reduce(0) { $0 + $1.distanceTraveled }) }
+            .sorted { $0.count > $1.count }
+    }
+    
+    // New stats
+    private var averageSpeed: Double {
+        guard !records.isEmpty else { return 0 }
+        let totalSpeed = records.reduce(0.0) { sum, record in
+            guard record.duration > 0 else { return sum }
+            return sum + (record.distanceTraveled / record.duration)
+        }
+        return totalSpeed / Double(records.count)
+    }
+    
+    private var fastestSpeed: Double {
+        records.map { record in
+            guard record.duration > 0 else { return 0 }
+            return record.distanceTraveled / record.duration
+        }.max() ?? 0
+    }
+    
+    private var morningJourneys: Int {
+        records.filter { Calendar.current.component(.hour, from: $0.startTime) < 12 }.count
+    }
+    
+    private var afternoonJourneys: Int {
+        records.filter {
+            let hour = Calendar.current.component(.hour, from: $0.startTime)
+            return hour >= 12 && hour < 18
+        }.count
+    }
+    
+    private var eveningJourneys: Int {
+        records.filter {
+            let hour = Calendar.current.component(.hour, from: $0.startTime)
+            return hour >= 18 && hour < 22
+        }.count
+    }
+    
+    private var nightJourneys: Int {
+        records.filter {
+            let hour = Calendar.current.component(.hour, from: $0.startTime)
+            return hour >= 22 || hour < 6
+        }.count
+    }
+    
+    private var weeklyActivity: [(day: String, count: Int)] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: records) { record in
+            calendar.component(.weekday, from: record.startTime)
+        }
+        
+        let weekdays = [
+            (1, L("history.stats.sunday")),
+            (2, L("history.stats.monday")),
+            (3, L("history.stats.tuesday")),
+            (4, L("history.stats.wednesday")),
+            (5, L("history.stats.thursday")),
+            (6, L("history.stats.friday")),
+            (7, L("history.stats.saturday"))
+        ]
+        
+        return weekdays.map { (day: $0.1, count: grouped[$0.0]?.count ?? 0) }
+    }
+    
+    private var totalActiveDays: Int {
+        let calendar = Calendar.current
+        let uniqueDays = Set(records.map { calendar.startOfDay(for: $0.startTime) })
+        return uniqueDays.count
+    }
+    
+    private var estimatedSteps: Int {
+        // Estimate: 1 meter ≈ 1.3 steps for walking
+        let walkingDistance = records.filter { $0.transportMode.lowercased() == "walking" }
+            .reduce(0.0) { $0 + $1.distanceTraveled }
+        return Int(walkingDistance * 1.3)
+    }
+    
+    private var estimatedCalories: Int {
+        // Rough estimates per hour:
+        // Walking: 200 kcal/hour
+        // Cycling: 400 kcal/hour
+        // Driving: 100 kcal/hour (minimal)
+        return records.reduce(0) { sum, record in
+            let hours = record.duration / 3600.0
+            let caloriesPerHour: Double
+            switch record.transportMode.lowercased() {
+            case "walking": caloriesPerHour = 200
+            case "cycling": caloriesPerHour = 400
+            case "driving": caloriesPerHour = 100
+            default: caloriesPerHour = 150
+            }
+            return sum + Int(hours * caloriesPerHour)
+        }
+    }
+    
+    private var co2Saved: Double {
+        // CO2 saved by not driving (kg CO2 per km)
+        // Average car: 0.12 kg CO2/km
+        let nonDrivingDistance = records.filter { $0.transportMode.lowercased() != "driving" }
+            .reduce(0.0) { $0 + $1.distanceTraveled }
+        return (nonDrivingDistance / 1000.0) * 0.12 // Convert to km and multiply by CO2 factor
+    }
+}
+
+// MARK: - History Tab
+
+enum HistoryTab: String, CaseIterable, Identifiable {
+    case overview
+    case records
+    case stats
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .overview: return L("history.overview")
+        case .records: return L("history.records")
+        case .stats: return L("history.stats")
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .overview: return "chart.bar.fill"
+        case .records: return "list.bullet"
+        case .stats: return "chart.line.uptrend.xyaxis"
+        }
+    }
+}
+
+// MARK: - Tab Button
+
+struct TabButton: View {
+    let tab: HistoryTab
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 13, weight: .semibold))
+                
+                Text(tab.displayName)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(isSelected ? .white : .secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.clear))
+            )
+        }
+    }
+}
+
+// MARK: - Summary Card
+
+struct SummaryCard: View {
+    let icon: String
+    let title: String
+    let value: String
+    let gradient: LinearGradient
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(gradient)
+                    .frame(width: 50, height: 50)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - Location Frequency Row
+
+struct LocationFrequencyRow: View {
+    let location: String
+    let count: Int
+    let totalTime: TimeInterval
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "mappin.circle.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(LiquidGlassStyle.accentGradient)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(location)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text("\(count) " + L("common.times") + " • \(FormatUtilities.formatTime(totalTime))")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text("\(count)")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(LiquidGlassStyle.primaryGradient)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Transport Mode Row
+
+struct TransportModeRow: View {
+    let mode: String
+    let count: Int
+    let distance: Double
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: iconForMode(mode))
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(LiquidGlassStyle.primaryGradient)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(mode.capitalized)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text("\(count) " + L("common.journeys") + " • \(FormatUtilities.formatDistance(distance))")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private func iconForMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return "figure.walk"
+        case "cycling": return "bicycle"
+        case "driving": return "car.fill"
+        default: return "figure.walk"
+        }
+    }
+}
+
+// MARK: - Record Card
+
+struct RecordCard: View {
+    let record: JourneyRecord
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(record.startLocationName)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    Text(FormatUtilities.formatDate(record.startTime))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if record.isCompleted {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.green)
+                } else {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.orange)
+                }
+            }
+            
+            Divider()
+            
+            HStack(spacing: 16) {
+                RecordStat(icon: "clock.fill", value: FormatUtilities.formatTime(record.duration))
+                RecordStat(icon: "location.fill", value: FormatUtilities.formatDistance(record.distanceTraveled))
+                RecordStat(icon: "star.fill", value: "\(record.discoveredPOICount)")
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - Expandable Record Card
+
+struct ExpandableRecordCard: View {
+    let record: JourneyRecord
+    let isExpanded: Bool
+    let onTap: () -> Void
+    
+    @State private var showMap = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Collapsed view (always visible)
+            Button(action: onTap) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(record.startLocationName)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.primary)
+                            
+                            Text(FormatUtilities.formatDate(record.startTime))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            if record.isCompleted {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.green)
+                            } else {
+                                Image(systemName: "pause.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(isExpanded ? 0 : 0))
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    HStack(spacing: 16) {
+                        RecordStat(icon: "clock.fill", value: FormatUtilities.formatTime(record.duration))
+                        RecordStat(icon: "location.fill", value: FormatUtilities.formatDistance(record.distanceTraveled))
+                        RecordStat(icon: "star.fill", value: "\(record.discoveredPOICount)")
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: isExpanded ? 16 : 16)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: isExpanded ? 16 : 16)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: isExpanded ? [
+                                            Color.blue.opacity(0.5),
+                                            Color.purple.opacity(0.5)
+                                        ] : [
+                                            Color.white.opacity(0.1),
+                                            Color.white.opacity(0.05)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: isExpanded ? 2 : 1
+                                )
+                        )
+                )
+                .shadow(
+                    color: isExpanded ? Color.blue.opacity(0.2) : Color.black.opacity(0.1),
+                    radius: isExpanded ? 12 : 8,
+                    x: 0,
+                    y: isExpanded ? 6 : 4
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            // Expanded content
+            if isExpanded {
+                VStack(spacing: 16) {
+                    // Status badge
+                    HStack {
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            Image(systemName: record.isCompleted ? "checkmark.circle.fill" : "pause.circle.fill")
+                                .font(.system(size: 14))
+                            
+                            Text(record.isCompleted ? L("history.detail.completed") : L("history.detail.stopped"))
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(record.isCompleted ? Color.green : Color.orange)
+                        )
+                        
+                        Spacer()
+                    }
+                    .padding(.top, 8)
+                    
+                    // Detailed stats grid
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 12) {
+                        ExpandedStatCard(
+                            icon: "clock.fill",
+                            label: L("history.detail.duration"),
+                            value: FormatUtilities.formatTime(record.duration),
+                            color: .blue
+                        )
+                        
+                        ExpandedStatCard(
+                            icon: "location.fill",
+                            label: L("history.detail.distanceTraveled"),
+                            value: FormatUtilities.formatDistance(record.distanceTraveled),
+                            color: .green
+                        )
+                        
+                        ExpandedStatCard(
+                            icon: "gauge.with.dots.needle.67percent",
+                            label: L("history.detail.progress"),
+                            value: FormatUtilities.formatProgress(record.progress),
+                            color: .purple
+                        )
+                        
+                        ExpandedStatCard(
+                            icon: "star.fill",
+                            label: L("history.detail.poisDiscovered"),
+                            value: "\(record.discoveredPOICount)",
+                            color: .yellow
+                        )
+                    }
+                    
+                    // Route map
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(L("history.detail.routeInfo"))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        RouteMapPreview(
+                            startCoordinate: CLLocationCoordinate2D(
+                                latitude: record.startLatitude,
+                                longitude: record.startLongitude
+                            ),
+                            endCoordinate: CLLocationCoordinate2D(
+                                latitude: record.destinationLatitude,
+                                longitude: record.destinationLongitude
+                            )
+                        )
+                        .frame(height: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                    }
+                    
+                    // Location details
+                    VStack(spacing: 10) {
+                        ExpandedLocationRow(
+                            icon: "location.circle.fill",
+                            label: L("history.detail.start"),
+                            value: record.startLocationName,
+                            color: .green
+                        )
+                        
+                        ExpandedLocationRow(
+                            icon: "flag.circle.fill",
+                            label: L("history.detail.destination"),
+                            value: record.destinationName,
+                            color: .red
+                        )
+                        
+                        ExpandedLocationRow(
+                            icon: iconForTransportMode(record.transportMode),
+                            label: L("history.detail.transport"),
+                            value: localizedTransportMode(record.transportMode),
+                            color: .blue
+                        )
+                    }
+                    
+                    // Time info
+                    VStack(spacing: 8) {
+                        ExpandedTimeRow(
+                            label: L("history.detail.started"),
+                            value: FormatUtilities.formatDateTime(record.startTime)
+                        )
+                        ExpandedTimeRow(
+                            label: L("history.detail.ended"),
+                            value: FormatUtilities.formatDateTime(record.endTime ?? record.startTime)
+                        )
+                        ExpandedTimeRow(
+                            label: L("history.detail.plannedDuration"),
+                            value: FormatUtilities.formatTime(record.plannedDuration)
+                        )
+                    }
+                }
+                .padding(16)
+                .padding(.top, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.blue.opacity(0.3),
+                                            Color.purple.opacity(0.3)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                )
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.95).combined(with: .opacity).combined(with: .move(edge: .top)),
+                    removal: .scale(scale: 0.95).combined(with: .opacity).combined(with: .move(edge: .top))
+                ))
+                .padding(.top, 8)
+            }
+        }
+    }
+    
+    private func iconForTransportMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return "figure.walk.circle.fill"
+        case "cycling": return "bicycle.circle.fill"
+        case "driving": return "car.circle.fill"
+        case "subway": return "tram.circle.fill"
+        default: return "figure.walk.circle.fill"
+        }
+    }
+    
+    private func localizedTransportMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return L("transport.walking")
+        case "cycling": return L("transport.cycling")
+        case "driving": return L("transport.driving")
+        case "subway": return L("transport.subway")
+        default: return mode.capitalized
+        }
+    }
+}
+
+// MARK: - Expanded Stat Card
+
+struct ExpandedStatCard: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(color)
+            }
+            
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(color.opacity(0.08))
+        )
+    }
+}
+
+// MARK: - Expanded Location Row
+
+struct ExpandedLocationRow: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Expanded Time Row
+
+struct ExpandedTimeRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(.primary)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Wrapper Structures
+
+struct LocationDetailWrapper: Identifiable {
+    let id = UUID()
+    let location: String
+}
+
+struct TransportModeDetailWrapper: Identifiable {
+    let id = UUID()
+    let mode: String
+}
+
+// MARK: - Location Detail View
+
+struct LocationDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let location: String
+    let records: [JourneyRecord]
+    
+    private var locationRecords: [JourneyRecord] {
+        records.filter { $0.startLocationName == location }
+            .sorted { $0.startTime > $1.startTime }
+    }
+    
+    private var totalTime: TimeInterval {
+        locationRecords.reduce(0) { $0 + $1.duration }
+    }
+    
+    private var totalDistance: Double {
+        locationRecords.reduce(0) { $0 + $1.distanceTraveled }
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        if locationRecords.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(LiquidGlassStyle.accentGradient)
+                                    .opacity(0.5)
+                                
+                                Text("No Journeys from This Location")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Start a journey from \(location) to see details!")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            // Summary stats
+                            HStack(spacing: 12) {
+                                VStack(spacing: 8) {
+                                    Text("\(locationRecords.count)")
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                                    
+                                    Text(L("common.journeys"))
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                                .glassCard(cornerRadius: 16)
+                                
+                                VStack(spacing: 8) {
+                                    Text(FormatUtilities.formatTime(totalTime))
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                                    
+                                    Text(L("history.totalTime"))
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                                .glassCard(cornerRadius: 16)
+                            }
+                            
+                            VStack(spacing: 8) {
+                                Text(FormatUtilities.formatDistance(totalDistance))
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundStyle(LiquidGlassStyle.accentGradient)
+                                
+                                Text(L("history.totalDistance"))
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20)
+                            .glassCard(cornerRadius: 16)
+                            
+                            // Records list
+                            VStack(spacing: 12) {
+                                ForEach(locationRecords) { record in
+                                    LocationRecordRow(record: record)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                }
+            }
+            .navigationTitle(location)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+struct LocationRecordRow: View {
+    let record: JourneyRecord
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(LiquidGlassStyle.accentGradient)
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(FormatUtilities.formatDate(record.startTime))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 8) {
+                    Text(FormatUtilities.formatTime(record.duration))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    
+                    Text(FormatUtilities.formatDistance(record.distanceTraveled))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            if record.isCompleted {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - Transport Mode Detail View
+
+struct TransportModeDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let mode: String
+    let records: [JourneyRecord]
+    
+    private var modeRecords: [JourneyRecord] {
+        records.filter { $0.transportMode.lowercased() == mode.lowercased() }
+            .sorted { $0.startTime > $1.startTime }
+    }
+    
+    private var totalTime: TimeInterval {
+        modeRecords.reduce(0) { $0 + $1.duration }
+    }
+    
+    private var totalDistance: Double {
+        modeRecords.reduce(0) { $0 + $1.distanceTraveled }
+    }
+    
+    private var averageSpeed: Double {
+        guard !modeRecords.isEmpty else { return 0 }
+        let totalSpeed = modeRecords.reduce(0.0) { sum, record in
+            guard record.duration > 0 else { return sum }
+            return sum + (record.distanceTraveled / record.duration)
+        }
+        return totalSpeed / Double(modeRecords.count)
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        if modeRecords.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: iconForMode(mode))
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                                    .opacity(0.5)
+                                
+                                Text("No \(mode.capitalized) Journeys")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Start a journey using \(mode.lowercased()) to see details!")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            // Summary stats
+                            HStack(spacing: 12) {
+                                VStack(spacing: 8) {
+                                    Text("\(modeRecords.count)")
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                                    
+                                    Text(L("common.journeys"))
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                                .glassCard(cornerRadius: 16)
+                                
+                                VStack(spacing: 8) {
+                                    Text(FormatUtilities.formatTime(totalTime))
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                                    
+                                    Text(L("history.totalTime"))
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                                .glassCard(cornerRadius: 16)
+                            }
+                            
+                            HStack(spacing: 12) {
+                                VStack(spacing: 8) {
+                                    Text(FormatUtilities.formatDistance(totalDistance))
+                                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                                        .foregroundStyle(LiquidGlassStyle.accentGradient)
+                                    
+                                    Text(L("history.totalDistance"))
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                                .glassCard(cornerRadius: 16)
+                                
+                                VStack(spacing: 8) {
+                                    Text(FormatUtilities.formatSpeed(averageSpeed))
+                                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [Color.purple, Color.blue],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                    
+                                    Text(L("history.stats.averageSpeed"))
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                                .glassCard(cornerRadius: 16)
+                            }
+                            
+                            // Records list
+                            VStack(spacing: 12) {
+                                ForEach(modeRecords) { record in
+                                    TransportRecordRow(record: record)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                }
+            }
+            .navigationTitle(mode.capitalized)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+    
+    private func iconForMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return "figure.walk"
+        case "cycling": return "bicycle"
+        case "driving": return "car.fill"
+        case "subway": return "tram.fill"
+        default: return "figure.walk"
+        }
+    }
+}
+
+struct TransportRecordRow: View {
+    let record: JourneyRecord
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(LiquidGlassStyle.primaryGradient)
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: iconForMode(record.transportMode))
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.startLocationName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 8) {
+                    Text(FormatUtilities.formatDate(record.startTime))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    
+                    Text(FormatUtilities.formatTime(record.duration))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(FormatUtilities.formatDistance(record.distanceTraveled))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                
+                if record.duration > 0 {
+                    Text(FormatUtilities.formatSpeed(record.distanceTraveled / record.duration))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+    
+    private func iconForMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return "figure.walk"
+        case "cycling": return "bicycle"
+        case "driving": return "car.fill"
+        case "subway": return "tram.fill"
+        default: return "figure.walk"
+        }
+    }
+}
+
+// MARK: - Record Stat
+
+struct RecordStat: View {
+    let icon: String
+    let value: String
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+            
+            Text(value)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(.primary)
+        }
+    }
+}
+
+// MARK: - Stat Row
+
+struct StatRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+// MARK: - Achievement Row
+
+struct AchievementRow: View {
+    let icon: String
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(color)
+            }
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+// MARK: - Empty State
+
+struct EmptyStateView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "map.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                .opacity(0.5)
+            
+            Text(L("history.empty.title"))
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.primary)
+            
+            Text(L("history.empty.message"))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
+    }
+}
+
+// MARK: - Record Detail View
+
+struct RecordDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let record: JourneyRecord
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // Status badge
+                        HStack {
+                            Spacer()
+                            
+                            HStack(spacing: 8) {
+                                Image(systemName: record.isCompleted ? "checkmark.circle.fill" : "pause.circle.fill")
+                                    .font(.system(size: 16))
+                                
+                                Text(record.isCompleted ? L("history.detail.completed") : L("history.detail.stopped"))
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(record.isCompleted ? Color.green : Color.orange)
+                            )
+                            
+                            Spacer()
+                        }
+                        
+                        // Main stats
+                        VStack(spacing: 16) {
+                            DetailStatCard(
+                                icon: "clock.fill",
+                                label: L("history.detail.duration"),
+                                value: FormatUtilities.formatTime(record.duration),
+                                gradient: LiquidGlassStyle.primaryGradient
+                            )
+                            
+                            DetailStatCard(
+                                icon: "location.fill",
+                                label: L("history.detail.distanceTraveled"),
+                                value: FormatUtilities.formatDistance(record.distanceTraveled),
+                                gradient: LiquidGlassStyle.accentGradient
+                            )
+                            
+                            DetailStatCard(
+                                icon: "gauge.with.dots.needle.67percent",
+                                label: L("history.detail.progress"),
+                                value: FormatUtilities.formatProgress(record.progress),
+                                gradient: LinearGradient(
+                                    colors: [Color.blue, Color.purple],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            
+                            DetailStatCard(
+                                icon: "star.fill",
+                                label: L("history.detail.poisDiscovered"),
+                                value: "\(record.discoveredPOICount)",
+                                gradient: LinearGradient(
+                                    colors: [Color.yellow, Color.orange],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        }
+                        
+                        // Location info with map preview
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(L("history.detail.routeInfo"))
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.primary)
+                            
+                            // Mini map preview
+                            RouteMapPreview(
+                                startCoordinate: CLLocationCoordinate2D(
+                                    latitude: record.startLatitude,
+                                    longitude: record.startLongitude
+                                ),
+                                endCoordinate: CLLocationCoordinate2D(
+                                    latitude: record.destinationLatitude,
+                                    longitude: record.destinationLongitude
+                                )
+                            )
+                            .frame(height: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            
+                            VStack(spacing: 12) {
+                                LocationInfoRow(
+                                    icon: "location.circle.fill",
+                                    label: L("history.detail.start"),
+                                    value: record.startLocationName,
+                                    color: .green
+                                )
+                                
+                                LocationInfoRow(
+                                    icon: "flag.circle.fill",
+                                    label: L("history.detail.destination"),
+                                    value: record.destinationName,
+                                    color: .red
+                                )
+                                
+                                LocationInfoRow(
+                                    icon: iconForTransportMode(record.transportMode),
+                                    label: L("history.detail.transport"),
+                                    value: localizedTransportMode(record.transportMode),
+                                    color: .blue
+                                )
+                            }
+                        }
+                        .padding(20)
+                        .glassCard(cornerRadius: 20)
+                        
+                        // Time info
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(L("history.detail.timeInfo"))
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.primary)
+                            
+                            VStack(spacing: 8) {
+                                TimeInfoRow(label: L("history.detail.started"), value: FormatUtilities.formatDateTime(record.startTime))
+                                TimeInfoRow(label: L("history.detail.ended"), value: FormatUtilities.formatDateTime(record.endTime ?? record.startTime))
+                                TimeInfoRow(label: L("history.detail.plannedDuration"), value: FormatUtilities.formatTime(record.plannedDuration))
+                            }
+                        }
+                        .padding(20)
+                        .glassCard(cornerRadius: 20)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle(L("history.detail.title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+    
+    private func iconForTransportMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return "figure.walk.circle.fill"
+        case "cycling": return "bicycle.circle.fill"
+        case "driving": return "car.circle.fill"
+        default: return "figure.walk.circle.fill"
+        }
+    }
+    
+    private func localizedTransportMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return L("transport.walking")
+        case "cycling": return L("transport.cycling")
+        case "driving": return L("transport.driving")
+        default: return mode.capitalized
+        }
+    }
+}
+
+// MARK: - Route Map Preview
+
+struct RouteMapPreview: View {
+    let startCoordinate: CLLocationCoordinate2D
+    let endCoordinate: CLLocationCoordinate2D
+    
+    @State private var cameraPosition: MapCameraPosition = .automatic
+    
+    var body: some View {
+        Map(position: $cameraPosition) {
+            // Start marker
+            Annotation("", coordinate: startCoordinate) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 24, height: 24)
+                    
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .shadow(color: Color.green.opacity(0.5), radius: 4, x: 0, y: 2)
+            }
+            
+            // End marker
+            Annotation("", coordinate: endCoordinate) {
+                ZStack {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 24, height: 24)
+                    
+                    Image(systemName: "flag.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .shadow(color: Color.red.opacity(0.5), radius: 4, x: 0, y: 2)
+            }
+            
+            // Route line
+            MapPolyline(coordinates: [startCoordinate, endCoordinate])
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.green, Color.blue, Color.red],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [10, 5])
+                )
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .onAppear {
+            // Calculate region to show both points
+            let centerLat = (startCoordinate.latitude + endCoordinate.latitude) / 2
+            let centerLon = (startCoordinate.longitude + endCoordinate.longitude) / 2
+            let latDelta = abs(startCoordinate.latitude - endCoordinate.latitude) * 1.5
+            let lonDelta = abs(startCoordinate.longitude - endCoordinate.longitude) * 1.5
+            
+            let span = MKCoordinateSpan(
+                latitudeDelta: max(latDelta, 0.05),
+                longitudeDelta: max(lonDelta, 0.05)
+            )
+            
+            let region = MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
+                span: span
+            )
+            
+            cameraPosition = .region(region)
+        }
+    }
+}
+
+// MARK: - Detail Stat Card
+
+struct DetailStatCard: View {
+    let icon: String
+    let label: String
+    let value: String
+    let gradient: LinearGradient
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(gradient)
+                    .frame(width: 50, height: 50)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - Location Info Row
+
+struct LocationInfoRow: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Time Info Row
+
+struct TimeInfoRow: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(.primary)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Time Distribution Bar
+
+struct TimeDistributionBar: View {
+    let morning: Int
+    let afternoon: Int
+    let evening: Int
+    let night: Int
+    
+    private var total: Int {
+        morning + afternoon + evening + night
+    }
+    
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 2) {
+                if total > 0 {
+                    if morning > 0 {
+                        Rectangle()
+                            .fill(Color.orange)
+                            .frame(width: geometry.size.width * CGFloat(morning) / CGFloat(total))
+                    }
+                    if afternoon > 0 {
+                        Rectangle()
+                            .fill(Color.yellow)
+                            .frame(width: geometry.size.width * CGFloat(afternoon) / CGFloat(total))
+                    }
+                    if evening > 0 {
+                        Rectangle()
+                            .fill(Color.pink)
+                            .frame(width: geometry.size.width * CGFloat(evening) / CGFloat(total))
+                    }
+                    if night > 0 {
+                        Rectangle()
+                            .fill(Color.indigo)
+                            .frame(width: geometry.size.width * CGFloat(night) / CGFloat(total))
+                    }
+                } else {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .frame(height: 12)
+    }
+}
+
+// MARK: - Time Distribution Row
+
+struct TimeDistributionRow: View {
+    let icon: String
+    let label: String
+    let count: Int
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 24)
+            
+            Text(label)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Text("\(count)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Weekly Activity Chart
+
+struct WeeklyActivityChart: View {
+    let data: [(day: String, count: Int)]
+    
+    private var maxCount: Int {
+        data.map { $0.count }.max() ?? 1
+    }
+    
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            ForEach(data, id: \.day) { item in
+                VStack(spacing: 6) {
+                    ZStack(alignment: .bottom) {
+                        // Background bar
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.gray.opacity(0.1))
+                            .frame(height: 80)
+                        
+                        // Actual bar
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.blue, Color.purple],
+                                    startPoint: .bottom,
+                                    endPoint: .top
+                                )
+                            )
+                            .frame(height: maxCount > 0 ? CGFloat(item.count) / CGFloat(maxCount) * 80 : 0)
+                    }
+                    
+                    Text(String(item.day.prefix(1)))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: 110)
+    }
+}
+
+// MARK: - Milestone Row
+
+struct MilestoneRow: View {
+    let icon: String
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.2))
+                    .frame(width: 40, height: 40)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(color)
+            }
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Text(value)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+#Preview {
+    HistoryView()
+        .modelContainer(for: JourneyRecord.self, inMemory: true)
+}
+
+// MARK: - Time Detail View
+
+struct TimeDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let records: [JourneyRecord]
+    
+    private var sortedRecords: [JourneyRecord] {
+        records.sorted { $0.duration > $1.duration }
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
+                        if sortedRecords.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "clock.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                                    .opacity(0.5)
+                                
+                                Text("No Journey Records")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Start your first journey to see time statistics!")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            ForEach(sortedRecords) { record in
+                                TimeRecordRow(record: record)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                }
+            }
+            .navigationTitle(L("history.totalTime"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+struct TimeRecordRow: View {
+    let record: JourneyRecord
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(LiquidGlassStyle.primaryGradient)
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.startLocationName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text(FormatUtilities.formatDate(record.startTime))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text(FormatUtilities.formatTime(record.duration))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(LiquidGlassStyle.primaryGradient)
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - Distance Detail View
+
+struct DistanceDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let records: [JourneyRecord]
+    
+    private var sortedRecords: [JourneyRecord] {
+        records.sorted { $0.distanceTraveled > $1.distanceTraveled }
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
+                        if sortedRecords.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(LiquidGlassStyle.accentGradient)
+                                    .opacity(0.5)
+                                
+                                Text("No Distance Recorded")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Start exploring to track your distance!")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            ForEach(sortedRecords) { record in
+                                DistanceRecordRow(record: record)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                }
+            }
+            .navigationTitle(L("history.totalDistance"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+struct DistanceRecordRow: View {
+    let record: JourneyRecord
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(LiquidGlassStyle.accentGradient)
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: "location.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.startLocationName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text(FormatUtilities.formatDate(record.startTime))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text(FormatUtilities.formatDistance(record.distanceTraveled))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(LiquidGlassStyle.accentGradient)
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - Completed Detail View
+
+struct CompletedDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let records: [JourneyRecord]
+    
+    private var sortedRecords: [JourneyRecord] {
+        records.sorted { $0.startTime > $1.startTime }
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
+                        if sortedRecords.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "flag.checkered")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [Color.green, Color.green.opacity(0.7)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .opacity(0.5)
+                                
+                                Text("No Completed Journeys")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Complete your first journey to see it here!")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            ForEach(sortedRecords) { record in
+                                CompletedRecordRow(record: record)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                }
+            }
+            .navigationTitle(L("history.completed"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+struct CompletedRecordRow: View {
+    let record: JourneyRecord
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.green, Color.green.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.startLocationName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 8) {
+                    Text(FormatUtilities.formatDate(record.startTime))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    
+                    Text(FormatUtilities.formatTime(record.duration))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(FormatUtilities.formatDistance(record.distanceTraveled))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                
+                Text("\(Int(record.progress * 100))%")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - POIs Detail View
+
+struct POIsDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let records: [JourneyRecord]
+    
+    private var poisWithRecords: [(poi: DiscoveredPOI, record: JourneyRecord)] {
+        let result: [(poi: DiscoveredPOI, record: JourneyRecord)] = []
+        // Note: JourneyRecord doesn't store POIs, so we'll show records with POI counts
+        // In a real implementation, you'd need to store POIs in the record
+        return result
+    }
+    
+    private var recordsWithPOIs: [JourneyRecord] {
+        records.filter { $0.discoveredPOICount > 0 }
+            .sorted { $0.discoveredPOICount > $1.discoveredPOICount }
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
+                        if recordsWithPOIs.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [Color.yellow, Color.orange],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .opacity(0.5)
+                                
+                                Text("No POIs Discovered Yet")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Start journeys to discover interesting places!")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 60)
+                        } else {
+                            ForEach(recordsWithPOIs) { record in
+                                POIRecordRow(record: record)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                }
+            }
+            .navigationTitle(L("history.poisFound"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+struct POIRecordRow: View {
+    let record: JourneyRecord
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.yellow, Color.orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: "star.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(record.startLocationName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 8) {
+                    Text(FormatUtilities.formatDate(record.startTime))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    
+                    Text(FormatUtilities.formatDistance(record.distanceTraveled))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            VStack(spacing: 4) {
+                Text("\(record.discoveredPOICount)")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.yellow, Color.orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                
+                Text("POIs")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(16)
+        .glassCard(cornerRadius: 16)
+    }
+}
+
+// MARK: - Achievement Detail View
+
+struct AchievementDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    let icon: String
+    let color: Color
+    let records: [JourneyRecord]
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AnimatedGradientBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // Achievement header
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        RadialGradient(
+                                            colors: [color.opacity(0.3), color.opacity(0.1)],
+                                            center: .center,
+                                            startRadius: 0,
+                                            endRadius: 60
+                                        )
+                                    )
+                                    .frame(width: 120, height: 120)
+                                
+                                Circle()
+                                    .fill(color)
+                                    .frame(width: 80, height: 80)
+                                
+                                Image(systemName: icon)
+                                    .font(.system(size: 36, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            .shadow(color: color.opacity(0.3), radius: 20, x: 0, y: 10)
+                            
+                            Text(title)
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.vertical, 20)
+                        
+                        if records.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: icon)
+                                    .font(.system(size: 60))
+                                    .foregroundColor(color)
+                                    .opacity(0.5)
+                                
+                                Text("No Achievement Yet")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Keep exploring to unlock this achievement!")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 40)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                        } else {
+                            // Achievement value
+                            if let record = records.first {
+                                VStack(spacing: 12) {
+                                    Text(achievementValue(for: record))
+                                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [color, color.opacity(0.7)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                    
+                                    Text(achievementSubtitle())
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 24)
+                                .glassCard(cornerRadius: 20)
+                            }
+                            
+                            // Journey details
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Journey Details")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                
+                                ForEach(records) { record in
+                                    AchievementRecordCard(record: record, highlightColor: color)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 20)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+    
+    private func achievementValue(for record: JourneyRecord) -> String {
+        if title.contains(L("history.longestJourney")) {
+            return FormatUtilities.formatTime(record.duration)
+        } else if title.contains(L("history.farthestDistance")) {
+            return FormatUtilities.formatDistance(record.distanceTraveled)
+        } else if title.contains(L("history.mostPOIs")) {
+            return "\(record.discoveredPOICount)"
+        } else if title.contains(L("history.stats.fastestJourney")) {
+            let speed = record.duration > 0 ? record.distanceTraveled / record.duration : 0
+            return FormatUtilities.formatSpeed(speed)
+        }
+        return ""
+    }
+    
+    private func achievementSubtitle() -> String {
+        if title.contains(L("history.longestJourney")) {
+            return "Longest Focus Session"
+        } else if title.contains(L("history.farthestDistance")) {
+            return "Farthest Journey"
+        } else if title.contains(L("history.mostPOIs")) {
+            return "Most POIs Discovered"
+        } else if title.contains(L("history.stats.fastestJourney")) {
+            return "Fastest Average Speed"
+        }
+        return ""
+    }
+}
+
+struct AchievementRecordCard: View {
+    let record: JourneyRecord
+    let highlightColor: Color
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Location and date
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(record.startLocationName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    Text(FormatUtilities.formatDateTime(record.startTime))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if record.isCompleted {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.green)
+                }
+            }
+            
+            Divider()
+            
+            // Stats grid
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                AchievementStatItem(
+                    icon: "clock.fill",
+                    label: L("history.detail.duration"),
+                    value: FormatUtilities.formatTime(record.duration),
+                    color: highlightColor
+                )
+                
+                AchievementStatItem(
+                    icon: "location.fill",
+                    label: L("history.detail.distanceTraveled"),
+                    value: FormatUtilities.formatDistance(record.distanceTraveled),
+                    color: highlightColor
+                )
+                
+                AchievementStatItem(
+                    icon: "star.fill",
+                    label: "POIs",
+                    value: "\(record.discoveredPOICount)",
+                    color: highlightColor
+                )
+                
+                AchievementStatItem(
+                    icon: "speedometer",
+                    label: "Speed",
+                    value: record.duration > 0 ? FormatUtilities.formatSpeed(record.distanceTraveled / record.duration) : "0 km/h",
+                    color: highlightColor
+                )
+            }
+            
+            // Transport mode
+            HStack(spacing: 8) {
+                Image(systemName: iconForTransportMode(record.transportMode))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(highlightColor)
+                
+                Text(record.transportMode.capitalized)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text("\(Int(record.progress * 100))% " + L("history.detail.progress"))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(20)
+        .glassCard(cornerRadius: 20)
+    }
+    
+    private func iconForTransportMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return "figure.walk"
+        case "cycling": return "bicycle"
+        case "driving": return "car.fill"
+        case "subway": return "tram.fill"
+        default: return "figure.walk"
+        }
+    }
+}
+
+struct AchievementStatItem: View {
+    let icon: String
+    let label: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(color.opacity(0.1))
+        )
+    }
+}
