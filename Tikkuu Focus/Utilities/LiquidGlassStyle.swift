@@ -336,23 +336,12 @@ struct GlassCardModifier: ViewModifier {
             NeumorphSurface(cornerRadius: cornerRadius, depth: .inset)
         } else {
             ZStack {
-                shape.fill(.ultraThinMaterial)
+                shape.fill(Color.clear)
 
                 shape
-                    .fill(
-                        LinearGradient(
-                            colors: [LiquidGlassStyle.innerGlow(for: colorScheme), Color.clear],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .blendMode(colorScheme == .dark ? .plusLighter : .overlay)
-
-                shape
-                    .strokeBorder(LiquidGlassStyle.glassBorder(for: colorScheme), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22), lineWidth: 1)
             }
-            .shadow(color: LiquidGlassStyle.shadowColor(for: colorScheme), radius: 12, x: 0, y: 6)
-            .shadow(color: LiquidGlassStyle.shadowColor(for: colorScheme).opacity(0.3), radius: 3, x: 0, y: 1)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.06), radius: 6, x: 0, y: 3)
         }
     }
 }
@@ -435,17 +424,11 @@ struct InsetSurfaceModifier: ViewModifier {
                     )
             } else {
                 ZStack {
-                    shape
-                        .fill(.ultraThinMaterial)
-
-                    shape
-                        .fill(
-                            Color.white.opacity(colorScheme == .dark ? 0.03 : 0.18)
-                        )
+                    shape.fill(Color.clear)
 
                     shape
                         .stroke(
-                            Color.white.opacity(colorScheme == .dark ? 0.12 : 0.24),
+                            Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20),
                             lineWidth: 1
                         )
                 }
@@ -468,9 +451,9 @@ struct ThemedRoundedBackgroundModifier: ViewModifier {
                 } else {
                     let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     shape
-                        .fill(.ultraThinMaterial)
+                        .fill(Color.clear)
                         .overlay(
-                            shape.strokeBorder(LiquidGlassStyle.glassBorder(for: colorScheme), lineWidth: 1)
+                            shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22), lineWidth: 1)
                         )
                 }
             }
