@@ -12,8 +12,7 @@ struct AppConfig {
     // MARK: - URLs
     
     /// Privacy Policy URL
-    /// TODO: Replace with actual privacy policy URL
-    static let privacyPolicyURL = "https://example.com/privacy"
+    static let privacyPolicyURL = "https://cheng-liang1.github.io/App-Support/Roam%20Focus/privacy/index.html"
     
     /// Terms of Service URL (for future use)
     static let termsOfServiceURL = "https://example.com/terms"

@@ -61,7 +61,7 @@ struct PrivacyPolicyView: View {
             return url
         }
         // Fallback URL
-        return URL(string: "https://example.com/privacy")!
+        return URL(string: "https://cheng-liang1.github.io/App-Support/Roam%20Focus/privacy/index.html")!
     }
     
     var body: some View {
