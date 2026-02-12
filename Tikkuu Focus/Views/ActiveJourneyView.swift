@@ -372,11 +372,30 @@ struct ActiveJourneyView: View {
             }
         }
         .padding(16)
-        .themedRoundedBackground(cornerRadius: 20, depth: .inset)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
-        )
+        .background {
+            if settings.selectedVisualStyle == .liquidGlass {
+                let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+                ZStack {
+                    shape
+                        .fill(.ultraThinMaterial)
+
+                    shape
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.14), Color.clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .blendMode(.overlay)
+
+                    shape
+                        .strokeBorder(Color.white.opacity(0.35), lineWidth: 1.2)
+                }
+            } else {
+                NeumorphSurface(cornerRadius: 20, depth: .inset)
+            }
+        }
     }
     
     // MARK: - Custom Stop Dialog

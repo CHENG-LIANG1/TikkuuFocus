@@ -728,65 +728,74 @@ struct SetupView: View {
             .background(
                 Group {
                     if settings.selectedVisualStyle == .neumorphism {
-                        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
                         ZStack {
                             NeumorphSurface(
                                 cornerRadius: 16,
-                                depth: canStartJourney ? .inset : .raised,
+                                depth: canStartJourney ? .raised : .inset,
                                 fill: AnyShapeStyle(
                                     canStartJourney
                                     ? LinearGradient(
                                         colors: [
-                                            Color(red: 0.48, green: 0.60, blue: 0.95),
-                                            Color(red: 0.40, green: 0.52, blue: 0.86)
+                                            Color(red: 0.45, green: 0.57, blue: 0.90),
+                                            Color(red: 0.36, green: 0.48, blue: 0.80)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
                                     : LinearGradient(
-                                        colors: [Color.gray.opacity(0.35)],
+                                        colors: [
+                                            NeumorphismStyle.pressedSurface(for: colorScheme).opacity(0.95),
+                                            NeumorphismStyle.surface(for: colorScheme).opacity(0.92)
+                                        ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
                                 )
                             )
-
-                            shape
-                                .strokeBorder(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 0.30, green: 0.38, blue: 0.62).opacity(0.55),
-                                            Color(red: 0.10, green: 0.14, blue: 0.24).opacity(0.75)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1.2
-                                )
                         }
                     } else {
+                        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
                         ZStack {
-                            RoundedRectangle(cornerRadius: 16)
+                            shape
+                                .fill(.ultraThinMaterial)
+
+                            shape
                                 .fill(
                                     canStartJourney ?
                                     LinearGradient(
                                         colors: [
-                                            Color(red: 0.3, green: 0.6, blue: 1.0),
-                                            Color(red: 0.4, green: 0.5, blue: 0.95)
+                                            Color(red: 0.34, green: 0.62, blue: 1.0).opacity(0.36),
+                                            Color(red: 0.46, green: 0.42, blue: 0.96).opacity(0.32)
                                         ],
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     ) :
                                     LinearGradient(
-                                        colors: [Color.gray.opacity(0.4)],
+                                        colors: [Color.gray.opacity(0.20)],
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
                                 )
 
+                            shape
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.26),
+                                            Color.white.opacity(0.0)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .blendMode(.overlay)
+
+                            shape
+                                .strokeBorder(Color.white.opacity(0.28), lineWidth: 1.1)
+
                             // Shimmer effect (only when not preparing)
                             if canStartJourney && !isStarting {
-                                RoundedRectangle(cornerRadius: 16)
+                                shape
                                     .fill(
                                         LinearGradient(
                                             colors: [
@@ -799,7 +808,7 @@ struct SetupView: View {
                                         )
                                     )
                                     .offset(x: -200 + buttonGlow * 400)
-                                    .mask(RoundedRectangle(cornerRadius: 16))
+                                    .mask(shape)
                             }
                         }
                     }

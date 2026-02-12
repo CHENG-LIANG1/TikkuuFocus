@@ -29,6 +29,10 @@ struct JourneySummaryView: View {
     @State private var showConfetti = false
     @State private var showSaveToast = false
 
+    private var isNeumorphism: Bool {
+        settings.selectedVisualStyle == .neumorphism
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let isCompact = geometry.size.height < 780
@@ -106,6 +110,10 @@ struct JourneySummaryView: View {
     private func summaryCard(isCompact: Bool, cardHeight: CGFloat) -> some View {
         let verticalInset = isCompact ? CGFloat(12) : CGFloat(14)
         return VStack(spacing: isCompact ? 8 : 12) {
+            Text("Roam Focus App")
+                .font(.system(size: isCompact ? 11 : 12, weight: .semibold, design: .rounded))
+                .foregroundColor(.white.opacity(0.9))
+
             statusHeader(isCompact: isCompact)
 
             metricsGrid(isCompact: isCompact)
@@ -122,12 +130,20 @@ struct JourneySummaryView: View {
         }
         .padding(.vertical, verticalInset)
         .frame(height: cardHeight)
-        .background(surfaceBackground)
+        .background {
+            if isNeumorphism {
+                SummaryNeumorphCard(cornerRadius: 28, depth: .inset)
+            } else {
+                surfaceBackground
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
-        )
+        .overlay {
+            if !isNeumorphism {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+            }
+        }
         .shadow(color: Color.black.opacity(0.35), radius: 18, x: 0, y: 10)
         .scaleEffect(animateIn ? 1 : 0.98)
         .opacity(animateIn ? 1 : 0)
@@ -248,14 +264,18 @@ struct JourneySummaryView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, minHeight: equalHeight, maxHeight: equalHeight, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
-                )
-        )
+        .background {
+            if isNeumorphism {
+                SummaryNeumorphCard(cornerRadius: 14, depth: .inset)
+            } else {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                    )
+            }
+        }
     }
 
     private func metricCard(icon: String, title: String, value: String, accent: LinearGradient, minHeight: CGFloat) -> some View {
@@ -279,14 +299,18 @@ struct JourneySummaryView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.10))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                )
-        )
+        .background {
+            if isNeumorphism {
+                SummaryNeumorphCard(cornerRadius: 16, depth: .inset)
+            } else {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+            }
+        }
     }
 
     private var routeCard: some View {
@@ -336,14 +360,18 @@ struct JourneySummaryView: View {
             )
             .padding(10)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                )
-        )
+        .background {
+            if isNeumorphism {
+                SummaryNeumorphCard(cornerRadius: 16, depth: .inset)
+            } else {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+            }
+        }
     }
 
     private var actionCards: some View {
@@ -401,14 +429,18 @@ struct JourneySummaryView: View {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 74)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(fill)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                    )
-            )
+            .background {
+                if isNeumorphism {
+                    SummaryNeumorphActionCard(cornerRadius: 18, fill: fill)
+                } else {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(fill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                        )
+                }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -738,6 +770,119 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Journey Summary Neumorph Cards (Local Only)
+
+private struct SummaryNeumorphCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var settings = AppSettings.shared
+    let cornerRadius: CGFloat
+    let depth: NeumorphDepth
+
+    private var isLightTone: Bool {
+        settings.selectedNeumorphismTone == .light
+    }
+
+    private var surface: Color {
+        if isLightTone {
+            return depth == .inset
+            ? Color(red: 0.941, green: 0.957, blue: 0.973)
+            : Color(red: 0.890, green: 0.941, blue: 1.0)
+        }
+        return depth == .inset
+        ? Color(red: 0.145, green: 0.145, blue: 0.220)
+        : Color(red: 0.196, green: 0.196, blue: 0.302)
+    }
+
+    private var edgeLight: Color {
+        if isLightTone {
+            return Color(red: 0.760, green: 0.830, blue: 0.920).opacity(0.62)
+        }
+        return Color(red: 0.335, green: 0.395, blue: 0.575).opacity(0.68)
+    }
+
+    private var edgeDark: Color {
+        if isLightTone {
+            return Color(red: 0.490, green: 0.560, blue: 0.650).opacity(0.72)
+        }
+        return Color(red: 0.090, green: 0.105, blue: 0.170).opacity(0.88)
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        ZStack {
+            shape.fill(surface)
+
+            if depth == .inset {
+                shape
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [edgeLight, Color.clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2.1
+                    )
+
+                shape
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.clear, edgeDark],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2.1
+                    )
+
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.clear, edgeDark.opacity(0.14)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(shape)
+            } else {
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: [edgeLight.opacity(0.18), Color.clear, edgeDark.opacity(0.10)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+        }
+        .shadow(
+            color: depth == .raised ? edgeDark.opacity(colorScheme == .dark ? 0.78 : 0.42) : .clear,
+            radius: depth == .raised ? 10 : 0,
+            x: depth == .raised ? 6 : 0,
+            y: depth == .raised ? 6 : 0
+        )
+        .shadow(
+            color: depth == .raised ? edgeLight.opacity(colorScheme == .dark ? 0.28 : 0.24) : .clear,
+            radius: depth == .raised ? 3 : 0,
+            x: depth == .raised ? -1 : 0,
+            y: depth == .raised ? -1 : 0
+        )
+    }
+}
+
+private struct SummaryNeumorphActionCard: View {
+    let cornerRadius: CGFloat
+    let fill: AnyShapeStyle
+
+    var body: some View {
+        ZStack {
+            SummaryNeumorphCard(cornerRadius: cornerRadius, depth: .raised)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(fill)
+                .opacity(0.78)
+        }
+    }
 }
 
 // MARK: - Static Route Preview (for image rendering)
