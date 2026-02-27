@@ -14,13 +14,9 @@ struct ActiveJourneyView: View {
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var journeyManager: JourneyManager
     @ObservedObject private var settings = AppSettings.shared
-    
-    @State private var showPOIToast = false
-    @State private var currentPOI: DiscoveredPOI?
-    @State private var lastPOICount = 0
+
     @State private var showStopConfirmation = false
     @State private var selectedLocationSource: LocationSource = .currentLocation
-    @State private var refreshID = UUID()
     @State private var showHistory = false
     @State private var showCustomStopDialog = false
     @State private var currentSpeed: Double = 0.0
@@ -47,30 +43,13 @@ struct ActiveJourneyView: View {
                     .padding(.horizontal, 24)
                 
                 Spacer()
-                
-                // POI Toast
-                if showPOIToast, let poi = currentPOI {
-                    POIToastView(poi: poi)
-                        .padding(.horizontal, 24)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                
+
                 // Bottom stats panel
                 statsPanel
                     .padding(24)
             }
         }
-        .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
-        .onChange(of: settings.selectedLanguage) { _, _ in
-            refreshID = UUID()
-        }
-        .onChange(of: journeyManager.discoveredPOIs.count) { oldCount, newCount in
-            if newCount > lastPOICount, let latestPOI = journeyManager.discoveredPOIs.last {
-                showPOINotification(poi: latestPOI)
-                lastPOICount = newCount
-            }
-        }
         .overlay {
             if showCustomStopDialog {
                 customStopDialog
@@ -307,6 +286,7 @@ struct ActiveJourneyView: View {
                         }
                     }
                     
+
                     // Stats grid - more compact
                     HStack(spacing: 10) {
                         CompactStatCard(
@@ -393,7 +373,7 @@ struct ActiveJourneyView: View {
                         .strokeBorder(Color.white.opacity(0.35), lineWidth: 1.2)
                 }
             } else {
-                NeumorphSurface(cornerRadius: 20, depth: .inset)
+                NeumorphSurface(cornerRadius: 20, depth: NeumorphDepth.inset)
             }
         }
     }
@@ -725,7 +705,12 @@ struct ActiveJourneyView: View {
             return preset.localizedName
         }
         
-        // Otherwise return "Current Location" or coordinates
+        // Use current location name if available
+        let locationName = locationManager.currentLocationName
+        if !locationName.isEmpty {
+            return locationName
+        }
+        
         return L("location.current")
     }
     
@@ -776,19 +761,6 @@ struct ActiveJourneyView: View {
         }
     }
     
-    private func showPOINotification(poi: DiscoveredPOI) {
-        currentPOI = poi
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-            showPOIToast = true
-        }
-        
-        // Auto-hide after 3 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                showPOIToast = false
-            }
-        }
-    }
 }
 
 // MARK: - Guide Feature Row
@@ -826,6 +798,9 @@ struct GuideFeatureRow: View {
 // MARK: - Compact Stat Card
 
 struct CompactStatCard: View {
+    @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.colorScheme) private var colorScheme
+    
     let icon: String
     let label: String
     let value: String
@@ -834,18 +809,18 @@ struct CompactStatCard: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(LiquidGlassStyle.accentGradient)
+                .foregroundStyle(iconColor)
                 .frame(width: 20)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(labelColor)
                     .lineLimit(1)
                 
                 Text(value)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(valueColor)
                     .lineLimit(1)
             }
             
@@ -854,45 +829,50 @@ struct CompactStatCard: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .padding(.horizontal, 10)
-        .background(
+        .background(backgroundView)
+    }
+    
+    private var iconColor: some ShapeStyle {
+        if settings.selectedVisualStyle == .neumorphism {
+            return AnyShapeStyle(
+                settings.isNeumorphismLight
+                    ? Color(red: 0.35, green: 0.45, blue: 0.65)
+                    : Color(red: 0.545, green: 0.655, blue: 1.0)
+            )
+        }
+        return AnyShapeStyle(LiquidGlassStyle.accentGradient)
+    }
+    
+    private var labelColor: Color {
+        if settings.selectedVisualStyle == .neumorphism && settings.isNeumorphismLight {
+            return Color(red: 0.35, green: 0.40, blue: 0.48)
+        }
+        return .secondary
+    }
+    
+    private var valueColor: Color {
+        if settings.selectedVisualStyle == .neumorphism && settings.isNeumorphismLight {
+            return Color(red: 0.25, green: 0.30, blue: 0.38)
+        }
+        return .primary
+    }
+    
+    @ViewBuilder
+    private var backgroundView: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            NeumorphSurface(
+                cornerRadius: 10,
+                depth: .raised
+            )
+        } else {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.thinMaterial)
                 .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-        )
-    }
-}
-
-// MARK: - POI Toast
-
-struct POIToastView: View {
-    let poi: DiscoveredPOI
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "star.fill")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.yellow)
-                .shadow(color: Color.yellow.opacity(0.5), radius: 4, x: 0, y: 2)
-            
-            VStack(alignment: .leading, spacing: 3) {
-                Text(String(format: L("poi.discovered"), poi.name))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Text(poi.category)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
         }
-        .padding(14)
-        .glassCard(cornerRadius: 14)
-        .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
     }
 }
 

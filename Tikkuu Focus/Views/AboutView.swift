@@ -9,14 +9,15 @@ import SwiftUI
 
 struct AboutView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.colorScheme) private var colorScheme
     @State private var refreshID = UUID()
     @State private var heartScale: CGFloat = 1.0
     @State private var showContent = false
     
     var body: some View {
         ZStack {
-            // Animated gradient background
-            AnimatedGradientBackground()
+            // Background based on theme
+            backgroundView
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -86,16 +87,20 @@ struct AboutView: View {
                                 Text("Roam Focus")
                                     .font(.system(size: 42, weight: .bold, design: .rounded))
                                     .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.white, .white.opacity(0.9)],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
+                                        isNeumorphism
+                                            ? AnyShapeStyle(cardTextColor)
+                                            : AnyShapeStyle(
+                                                LinearGradient(
+                                                    colors: [.white, .white.opacity(0.9)],
+                                                    startPoint: .top,
+                                                    endPoint: .bottom
+                                                )
+                                            )
                                     )
                                 
                                 Text(L("about.tagline"))
                                     .font(.system(size: 17, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundColor(cardSecondaryTextColor)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 40)
                             }
@@ -120,35 +125,17 @@ struct AboutView: View {
                                 
                                 Text(L("about.description.title"))
                                     .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(cardTextColor)
                             }
                             
                             Text(L("about.description.text"))
                                 .font(.system(size: 16, weight: .regular))
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(cardSecondaryTextColor)
                                 .lineSpacing(6)
                         }
                         .padding(24)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 24)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 24)
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.3),
-                                                    Color.white.opacity(0.1)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1
-                                        )
-                                )
-                        )
-                        .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+                        .background(cardBackground)
                         .scaleEffect(showContent ? 1 : 0.9)
                         .opacity(showContent ? 1 : 0)
                         .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2), value: showContent)
@@ -198,7 +185,7 @@ struct AboutView: View {
                             HStack(spacing: 8) {
                                 Text("Made with")
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.6))
+                                    .foregroundColor(cardSecondaryTextColor)
                                 
                                 Image(systemName: "heart.fill")
                                     .font(.system(size: 16, weight: .semibold))
@@ -221,18 +208,18 @@ struct AboutView: View {
                                 
                                 Text("by Tikkuu")
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.6))
+                                    .foregroundColor(cardSecondaryTextColor)
                             }
                             
                             // Version & Copyright
                             VStack(spacing: 6) {
                                 Text(String(format: L("about.version.full"), AppInfo.version))
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.4))
+                                    .foregroundColor(cardSecondaryTextColor.opacity(0.7))
                                 
                                 Text(L("about.copyright"))
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.4))
+                                    .foregroundColor(cardSecondaryTextColor.opacity(0.7))
                             }
                         }
                         .scaleEffect(showContent ? 1 : 0.8)
@@ -245,12 +232,66 @@ struct AboutView: View {
             }
         }
         .id(refreshID)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(settings.selectedVisualStyle == .neumorphism ? settings.currentColorScheme : .dark)
         .onAppear {
             showContent = true
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("LanguageChanged"))) { _ in
             refreshID = UUID()
+        }
+    }
+    
+    // MARK: - Helper Views & Properties
+    
+    @ViewBuilder
+    private var backgroundView: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            AnimatedGradientBackground()
+        } else {
+            // Liquid Glass: dark gradient background
+            AnimatedGradientBackground()
+        }
+    }
+    
+    private var isNeumorphism: Bool {
+        settings.selectedVisualStyle == .neumorphism
+    }
+    
+    private var cardTextColor: Color {
+        isNeumorphism
+            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white)
+            : .white
+    }
+    
+    private var cardSecondaryTextColor: Color {
+        isNeumorphism
+            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.45, green: 0.50, blue: 0.58) : Color.white.opacity(0.7))
+            : Color.white.opacity(0.7)
+    }
+    
+    @ViewBuilder
+    private var cardBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 24)
+        
+        if isNeumorphism {
+            // Neumorphism: raised surface with soft subtle shadows
+            shape
+                .fill(NeumorphismStyle.surface(for: colorScheme))
+                .shadow(
+                    color: colorScheme == .dark ? Color.black.opacity(0.25) : Color.black.opacity(0.08),
+                    radius: 8,
+                    x: 5,
+                    y: 5
+                )
+                .shadow(
+                    color: colorScheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.5),
+                    radius: 6,
+                    x: -4,
+                    y: -4
+                )
+        } else {
+            Color.clear
+                .glassCard(cornerRadius: 24)
         }
     }
 }
@@ -263,7 +304,25 @@ struct AboutFeatureCard: View {
     let description: String
     let gradient: LinearGradient
     let delay: Double
+    @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.colorScheme) private var colorScheme
     @State private var show = false
+    
+    private var isNeumorphism: Bool {
+        settings.selectedVisualStyle == .neumorphism
+    }
+    
+    private var cardTextColor: Color {
+        isNeumorphism
+            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white)
+            : .white
+    }
+    
+    private var cardSecondaryTextColor: Color {
+        isNeumorphism
+            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.45, green: 0.50, blue: 0.58) : Color.white.opacity(0.7))
+            : Color.white.opacity(0.7)
+    }
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -282,40 +341,48 @@ struct AboutFeatureCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(cardTextColor)
                 
                 Text(description)
                     .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(cardSecondaryTextColor)
                     .lineSpacing(4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.2),
-                                    Color.white.opacity(0.05)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .background(featureCardBackground)
         .scaleEffect(show ? 1 : 0.9)
         .opacity(show ? 1 : 0)
         .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(delay), value: show)
         .onAppear {
             show = true
+        }
+    }
+    
+    @ViewBuilder
+    private var featureCardBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 20)
+        
+        if isNeumorphism {
+            // Neumorphism: raised surface with soft subtle shadows
+            shape
+                .fill(NeumorphismStyle.surface(for: colorScheme))
+                .shadow(
+                    color: colorScheme == .dark ? Color.black.opacity(0.25) : Color.black.opacity(0.08),
+                    radius: 6,
+                    x: 4,
+                    y: 4
+                )
+                .shadow(
+                    color: colorScheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.5),
+                    radius: 5,
+                    x: -3,
+                    y: -3
+                )
+        } else {
+            Color.clear
+                .glassCard(cornerRadius: 20)
         }
     }
 }

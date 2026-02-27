@@ -11,6 +11,7 @@ import Photos
 
 struct JourneySummaryView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var settings = AppSettings.shared
 
     let session: JourneySession
@@ -33,57 +34,51 @@ struct JourneySummaryView: View {
         settings.selectedVisualStyle == .neumorphism
     }
 
+    private var isLightTone: Bool {
+        settings.selectedNeumorphismTone == .light
+    }
+
+    // MARK: - Layout Constants
+    private enum Layout {
+        static let horizontalPadding: CGFloat = 20
+        static let cardSpacing: CGFloat = 16
+        static let innerSpacing: CGFloat = 12
+        static let cornerRadius: CGFloat = 24
+        static let cardCornerRadius: CGFloat = 16
+    }
+
     var body: some View {
-        GeometryReader { geometry in
-            let isCompact = geometry.size.height < 780
-            let topInset = max(geometry.safeAreaInsets.top + 4, 10)
-            let bottomInset = max(geometry.safeAreaInsets.bottom + 4, 8)
-            let actionAreaHeight: CGFloat = 74 + 8 + bottomInset
-            let maxCardHeight = max(440, geometry.size.height - topInset - actionAreaHeight + 12)
+        ZStack {
+            // Background
+            backgroundLayer
 
-            ZStack {
-                backgroundMapLayer
+            // Content
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: Layout.cardSpacing) {
+                    // Main Summary Card
+                    summaryCard
+                        .padding(.top, 20)
 
-                LinearGradient(
-                    colors: [
-                        Color.black.opacity(0.18),
-                        Color.black.opacity(0.48)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    summaryCard(isCompact: isCompact, cardHeight: maxCardHeight)
-                        .padding(.horizontal, 16)
-                        .padding(.top, topInset)
-
-                    actionCards
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .padding(.bottom, bottomInset)
+                    // Action Buttons
+                    actionButtons
+                        .padding(.bottom, 24)
                 }
+                .padding(.horizontal, Layout.horizontalPadding)
+            }
 
-                if showConfetti {
-                    ConfettiView()
-                        .allowsHitTesting(false)
-                }
-
-                if showSaveToast {
-                    VStack {
-                        Spacer()
-                        saveToastView
-                            .padding(.bottom, max(geometry.safeAreaInsets.bottom + 92, 120))
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
+            // Effects & Toasts
+            if showConfetti {
+                ConfettiView()
                     .allowsHitTesting(false)
-                }
+            }
+
+            if showSaveToast {
+                saveToast
             }
         }
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 animateIn = true
             }
             if isCompleted {
@@ -107,213 +102,223 @@ struct JourneySummaryView: View {
         }
     }
 
-    private func summaryCard(isCompact: Bool, cardHeight: CGFloat) -> some View {
-        let verticalInset = isCompact ? CGFloat(12) : CGFloat(14)
-        return VStack(spacing: isCompact ? 8 : 12) {
-            Text("Roam Focus App")
-                .font(.system(size: isCompact ? 11 : 12, weight: .semibold, design: .rounded))
-                .foregroundColor(.white.opacity(0.9))
+    // MARK: - Background
 
-            statusHeader(isCompact: isCompact)
-
-            metricsGrid(isCompact: isCompact)
-
-            if !topPOIs.isEmpty {
-                poiHighlightsCard(isCompact: isCompact)
-                    .padding(.horizontal, 14)
+    @ViewBuilder
+    private var backgroundLayer: some View {
+        if isNeumorphism {
+            // Neumorphism: keep map visible with a softer veil.
+            ZStack {
+                neumorphismBackground
+                backgroundMapLayer
+                LinearGradient(
+                    colors: [
+                        Color.black.opacity(isLightTone ? 0.08 : 0.14),
+                        Color.black.opacity(isLightTone ? 0.18 : 0.32)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
             }
-
-            routeCard
-                .frame(maxHeight: .infinity)
-                .frame(minHeight: isCompact ? 138 : 160)
-                .padding(.horizontal, 14)
-        }
-        .padding(.vertical, verticalInset)
-        .frame(height: cardHeight)
-        .background {
-            if isNeumorphism {
-                SummaryNeumorphCard(cornerRadius: 28, depth: .inset)
-            } else {
-                surfaceBackground
+        } else {
+            // Liquid Glass: Map with gradient overlay
+            ZStack {
+                backgroundMapLayer
+                overlayGradient
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            if !isNeumorphism {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.35), radius: 18, x: 0, y: 10)
-        .scaleEffect(animateIn ? 1 : 0.98)
-        .opacity(animateIn ? 1 : 0)
     }
 
-    private func statusHeader(isCompact: Bool) -> some View {
+    private var neumorphismBackground: some View {
+        (isLightTone ? NeumorphismColors.lightBackground : NeumorphismColors.darkBackground)
+            .ignoresSafeArea()
+    }
+
+    private var overlayGradient: some View {
+        LinearGradient(
+            colors: [
+                Color.black.opacity(0.15),
+                Color.black.opacity(0.45)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
+    }
+
+    // MARK: - Summary Card
+
+    @ViewBuilder
+    private var summaryCard: some View {
+        if isNeumorphism {
+            neumorphicSummaryCard
+        } else {
+            liquidGlassSummaryCard
+        }
+    }
+
+    // MARK: Neumorphic Summary Card
+
+    private var neumorphicSummaryCard: some View {
+        VStack(spacing: Layout.innerSpacing) {
+            // Brand Header
+            Text("Roam Focus App")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(textColor.opacity(0.8))
+                .tracking(0.5)
+
+            // Status Badge
+            neumorphicStatusBadge
+
+            // Metrics Grid
+            neumorphicMetricsSection
+
+            // POI Highlights
+            if !topPOIs.isEmpty {
+                neumorphicPOIHighlights
+            }
+
+            // Route Preview (Static for Neumorphism)
+            neumorphicRoutePreview
+        }
+        .padding(20)
+        .background(
+            NeumorphSurface(cornerRadius: Layout.cornerRadius, depth: .raised)
+        )
+        .scaleEffect(animateIn ? 1 : 0.96)
+        .opacity(animateIn ? 1 : 0)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: animateIn)
+    }
+
+    private var neumorphicStatusBadge: some View {
         HStack(spacing: 6) {
             Image(systemName: isCompleted ? "checkmark.circle.fill" : "pause.circle.fill")
-                .font(.system(size: isCompact ? 13 : 14, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
 
             Text(String(format: L("journey.summary.completed"), progress * 100))
-                .font(.system(size: isCompact ? 12 : 13, weight: .bold, design: .rounded))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         }
-        .foregroundColor(.white)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .foregroundColor(isCompleted ? successColor : warningColor)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
         .background(
-            Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: isCompleted
-                            ? [Color.green.opacity(0.45), Color.mint.opacity(0.35)]
-                            : [Color.orange.opacity(0.45), Color.red.opacity(0.35)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            isCompleted ? Color.green.opacity(0.55) : Color.orange.opacity(0.55),
-                            lineWidth: 1
-                        )
-                )
+            NeumorphSurface(cornerRadius: 12, depth: .inset)
         )
     }
 
-    private func metricsGrid(isCompact: Bool) -> some View {
-        let equalHeight = isCompact ? CGFloat(96) : CGFloat(112)
-        return VStack(spacing: 10) {
+    private var neumorphicMetricsSection: some View {
+        VStack(spacing: 10) {
+            // Row 1: Time & Weather
             HStack(spacing: 10) {
-                metricCard(
+                neumorphicMetricCell(
                     icon: "clock.fill",
                     title: L("journey.summary.focusTime"),
                     value: FormatUtilities.formatTime(actualDuration),
-                    accent: LinearGradient(colors: [Color.blue, Color.cyan], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    minHeight: equalHeight
+                    iconColor: Color.blue
                 )
 
-                metricCard(
+                neumorphicMetricCell(
                     icon: weatherIcon,
                     title: isDaytime ? L("journey.summary.day") : L("journey.summary.night"),
                     value: weatherCondition,
-                    accent: LinearGradient(colors: [Color.cyan, Color.indigo], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    minHeight: equalHeight
+                    iconColor: Color.cyan
                 )
             }
 
+            // Row 2: Distance & Transport
             HStack(spacing: 10) {
-                metricCard(
+                neumorphicMetricCell(
                     icon: "location.fill",
                     title: L("journey.summary.distance"),
                     value: FormatUtilities.formatDistance(session.totalDistance),
-                    accent: LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    minHeight: equalHeight
+                    iconColor: Color.orange
                 )
 
-                metricCard(
+                neumorphicMetricCell(
                     icon: session.transportMode.iconName,
                     title: L("history.detail.transport"),
                     value: transportDisplayText,
-                    accent: LinearGradient(colors: [Color.green, Color.teal], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    minHeight: equalHeight
+                    iconColor: Color.green
                 )
             }
 
-            metricCard(
+            // Row 3: POI Count (Full Width)
+            neumorphicMetricCell(
                 icon: "star.fill",
                 title: L("journey.summary.pois"),
                 value: "\(discoveredPOIs.count)",
-                accent: LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .topLeading, endPoint: .bottomTrailing),
-                minHeight: equalHeight
+                iconColor: Color.yellow
             )
         }
-        .padding(.horizontal, 14)
     }
 
-    private var topPOIs: [DiscoveredPOI] {
-        Array(discoveredPOIs.prefix(3))
-    }
-
-    private func poiHighlightsCard(isCompact: Bool) -> some View {
-        let equalHeight = isCompact ? CGFloat(96) : CGFloat(112)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .semibold))
-                Text(L("journey.summary.pois"))
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .foregroundColor(.white.opacity(0.88))
-
-            ForEach(topPOIs) { poi in
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(Color.yellow)
-                        .frame(width: 6, height: 6)
-                    Text(poi.name)
-                        .font(.system(size: isCompact ? 11 : 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.92))
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, minHeight: equalHeight, maxHeight: equalHeight, alignment: .topLeading)
-        .background {
-            if isNeumorphism {
-                SummaryNeumorphCard(cornerRadius: 14, depth: .inset)
-            } else {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
-                    )
-            }
-        }
-    }
-
-    private func metricCard(icon: String, title: String, value: String, accent: LinearGradient, minHeight: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func neumorphicMetricCell(icon: String, title: String, value: String, iconColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(accent)
+                .foregroundColor(iconColor)
 
             Spacer(minLength: 0)
 
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 19, weight: .bold, design: .rounded))
+                .foregroundColor(textColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
 
             Text(title)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.72))
+                .foregroundColor(textColor.opacity(0.55))
                 .lineLimit(1)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
-        .background {
-            if isNeumorphism {
-                SummaryNeumorphCard(cornerRadius: 16, depth: .inset)
-            } else {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                    )
-            }
-        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 95, alignment: .leading)
+        .background(
+            NeumorphSurface(cornerRadius: 16, depth: .inset)
+        )
     }
 
-    private var routeCard: some View {
+    private var neumorphicPOIHighlights: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(L("journey.summary.pois"))
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(textColor.opacity(0.75))
+
+            // POI List
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(topPOIs) { poi in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.yellow)
+                            .frame(width: 6, height: 6)
+                            .shadow(color: Color.yellow.opacity(0.5), radius: 2, x: 0, y: 1)
+
+                        Text(poi.name)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(textColor.opacity(0.9))
+                            .lineLimit(1)
+
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            NeumorphSurface(cornerRadius: Layout.cardCornerRadius, depth: .inset)
+        )
+    }
+
+    private var neumorphicRoutePreview: some View {
         ZStack(alignment: .bottomLeading) {
             Map(initialPosition: .region(mapRegion)) {
                 MapPolyline(coordinates: session.route)
@@ -323,26 +328,20 @@ struct JourneySummaryView: View {
                             startPoint: .leading,
                             endPoint: .trailing
                         ),
-                        style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
 
                 Annotation("", coordinate: session.startLocation) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                    routePoint(color: .green)
                 }
 
                 Annotation("", coordinate: session.destinationLocation) {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 10, height: 10)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                    routePoint(color: .red)
                 }
             }
-            .mapStyle(settings.selectedMapMode.style)
+            .mapStyle(summaryMapStyle)
             .disabled(true)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous))
 
             HStack(spacing: 6) {
                 Image(systemName: "map.fill")
@@ -350,100 +349,382 @@ struct JourneySummaryView: View {
                 Text(L("journey.summary.route"))
                     .font(.system(size: 11, weight: .semibold))
             }
-            .foregroundColor(.white)
+            .foregroundColor(textColor.opacity(0.88))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(Color.black.opacity(0.35))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
+                    .fill(isLightTone ? Color.white.opacity(0.55) : Color.black.opacity(0.35))
             )
             .padding(10)
         }
-        .background {
-            if isNeumorphism {
-                SummaryNeumorphCard(cornerRadius: 16, depth: .inset)
-            } else {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                    )
+        .frame(height: 150)
+        .background(
+            NeumorphSurface(cornerRadius: Layout.cardCornerRadius, depth: .inset)
+        )
+    }
+
+    // MARK: Liquid Glass Summary Card (Original)
+
+    private var liquidGlassSummaryCard: some View {
+        VStack(spacing: Layout.innerSpacing) {
+            // Brand Header
+            Text("Roam Focus App")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(.white.opacity(0.9))
+                .tracking(0.5)
+
+            // Status Badge
+            statusBadge
+
+            // Metrics Grid
+            metricsSection
+
+            // POI Highlights
+            if !topPOIs.isEmpty {
+                poiHighlights
             }
+
+            // Route Map
+            routeMap
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.12, green: 0.14, blue: 0.35),
+                            Color(red: 0.10, green: 0.12, blue: 0.28),
+                            Color(red: 0.14, green: 0.16, blue: 0.36)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: 12)
+        )
+        .scaleEffect(animateIn ? 1 : 0.96)
+        .opacity(animateIn ? 1 : 0)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: animateIn)
+    }
+
+    private var statusBadge: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isCompleted ? "checkmark.circle.fill" : "pause.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+
+            Text(String(format: L("journey.summary.completed"), progress * 100))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: isCompleted
+                            ? [Color.green.opacity(0.5), Color.mint.opacity(0.4)]
+                            : [Color.orange.opacity(0.5), Color.red.opacity(0.4)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isCompleted ? Color.green.opacity(0.6) : Color.orange.opacity(0.6),
+                            lineWidth: 1
+                        )
+                )
+        )
+    }
+
+    private var metricsSection: some View {
+        VStack(spacing: 10) {
+            // Row 1: Time & Weather
+            HStack(spacing: 10) {
+                MetricCell(
+                    icon: "clock.fill",
+                    title: L("journey.summary.focusTime"),
+                    value: FormatUtilities.formatTime(actualDuration),
+                    gradient: LinearGradient(colors: [Color.blue, Color.cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+
+                MetricCell(
+                    icon: weatherIcon,
+                    title: isDaytime ? L("journey.summary.day") : L("journey.summary.night"),
+                    value: weatherCondition,
+                    gradient: LinearGradient(colors: [Color.cyan, Color.indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+            }
+
+            // Row 2: Distance & Transport
+            HStack(spacing: 10) {
+                MetricCell(
+                    icon: "location.fill",
+                    title: L("journey.summary.distance"),
+                    value: FormatUtilities.formatDistance(session.totalDistance),
+                    gradient: LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+
+                MetricCell(
+                    icon: session.transportMode.iconName,
+                    title: L("history.detail.transport"),
+                    value: transportDisplayText,
+                    gradient: LinearGradient(colors: [Color.green, Color.teal], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+            }
+
+            // Row 3: POI Count (Full Width)
+            MetricCell(
+                icon: "star.fill",
+                title: L("journey.summary.pois"),
+                value: "\(discoveredPOIs.count)",
+                gradient: LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
         }
     }
 
-    private var actionCards: some View {
+    private var poiHighlights: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(L("journey.summary.pois"))
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(.white.opacity(0.9))
+
+            // POI List
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(topPOIs) { poi in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.yellow)
+                            .frame(width: 6, height: 6)
+
+                        Text(poi.name)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white.opacity(0.95))
+                            .lineLimit(1)
+
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+
+    private var routeMap: some View {
+        Map(initialPosition: .region(mapRegion)) {
+            MapPolyline(coordinates: session.route)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.green, Color.blue, Color.purple],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                )
+
+            Annotation("", coordinate: session.startLocation) {
+                routePoint(color: .green)
+            }
+
+            Annotation("", coordinate: session.destinationLocation) {
+                routePoint(color: .red)
+            }
+        }
+        .mapStyle(summaryMapStyle)
+        .disabled(true)
+        .clipShape(RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous))
+        .frame(height: 160)
+        .background(
+            RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                )
+        )
+    }
+
+    private func routePoint(color: Color) -> some View {
+        Circle()
+            .fill(color)
+            .frame(width: 10, height: 10)
+            .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+    }
+
+    // MARK: - Action Buttons
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        if isNeumorphism {
+            neumorphicActionButtons
+        } else {
+            liquidGlassActionButtons
+        }
+    }
+
+    private var neumorphicActionButtons: some View {
         HStack(spacing: 12) {
-            actionCard(
+            NeumorphicButton(cornerRadius: 18) {
+                saveAsImage()
+            } content: {
+                VStack(spacing: 6) {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(L("journey.summary.save"))
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundColor(textColor)
+            }
+            .frame(height: 76)
+
+            NeumorphicButton(cornerRadius: 18) {
+                shareImage()
+            } content: {
+                VStack(spacing: 6) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(L("journey.summary.share"))
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundColor(primaryColor)
+            }
+            .frame(height: 76)
+
+            NeumorphicButton(cornerRadius: 18) {
+                onDismiss()
+                dismiss()
+            } content: {
+                VStack(spacing: 6) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(L("journey.summary.done"))
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundColor(successColor)
+            }
+            .frame(height: 76)
+        }
+        .opacity(animateIn ? 1 : 0)
+        .offset(y: animateIn ? 0 : 15)
+        .animation(.spring(response: 0.45, dampingFraction: 0.82).delay(0.1), value: animateIn)
+    }
+
+    private var liquidGlassActionButtons: some View {
+        HStack(spacing: 12) {
+            ActionButton(
                 title: L("journey.summary.save"),
                 icon: "square.and.arrow.down",
-                fill: AnyShapeStyle(.ultraThinMaterial)
+                style: .secondary
             ) {
                 saveAsImage()
             }
 
-            actionCard(
+            ActionButton(
                 title: L("journey.summary.share"),
                 icon: "square.and.arrow.up",
-                fill: AnyShapeStyle(
-                    LinearGradient(
-                        colors: [Color(red: 0.38, green: 0.56, blue: 0.98), Color(red: 0.52, green: 0.46, blue: 0.94)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                style: .primary
             ) {
                 shareImage()
             }
 
-            actionCard(
+            ActionButton(
                 title: L("journey.summary.done"),
                 icon: "checkmark",
-                fill: AnyShapeStyle(
-                    LinearGradient(
-                        colors: [Color.green, Color.teal],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                style: .success
             ) {
                 onDismiss()
                 dismiss()
             }
         }
         .opacity(animateIn ? 1 : 0)
-        .offset(y: animateIn ? 0 : 10)
-        .animation(.spring(response: 0.4, dampingFraction: 0.82).delay(0.08), value: animateIn)
+        .offset(y: animateIn ? 0 : 15)
+        .animation(.spring(response: 0.45, dampingFraction: 0.82).delay(0.1), value: animateIn)
     }
 
-    private func actionCard(title: String, icon: String, fill: AnyShapeStyle, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+    // MARK: - Save Toast
+
+    @ViewBuilder
+    private var saveToast: some View {
+        if isNeumorphism {
+            neumorphicSaveToast
+        } else {
+            liquidGlassSaveToast
+        }
+    }
+
+    private var neumorphicSaveToast: some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(successColor)
+                Text(L("journey.summary.saved"))
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundColor(textColor)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(
+                NeumorphSurface(cornerRadius: 20, depth: .raised)
+            )
+            .padding(.bottom, 100)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var liquidGlassSaveToast: some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                Text(L("journey.summary.saved"))
+                    .font(.system(size: 15, weight: .semibold))
             }
             .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 74)
-            .background {
-                if isNeumorphism {
-                    SummaryNeumorphActionCard(cornerRadius: 18, fill: fill)
-                } else {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(fill)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                        )
-                }
-            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.75))
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+            )
+            .padding(.bottom, 100)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
-        .buttonStyle(.plain)
+        .allowsHitTesting(false)
     }
+
+    // MARK: - Background Components
 
     private var backgroundMapLayer: some View {
         Map(initialPosition: .region(mapRegion)) {
@@ -467,24 +748,33 @@ struct JourneySummaryView: View {
                     .overlay(Circle().stroke(Color.white, lineWidth: 2))
             }
         }
-        .mapStyle(settings.selectedMapMode.style)
+        .mapStyle(summaryMapStyle)
         .allowsHitTesting(false)
         .ignoresSafeArea()
     }
 
-    private var surfaceBackground: some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.12, green: 0.14, blue: 0.35),
-                        Color(red: 0.11, green: 0.11, blue: 0.30),
-                        Color(red: 0.15, green: 0.18, blue: 0.39)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+    // MARK: - Color Helpers
+
+    private var textColor: Color {
+        isLightTone ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white
+    }
+
+    private var primaryColor: Color {
+        isLightTone ? Color(red: 0.38, green: 0.52, blue: 0.75) : NeumorphismColors.darkPrimary
+    }
+
+    private var successColor: Color {
+        isLightTone ? Color(red: 0.35, green: 0.65, blue: 0.45) : Color(red: 0.4, green: 0.85, blue: 0.5)
+    }
+
+    private var warningColor: Color {
+        isLightTone ? Color(red: 0.85, green: 0.55, blue: 0.25) : Color.orange
+    }
+
+    // MARK: - Helpers
+
+    private var topPOIs: [DiscoveredPOI] {
+        Array(discoveredPOIs.prefix(3))
     }
 
     private var mapRegion: MKCoordinateRegion {
@@ -503,6 +793,14 @@ struct JourneySummaryView: View {
         )
     }
 
+    private var summaryMapStyle: MapStyle {
+        if isNeumorphism {
+            // Ensure readability in neumorphism cards/background.
+            return .standard(elevation: .realistic)
+        }
+        return settings.selectedMapMode.style
+    }
+
     private var weatherIcon: String {
         let value = weatherCondition.lowercased()
         if value.contains("clear") { return isDaytime ? "sun.max.fill" : "moon.stars.fill" }
@@ -513,29 +811,7 @@ struct JourneySummaryView: View {
     }
 
     private var transportDisplayText: String {
-        if session.transportMode == .subway, let stations = session.subwayStations, !stations.isEmpty {
-            return extractSubwayLine(from: stations)
-        }
         return session.transportMode.localizedName
-    }
-
-    // MARK: - Subway Helpers
-
-    private func extractSubwayLine(from stations: [SubwayStationInfo]) -> String {
-        guard let firstStation = stations.first else { return L("journey.summary.subway") }
-
-        let name = firstStation.name
-
-        if let lineMatch = name.range(of: "Line\\s+\\d+|\\d+\\s+Line", options: .regularExpression) {
-            let line = String(name[lineMatch])
-            return line.replacingOccurrences(of: "Line", with: "").trimmingCharacters(in: .whitespaces) + " Line"
-        }
-
-        if let lineMatch = name.range(of: "\\d+号线", options: .regularExpression) {
-            return String(name[lineMatch])
-        }
-
-        return L("journey.summary.subway")
     }
 
     // MARK: - Actions
@@ -569,10 +845,10 @@ struct JourneySummaryView: View {
     }
 
     private func saveImageToLibrary(_ image: UIImage) {
-        let optimizedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 450) ?? image
-
+        // Save original high-quality image without compression
+        // The image is already rendered at 2x scale, no need for additional compression
         PHPhotoLibrary.shared().performChanges({
-            PHAssetChangeRequest.creationRequestForAsset(from: optimizedImage)
+            PHAssetChangeRequest.creationRequestForAsset(from: image)
         }) { success, _ in
             DispatchQueue.main.async {
                 if success {
@@ -595,75 +871,139 @@ struct JourneySummaryView: View {
     private func shareImage() {
         Task { @MainActor in
             guard let image = await renderAsImage() else { return }
-            renderedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 600) ?? image
+            // Use high quality for sharing, only compress if image is extremely large
+            let imageSizeKB = (image.pngData()?.count ?? 0) / 1024
+            if imageSizeKB > 2048 {  // Only compress if > 2MB
+                renderedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 1500) ?? image
+            } else {
+                renderedImage = image
+            }
             showShareSheet = true
         }
     }
 
     @MainActor
     private func renderAsImage() async -> UIImage? {
-        let snapshotSize = CGSize(width: 332, height: 180)
+        let snapshotSize = CGSize(width: 700, height: 380)
         let mapSnapshot = await generateRouteSnapshot(size: snapshotSize)
         let renderer = ImageRenderer(content: exportCard(snapshotImage: mapSnapshot))
-        renderer.scale = PerformanceOptimizer.shared.isEnergySavingMode ? 1.2 : 1.35
+        renderer.scale = 2.0  // High resolution for crisp images
         return renderer.uiImage
     }
 
+    @ViewBuilder
     private func exportCard(snapshotImage: UIImage?) -> some View {
-        VStack(spacing: 12) {
-            statusHeader(isCompact: false)
-                .padding(.top, 24)
+        if isNeumorphism {
+            neumorphicExportCard(snapshotImage: snapshotImage)
+        } else {
+            liquidGlassExportCard(snapshotImage: snapshotImage)
+        }
+    }
 
-            metricsGrid(isCompact: false)
+    private func neumorphicExportCard(snapshotImage: UIImage?) -> some View {
+        VStack(spacing: 20) {
+            // App Name Header
+            Text("Roam Focus")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(textColor)
+                .padding(.top, 32)
+            
+            neumorphicStatusBadge
+
+            neumorphicMetricsSection
+                .padding(.horizontal, 20)
+
+            neumorphicExportRouteCard(snapshotImage: snapshotImage)
+                .frame(height: 200)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+        }
+        .frame(width: 390, height: 720)
+        .background(
+            NeumorphSurface(cornerRadius: Layout.cornerRadius, depth: .raised)
+        )
+    }
+
+    private func neumorphicExportRouteCard(snapshotImage: UIImage?) -> some View {
+        Group {
+            if let snapshotImage {
+                Image(uiImage: snapshotImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            } else {
+                StaticRoutePreview(
+                    route: session.route,
+                    start: session.startLocation,
+                    end: session.destinationLocation
+                )
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous))
+        .background(
+            NeumorphSurface(cornerRadius: Layout.cardCornerRadius, depth: .inset)
+        )
+    }
+
+    private func liquidGlassExportCard(snapshotImage: UIImage?) -> some View {
+        VStack(spacing: 20) {
+            // App Name Header
+            Text("Roam Focus")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .padding(.top, 32)
+            
+            statusBadge
+
+            metricsSection
+                .padding(.horizontal, 20)
 
             exportRouteCard(snapshotImage: snapshotImage)
-                .frame(height: 180)
-                .padding(.horizontal, 14)
-                .padding(.bottom, 14)
+                .frame(height: 200)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
         }
-        .frame(width: 360, height: 700)
-        .background(surfaceBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .frame(width: 390, height: 720)
+        .background(
+            RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.12, green: 0.14, blue: 0.35),
+                            Color(red: 0.10, green: 0.12, blue: 0.28),
+                            Color(red: 0.14, green: 0.16, blue: 0.36)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
     }
 
     private func exportRouteCard(snapshotImage: UIImage?) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            Group {
-                if let snapshotImage {
-                    Image(uiImage: snapshotImage)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    StaticRoutePreview(
-                        route: session.route,
-                        start: session.startLocation,
-                        end: session.destinationLocation
-                    )
-                }
+        Group {
+            if let snapshotImage {
+                Image(uiImage: snapshotImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            } else {
+                StaticRoutePreview(
+                    route: session.route,
+                    start: session.startLocation,
+                    end: session.destinationLocation
+                )
             }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            HStack(spacing: 6) {
-                Image(systemName: "map.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                Text(L("journey.summary.route"))
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.35))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
-            )
-            .padding(10)
         }
+        .clipShape(RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous))
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous)
                 .fill(Color.white.opacity(0.08))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
                 )
         )
@@ -738,25 +1078,112 @@ struct JourneySummaryView: View {
 
         return image
     }
+}
 
-    private var saveToastView: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 14, weight: .semibold))
-            Text(L("journey.summary.saved"))
-                .font(.system(size: 14, weight: .semibold))
+// MARK: - Metric Cell (Liquid Glass)
+
+private struct MetricCell: View {
+    let icon: String
+    let title: String
+    let value: String
+    let gradient: LinearGradient
+
+    @ObservedObject private var settings = AppSettings.shared
+
+    private var isNeumorphism: Bool {
+        settings.selectedVisualStyle == .neumorphism
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(gradient)
+
+            Spacer(minLength: 0)
+
+            Text(value)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.72))
+                .lineLimit(1)
         }
-        .foregroundColor(.white)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
         .background(
-            Capsule()
-                .fill(Color.black.opacity(0.72))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.10))
                 .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
                 )
         )
+    }
+}
+
+// MARK: - Action Button (Liquid Glass)
+
+private struct ActionButton: View {
+    let title: String
+    let icon: String
+    let style: ButtonStyle
+    let action: () -> Void
+
+    @ObservedObject private var settings = AppSettings.shared
+
+    enum ButtonStyle {
+        case primary, secondary, success
+
+        var gradient: LinearGradient {
+            switch self {
+            case .primary:
+                return LinearGradient(
+                    colors: [Color(red: 0.38, green: 0.56, blue: 0.98), Color(red: 0.52, green: 0.46, blue: 0.94)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            case .secondary:
+                return LinearGradient(
+                    colors: [Color.white.opacity(0.15), Color.white.opacity(0.08)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            case .success:
+                return LinearGradient(
+                    colors: [Color.green, Color.teal],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 72)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(style.gradient)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -772,140 +1199,28 @@ struct ShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
-// MARK: - Journey Summary Neumorph Cards (Local Only)
-
-private struct SummaryNeumorphCard: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @ObservedObject private var settings = AppSettings.shared
-    let cornerRadius: CGFloat
-    let depth: NeumorphDepth
-
-    private var isLightTone: Bool {
-        settings.selectedNeumorphismTone == .light
-    }
-
-    private var surface: Color {
-        if isLightTone {
-            return depth == .inset
-            ? Color(red: 0.941, green: 0.957, blue: 0.973)
-            : Color(red: 0.890, green: 0.941, blue: 1.0)
-        }
-        return depth == .inset
-        ? Color(red: 0.145, green: 0.145, blue: 0.220)
-        : Color(red: 0.196, green: 0.196, blue: 0.302)
-    }
-
-    private var edgeLight: Color {
-        if isLightTone {
-            return Color(red: 0.760, green: 0.830, blue: 0.920).opacity(0.62)
-        }
-        return Color(red: 0.335, green: 0.395, blue: 0.575).opacity(0.68)
-    }
-
-    private var edgeDark: Color {
-        if isLightTone {
-            return Color(red: 0.490, green: 0.560, blue: 0.650).opacity(0.72)
-        }
-        return Color(red: 0.090, green: 0.105, blue: 0.170).opacity(0.88)
-    }
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
-        ZStack {
-            shape.fill(surface)
-
-            if depth == .inset {
-                shape
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [edgeLight, Color.clear],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 2.1
-                    )
-
-                shape
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [Color.clear, edgeDark],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 2.1
-                    )
-
-                shape
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.clear, edgeDark.opacity(0.14)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(shape)
-            } else {
-                shape
-                    .fill(
-                        LinearGradient(
-                            colors: [edgeLight.opacity(0.18), Color.clear, edgeDark.opacity(0.10)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-        }
-        .shadow(
-            color: depth == .raised ? edgeDark.opacity(colorScheme == .dark ? 0.78 : 0.42) : .clear,
-            radius: depth == .raised ? 10 : 0,
-            x: depth == .raised ? 6 : 0,
-            y: depth == .raised ? 6 : 0
-        )
-        .shadow(
-            color: depth == .raised ? edgeLight.opacity(colorScheme == .dark ? 0.28 : 0.24) : .clear,
-            radius: depth == .raised ? 3 : 0,
-            x: depth == .raised ? -1 : 0,
-            y: depth == .raised ? -1 : 0
-        )
-    }
-}
-
-private struct SummaryNeumorphActionCard: View {
-    let cornerRadius: CGFloat
-    let fill: AnyShapeStyle
-
-    var body: some View {
-        ZStack {
-            SummaryNeumorphCard(cornerRadius: cornerRadius, depth: .raised)
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(fill)
-                .opacity(0.78)
-        }
-    }
-}
-
-// MARK: - Static Route Preview (for image rendering)
+// MARK: - Static Route Preview
 
 private struct StaticRoutePreview: View {
     let route: [CLLocationCoordinate2D]
     let start: CLLocationCoordinate2D
     let end: CLLocationCoordinate2D
 
+    @ObservedObject private var settings = AppSettings.shared
+
+    private var isLightTone: Bool {
+        settings.selectedNeumorphismTone == .light
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let points = normalizedPoints(in: proxy.size)
 
             ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.18, green: 0.24, blue: 0.34),
-                        Color(red: 0.15, green: 0.20, blue: 0.30)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                // Background
+                backgroundColor
 
+                // Route Line
                 if points.count >= 2 {
                     Path { path in
                         path.move(to: points[0])
@@ -923,6 +1238,7 @@ private struct StaticRoutePreview: View {
                     )
                 }
 
+                // Start Point
                 if let first = points.first {
                     Circle()
                         .fill(Color.green)
@@ -931,6 +1247,7 @@ private struct StaticRoutePreview: View {
                         .position(first)
                 }
 
+                // End Point
                 if let last = points.last {
                     Circle()
                         .fill(Color.red)
@@ -938,6 +1255,27 @@ private struct StaticRoutePreview: View {
                         .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
                         .position(last)
                 }
+            }
+        }
+    }
+
+    private var backgroundColor: some View {
+        Group {
+            if settings.selectedVisualStyle == .neumorphism {
+                if isLightTone {
+                    NeumorphismColors.lightPressed
+                } else {
+                    NeumorphismColors.darkPressed
+                }
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.18, green: 0.24, blue: 0.34),
+                        Color(red: 0.15, green: 0.20, blue: 0.30)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             }
         }
     }
@@ -963,7 +1301,6 @@ private struct StaticRoutePreview: View {
 
         return source.map { coord in
             let x = ((coord.longitude - minLon) / lonSpan) * width + pad
-            // invert y so north is up
             let y = (1 - ((coord.latitude - minLat) / latSpan)) * height + pad
             return CGPoint(x: x, y: y)
         }
@@ -998,53 +1335,57 @@ struct ConfettiView: View {
         let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .pink]
         let shapes: [ConfettiShapeType] = [.circle, .square, .triangle]
 
-        for i in 0..<45 {
-            let piece = ConfettiPiece(
-                id: UUID(),
-                shape: shapes.randomElement()!,
+        confettiPieces = (0..<50).map { _ in
+            ConfettiPiece(
+                position: CGPoint(
+                    x: CGFloat.random(in: 0...size.width),
+                    y: CGFloat.random(in: -50...size.height/2)
+                ),
                 color: colors.randomElement()!,
-                size: CGFloat.random(in: 8...14),
-                position: CGPoint(x: CGFloat.random(in: 0...size.width), y: -40),
+                size: CGFloat.random(in: 6...12),
                 rotation: Double.random(in: 0...360),
-                opacity: 1.0
+                shape: shapes.randomElement()!,
+                opacity: Double.random(in: 0.6...1.0)
             )
+        }
 
-            confettiPieces.append(piece)
-
-            withAnimation(.easeOut(duration: Double.random(in: 2...4)).delay(Double(i) * 0.02)) {
-                if let index = confettiPieces.firstIndex(where: { $0.id == piece.id }) {
-                    confettiPieces[index].position.y = size.height + 40
-                    confettiPieces[index].rotation += Double.random(in: 300...700)
-                    confettiPieces[index].opacity = 0
-                }
+        withAnimation(.easeOut(duration: 3)) {
+            for index in confettiPieces.indices {
+                confettiPieces[index].position.y += CGFloat.random(in: 300...600)
+                confettiPieces[index].rotation += Double.random(in: 180...540)
+                confettiPieces[index].opacity = 0
             }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            confettiPieces.removeAll()
         }
     }
 }
 
-struct ConfettiPiece: Identifiable {
-    let id: UUID
-    let shape: ConfettiShapeType
+private struct ConfettiPiece: Identifiable {
+    let id = UUID()
+    var position: CGPoint
     let color: Color
     let size: CGFloat
-    var position: CGPoint
     var rotation: Double
+    let shape: ConfettiShapeType
     var opacity: Double
 }
 
-enum ConfettiShapeType {
+private enum ConfettiShapeType {
     case circle, square, triangle
 }
 
-struct ConfettiShape: Shape {
+private struct ConfettiShape: Shape {
     let shape: ConfettiShapeType
 
     func path(in rect: CGRect) -> Path {
         switch shape {
         case .circle:
-            return Path(ellipseIn: rect)
+            return Circle().path(in: rect)
         case .square:
-            return Path(rect)
+            return Rectangle().path(in: rect)
         case .triangle:
             var path = Path()
             path.move(to: CGPoint(x: rect.midX, y: rect.minY))
@@ -1054,38 +1395,4 @@ struct ConfettiShape: Shape {
             return path
         }
     }
-}
-
-#Preview {
-    JourneySummaryView(
-        session: JourneySession(
-            id: UUID(),
-            startLocation: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-            destinationLocation: CLLocationCoordinate2D(latitude: 37.8049, longitude: -122.4494),
-            route: [
-                CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-                CLLocationCoordinate2D(latitude: 37.7849, longitude: -122.4244),
-                CLLocationCoordinate2D(latitude: 37.7949, longitude: -122.4344),
-                CLLocationCoordinate2D(latitude: 37.8049, longitude: -122.4494)
-            ],
-            totalDistance: 5000,
-            duration: 1500,
-            transportMode: .cycling,
-            startTime: Date().addingTimeInterval(-1500),
-            subwayStations: nil
-        ),
-        discoveredPOIs: [
-            DiscoveredPOI(
-                name: "Golden Gate Park",
-                category: "park",
-                coordinate: CLLocationCoordinate2D(latitude: 37.7694, longitude: -122.4862)
-            )
-        ],
-        weatherCondition: "Clear",
-        isDaytime: true,
-        progress: 1.0,
-        isCompleted: true,
-        actualDuration: 1500,
-        onDismiss: {}
-    )
 }

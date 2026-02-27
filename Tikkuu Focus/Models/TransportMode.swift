@@ -12,17 +12,17 @@ enum TransportMode: String, CaseIterable, Identifiable {
     case walking
     case cycling
     case driving
-    case subway
+    case skateboard
     
     var id: String { rawValue }
     
     /// Speed in kilometers per hour
     var speedKmh: Double {
         switch self {
-        case .walking: return 5.0      // 步行：5 km/h（正常步行速度）
-        case .cycling: return 18.0     // 骑行：18 km/h（城市骑行平均速度）
-        case .driving: return 50.0     // 驾车：50 km/h（城市道路平均速度，考虑红绿灯和拥堵）
-        case .subway: return 80.0      // 地铁：80 km/h（地铁运行平均速度，含停站时间）
+        case .walking: return 5.0       // 步行：5 km/h（正常步行速度）
+        case .cycling: return 18.0      // 骑行：18 km/h（城市骑行平均速度）
+        case .driving: return 50.0      // 驾车：50 km/h（城市道路平均速度，考虑红绿灯和拥堵）
+        case .skateboard: return 20.0   // 滑板：20 km/h（平均速度，范围 10-30 km/h）
         }
     }
     
@@ -37,7 +37,7 @@ enum TransportMode: String, CaseIterable, Identifiable {
         case .walking: return L("transport.walking")
         case .cycling: return L("transport.cycling")
         case .driving: return L("transport.driving")
-        case .subway: return L("transport.subway")
+        case .skateboard: return L("transport.skateboard")
         }
     }
     
@@ -47,7 +47,7 @@ enum TransportMode: String, CaseIterable, Identifiable {
         case .walking: return "figure.walk"
         case .cycling: return "bicycle"
         case .driving: return "car.fill"
-        case .subway: return "tram.fill"
+        case .skateboard: return "figure.skateboarding"
         }
     }
     
@@ -57,7 +57,7 @@ enum TransportMode: String, CaseIterable, Identifiable {
         case .walking: return [25, 45, 90]
         case .cycling: return [25, 45, 90]
         case .driving: return [25, 45, 90]
-        case .subway: return [25, 45, 90]
+        case .skateboard: return [25, 45, 90]
         }
     }
 }

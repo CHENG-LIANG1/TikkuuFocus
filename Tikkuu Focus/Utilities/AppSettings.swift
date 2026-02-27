@@ -87,51 +87,55 @@ extension AppMapMode {
 /// App-wide settings manager
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    private var localizationBundles: [String: Bundle] = [:]
+    private let localizationBundleLock = NSLock()
     
     @Published var selectedLanguage: String {
         didSet {
+            guard selectedLanguage != oldValue else { return }
             UserDefaults.standard.set(selectedLanguage, forKey: "selectedLanguage")
-            // Trigger immediate UI refresh
-            objectWillChange.send()
         }
     }
     
     @Published var hasCompletedOnboarding: Bool {
         didSet {
+            guard hasCompletedOnboarding != oldValue else { return }
             UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
         }
     }
     
     @Published var hasCompletedFirstJourney: Bool {
         didSet {
+            guard hasCompletedFirstJourney != oldValue else { return }
             UserDefaults.standard.set(hasCompletedFirstJourney, forKey: "hasCompletedFirstJourney")
         }
     }
     
     @Published var hasSeenFirstJourneyGuide: Bool {
         didSet {
+            guard hasSeenFirstJourneyGuide != oldValue else { return }
             UserDefaults.standard.set(hasSeenFirstJourneyGuide, forKey: "hasSeenFirstJourneyGuide")
         }
     }
 
     @Published var selectedVisualStyle: AppVisualStyle {
         didSet {
+            guard selectedVisualStyle != oldValue else { return }
             UserDefaults.standard.set(selectedVisualStyle.rawValue, forKey: "selectedVisualStyle")
-            objectWillChange.send()
         }
     }
 
     @Published var selectedMapMode: AppMapMode {
         didSet {
+            guard selectedMapMode != oldValue else { return }
             UserDefaults.standard.set(selectedMapMode.rawValue, forKey: "selectedMapMode")
-            objectWillChange.send()
         }
     }
 
     @Published var selectedNeumorphismTone: NeumorphismTone {
         didSet {
+            guard selectedNeumorphismTone != oldValue else { return }
             UserDefaults.standard.set(selectedNeumorphismTone.rawValue, forKey: "selectedNeumorphismTone")
-            objectWillChange.send()
         }
     }
     
@@ -173,13 +177,30 @@ class AppSettings: ObservableObject {
             return NSLocalizedString(key, comment: comment)
         }
         
-        // Load specific language bundle
-        guard let path = Bundle.main.path(forResource: selectedLanguage, ofType: "lproj"),
-              let bundle = Bundle(path: path) else {
+        guard let bundle = localizationBundle(for: selectedLanguage) else {
             return NSLocalizedString(key, comment: comment)
         }
         
         return bundle.localizedString(forKey: key, value: nil, table: nil)
+    }
+
+    private func localizationBundle(for language: String) -> Bundle? {
+        localizationBundleLock.lock()
+        if let cached = localizationBundles[language] {
+            localizationBundleLock.unlock()
+            return cached
+        }
+        localizationBundleLock.unlock()
+
+        guard let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+              let bundle = Bundle(path: path) else {
+            return nil
+        }
+
+        localizationBundleLock.lock()
+        localizationBundles[language] = bundle
+        localizationBundleLock.unlock()
+        return bundle
     }
 }
 

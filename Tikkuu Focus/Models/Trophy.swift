@@ -258,7 +258,7 @@ class TrophyManager: ObservableObject {
             Trophy(id: "special_walking_master", category: .special, tier: .gold, requirement: 100), // 步行大师
             Trophy(id: "special_cycling_pro", category: .special, tier: .gold, requirement: 100), // 骑行专家
             Trophy(id: "special_driving_expert", category: .special, tier: .gold, requirement: 100), // 驾驶专家
-            Trophy(id: "special_subway_rider", category: .special, tier: .gold, requirement: 100), // 地铁达人
+            Trophy(id: "special_skateboard_rider", category: .special, tier: .gold, requirement: 100), // 滑板达人
             Trophy(id: "special_walking_only", category: .special, tier: .silver, requirement: 50), // 纯步行
             Trophy(id: "special_no_driving", category: .special, tier: .silver, requirement: 50), // 环保出行
             Trophy(id: "special_transport_variety", category: .special, tier: .bronze, requirement: 10), // 交通多样性
@@ -378,13 +378,13 @@ class TrophyManager: ObservableObject {
         let walkingJourneys = records.filter { $0.transportMode == TransportMode.walking.rawValue }.count
         let cyclingJourneys = records.filter { $0.transportMode == TransportMode.cycling.rawValue }.count
         let drivingJourneys = records.filter { $0.transportMode == TransportMode.driving.rawValue }.count
-        let subwayJourneys = records.filter { $0.transportMode == TransportMode.subway.rawValue }.count
+        let skateboardJourneys = records.filter { $0.transportMode == TransportMode.skateboard.rawValue }.count
         
         let nonDrivingJourneys = records.filter { $0.transportMode != TransportMode.driving.rawValue }.count
         let transportVariety = records.count > 0 ? uniqueTransportModes : 0
         
         // Check if using single transport mode
-        let singleTransportCount = max(walkingJourneys, cyclingJourneys, drivingJourneys, subwayJourneys)
+        let singleTransportCount = max(walkingJourneys, cyclingJourneys, drivingJourneys, skateboardJourneys)
         
         // Distance-based stats
         let shortTrips = records.filter { $0.distanceTraveled < 5000 }.count
@@ -402,8 +402,8 @@ class TrophyManager: ObservableObject {
         // Check incremental progress (each journey longer than previous)
         var incrementalCount = 0
         let sortedByDate = records.sorted { $0.startTime < $1.startTime }
-        for i in 1..<sortedByDate.count {
-            if sortedByDate[i].distanceTraveled > sortedByDate[i-1].distanceTraveled {
+        for (previous, current) in zip(sortedByDate, sortedByDate.dropFirst()) {
+            if current.distanceTraveled > previous.distanceTraveled {
                 incrementalCount += 1
             }
         }
@@ -522,8 +522,8 @@ class TrophyManager: ObservableObject {
                 trophies[index].progress = cyclingJourneys
             case "special_driving_expert":
                 trophies[index].progress = drivingJourneys
-            case "special_subway_rider":
-                trophies[index].progress = subwayJourneys
+            case "special_skateboard_rider":
+                trophies[index].progress = skateboardJourneys
             case "special_walking_only":
                 trophies[index].progress = walkingJourneys == totalJourneys ? walkingJourneys : 0
             case "special_no_driving":

@@ -21,13 +21,14 @@ class JourneyManager: ObservableObject {
     
     private var timer: Timer?
     private var lastPOICheckTime: Date?
+    private var pausedAt: Date?
     private var startLocationPOIs: Set<String> = [] // POIs near start location (excluded)
     private var lastCheckedCoordinate: CLLocationCoordinate2D?
     private let poiCheckInterval: TimeInterval = 300 // Check for POIs every 300 seconds (5 minutes) - 性能优化
     private let minimumTravelDistance: Double = 200 // Must travel at least 200m from start before discovering POIs
     private let discoveryRadius: CLLocationDistance = 100 // Reduced from 500m to 100m
     
-    private let subwayManager = SubwayManager()
+
     private var hasPrewarmedMapServices = false
     private var didEnterBackgroundObserver: NSObjectProtocol?
     private var didBecomeActiveObserver: NSObjectProtocol?
@@ -75,106 +76,42 @@ class JourneyManager: ObservableObject {
         discoveredPOIs.removeAll()
         startLocationPOIs.removeAll()
         lastCheckedCoordinate = nil
+        pausedAt = nil
         
         do {
+            let resolvedStart = await resolveRoutableStartCoordinate(
+                from: location,
+                transportMode: transportMode
+            )
+
             // Calculate distance based on speed and duration
             let distance = transportMode.speedMps * duration
             
-            // Handle subway mode differently
-            if transportMode == .subway {
-                print("🚇 Starting subway journey search...")
-                print("📍 Location: \(location.latitude), \(location.longitude)")
-                print("📏 Target distance: \(Int(distance))m")
-                
-                let subwayRoute: SubwayRoute
-                
-                do {
-                    if isPresetCity, let preset = presetLocation {
-                        print("🏙️ Using preset city subway stations: \(preset.localizedName)")
-                        print("🚇 Available stations: \(preset.subwayStations.count)")
-                        
-                        // Use preset subway stations
-                        subwayRoute = try await subwayManager.findRandomSubwayRoute(
-                            in: location, 
-                            distance: distance,
-                            presetStations: preset.subwayStations
-                        )
-                    } else {
-                        print("📍 Searching for nearest subway from current location...")
-                        // For current location, find nearest subway
-                        subwayRoute = try await subwayManager.findSubwayRoute(from: location, distance: distance)
-                    }
-                    
-                    print("✅ Subway route found with \(subwayRoute.stations.count) stations")
-                    
-                } catch SubwayError.noNearbyLine {
-                    print("❌ No subway line found within 10km")
-                    state = .failed(L("error.subway.noNearbyLine.detailed"))
-                    return
-                } catch {
-                    print("❌ Subway search error: \(error.localizedDescription)")
-                    state = .failed(error.localizedDescription)
-                    return
-                }
-                
-                // Use the first coordinate as start location
-                let startLocation = subwayRoute.coordinates.first ?? location
-                let destination = subwayRoute.coordinates.last ?? location
-                
-                // Convert subway stations to SubwayStationInfo
-                let stationInfos = subwayRoute.stations.map { station in
-                    SubwayStationInfo(name: station.name, coordinate: station.coordinate)
-                }
-                
-                // Create session with subway route
-                let session = JourneySession(
-                    id: UUID(),
-                    startLocation: startLocation,
-                    destinationLocation: destination,
-                    route: subwayRoute.coordinates,
-                    totalDistance: subwayRoute.totalDistance,
-                    duration: duration,
-                    transportMode: transportMode,
-                    startTime: Date(),
-                    subwayStations: stationInfos
-                )
-                
-                state = .active(session)
-                startTimer()
+            // Normal routing for all transport modes (including skateboard)
+            // Generate random destination
+            let destination = try await generateRandomDestination(from: resolvedStart, distance: distance)
+            
+            // Calculate route
+            let route = try await calculateRoute(from: resolvedStart, to: destination, transportMode: transportMode)
+            
+            // Create session
+            let session = JourneySession(
+                id: UUID(),
+                startLocation: resolvedStart,
+                destinationLocation: destination,
+                route: route.coordinates,
+                totalDistance: route.distance,
+                duration: duration,
+                transportMode: transportMode,
+                startTime: Date()
+            )
+            
+            state = .active(session)
+            startTimer()
 
-                // Run start-area POI cache in background to avoid delaying journey start.
-                Task(priority: .utility) {
-                    await self.recordStartLocationPOIs(at: startLocation)
-                }
-                
-            } else {
-                // Normal routing for other transport modes
-                // Generate random destination
-                let destination = try await generateRandomDestination(from: location, distance: distance)
-                
-                // Calculate route
-                let route = try await calculateRoute(from: location, to: destination, transportMode: transportMode)
-                
-                // Create session
-                let session = JourneySession(
-                    id: UUID(),
-                    startLocation: location,
-                    destinationLocation: destination,
-                    route: route.coordinates,
-                    totalDistance: route.distance,
-                    duration: duration,
-                    transportMode: transportMode,
-                    startTime: Date(),
-                    subwayStations: nil
-                )
-                
-                state = .active(session)
-                startTimer()
-
-                // Run start-area POI cache in background to avoid delaying journey start.
-                Task(priority: .utility) {
-                    await self.recordStartLocationPOIs(at: location)
-                }
+            // Run start-area POI cache in background to avoid delaying journey start.
+            Task(priority: .utility) {
+                await self.recordStartLocationPOIs(at: resolvedStart)
             }
             
         } catch {
@@ -218,6 +155,145 @@ class JourneyManager: ObservableObject {
         let bearing = Double.random(in: 0..<360)
         return start.coordinate(at: distance, bearing: bearing)
     }
+
+    /// If the selected start point is unroutable (e.g. sea), snap to nearest routable land road.
+    private func resolveRoutableStartCoordinate(
+        from coordinate: CLLocationCoordinate2D,
+        transportMode: TransportMode
+    ) async -> CLLocationCoordinate2D {
+        // Fast path: current point is already routable.
+        if await hasNearbyRoute(at: coordinate, transportMode: transportMode) {
+            return coordinate
+        }
+
+        if let candidate = await findNearestAddressCandidate(
+            around: coordinate,
+            transportMode: transportMode
+        ) {
+            return candidate
+        }
+
+        if let radialCandidate = await findNearestRoutableByRadialScan(
+            around: coordinate,
+            transportMode: transportMode
+        ) {
+            return radialCandidate
+        }
+
+        // Fallback to original coordinate when no better candidate is found.
+        return coordinate
+    }
+
+    private func findNearestAddressCandidate(
+        around coordinate: CLLocationCoordinate2D,
+        transportMode: TransportMode
+    ) async -> CLLocationCoordinate2D? {
+        let radii: [CLLocationDistance] = [600, 1500, 3000, 6000, 10000]
+        let queries: [String] = ["road", "street", "路", "道路", "街道"]
+        var seenKeys: Set<String> = []
+
+        for radius in radii {
+            var candidates: [CLLocationCoordinate2D] = []
+
+            for query in queries {
+                let request = MKLocalSearch.Request()
+                request.naturalLanguageQuery = query
+                request.region = MKCoordinateRegion(
+                    center: coordinate,
+                    latitudinalMeters: radius * 2,
+                    longitudinalMeters: radius * 2
+                )
+                request.resultTypes = .address
+
+                if let response = try? await MKLocalSearch(request: request).start() {
+                    for item in response.mapItems {
+                        let candidate = item.placemark.coordinate
+                        guard CLLocationCoordinate2DIsValid(candidate) else { continue }
+                        let key = String(format: "%.5f,%.5f", candidate.latitude, candidate.longitude)
+                        guard seenKeys.insert(key).inserted else { continue }
+                        candidates.append(candidate)
+                    }
+                }
+
+                if candidates.count >= 12 {
+                    break
+                }
+            }
+
+            guard !candidates.isEmpty else { continue }
+
+            let sortedCandidates = candidates.sorted {
+                coordinate.distance(to: $0) < coordinate.distance(to: $1)
+            }
+
+            for candidate in sortedCandidates.prefix(8) {
+                if await hasNearbyRoute(at: candidate, transportMode: transportMode) {
+                    return candidate
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func findNearestRoutableByRadialScan(
+        around coordinate: CLLocationCoordinate2D,
+        transportMode: TransportMode
+    ) async -> CLLocationCoordinate2D? {
+        let radii: [Double] = [400, 900, 1600, 2800, 4500, 7000]
+        let bearings: [Double] = [0, 45, 90, 135, 180, 225, 270, 315]
+
+        for radius in radii {
+            for bearing in bearings {
+                let candidate = coordinate.coordinate(at: radius, bearing: bearing)
+                if await hasNearbyRoute(at: candidate, transportMode: transportMode) {
+                    return candidate
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func hasNearbyRoute(
+        at coordinate: CLLocationCoordinate2D,
+        transportMode: TransportMode
+    ) async -> Bool {
+        let probeDistance: Double = transportMode == .driving ? 700 : 350
+        let probeBearings: [Double] = [45, 225]
+
+        for bearing in probeBearings {
+            let probeDestination = coordinate.coordinate(at: probeDistance, bearing: bearing)
+            if await canCalculateRoute(
+                from: coordinate,
+                to: probeDestination,
+                transportMode: transportMode
+            ) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private func canCalculateRoute(
+        from start: CLLocationCoordinate2D,
+        to destination: CLLocationCoordinate2D,
+        transportMode: TransportMode
+    ) async -> Bool {
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: start))
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
+        request.transportType = mapTransportType(for: transportMode)
+
+        do {
+            let response = try await MKDirections(request: request).calculate()
+            guard let route = response.routes.first else { return false }
+            return route.polyline.pointCount > 1 && route.distance > 0
+        } catch {
+            return false
+        }
+    }
     
     /// Calculate route from start to destination
     private func calculateRoute(from start: CLLocationCoordinate2D,
@@ -226,18 +302,7 @@ class JourneyManager: ObservableObject {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: start))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
-        
-        // Set transport type based on mode
-        switch transportMode {
-        case .walking:
-            request.transportType = .walking
-        case .cycling:
-            request.transportType = .walking // MapKit doesn't have cycling, use walking
-        case .driving:
-            request.transportType = .automobile
-        case .subway:
-            request.transportType = .transit
-        }
+        request.transportType = mapTransportType(for: transportMode)
         
         let directions = MKDirections(request: request)
         
@@ -264,6 +329,19 @@ class JourneyManager: ObservableObject {
             )
         }
     }
+
+    private func mapTransportType(for transportMode: TransportMode) -> MKDirectionsTransportType {
+        switch transportMode {
+        case .walking:
+            return .walking
+        case .cycling:
+            return .walking // MapKit doesn't have cycling, use walking
+        case .driving:
+            return .automobile
+        case .skateboard:
+            return .walking // Use walking for skateboard
+        }
+    }
     
     // MARK: - Journey Control
     
@@ -271,15 +349,18 @@ class JourneyManager: ObservableObject {
     func pauseJourney() {
         guard case .active(let session) = state else { return }
         stopTimer()
+        pausedAt = Date()
         state = .paused(session)
     }
     
     /// Resume a paused journey
     func resumeJourney() {
         guard case .paused(let session) = state else { return }
-        
-        // Create a new session with adjusted start time
-        let elapsed = Date().timeIntervalSince(session.startTime)
+
+        let pauseDuration = Date().timeIntervalSince(pausedAt ?? Date())
+        pausedAt = nil
+
+        // Shift start time forward by pause duration to exclude paused time.
         let newSession = JourneySession(
             id: session.id,
             startLocation: session.startLocation,
@@ -288,8 +369,7 @@ class JourneyManager: ObservableObject {
             totalDistance: session.totalDistance,
             duration: session.duration,
             transportMode: session.transportMode,
-            startTime: Date().addingTimeInterval(-elapsed),
-            subwayStations: session.subwayStations
+            startTime: session.startTime.addingTimeInterval(pauseDuration)
         )
         
         state = .active(newSession)
@@ -299,6 +379,7 @@ class JourneyManager: ObservableObject {
     /// Cancel the current journey
     func cancelJourney() {
         stopTimer()
+        pausedAt = nil
         state = .idle
         currentPosition = nil
         discoveredPOIs.removeAll()
@@ -310,6 +391,7 @@ class JourneyManager: ObservableObject {
     private func completeJourney() {
         guard case .active(let session) = state else { return }
         stopTimer()
+        pausedAt = nil
         state = .completed(session)
     }
     

@@ -20,21 +20,18 @@ struct ExplorationMapView: View {
     @State private var traveledPath: [CLLocationCoordinate2D] = []
     @State private var animatedPosition: CLLocationCoordinate2D?
     @State private var hasInitialized = false
-    @State private var currentStationIndex: Int? = nil
-    @State private var showStationToast = false
-    @State private var currentStation: SubwayStationInfo? = nil
     @State private var isFollowingUser = true
     @State private var isProgrammaticCameraChange = false
     @State private var displaySpeed: Double = 0.0
     @State private var showRecenterButton = false
-    @State private var subwayDirection: Int = 1 // 1 for forward, -1 for backward
-    @State private var targetStationIndex: Int = 0
-    @State private var isApproachingStation = false
-    @State private var hideAllBubbles = false
-    @State private var hideAllLabels = false
     @State private var speedTimer: Timer?
+    @State private var lastCameraFollowCoordinate: CLLocationCoordinate2D?
+    @State private var lastCameraFollowUpdateTime: Date?
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var settings = AppSettings.shared
+
+    private let cameraFollowDistanceThreshold: CLLocationDistance = 20
+    private let cameraFollowMinInterval: TimeInterval = 1.0
 
     init(
         session: JourneySession,
@@ -67,8 +64,8 @@ struct ExplorationMapView: View {
             return (15.0, 25.0)  // 15-25 km/h
         case .driving:
             return (40.0, 100.0)  // 40-100 km/h (faster and smoother)
-        case .subway:
-            return (50.0, 90.0)  // 50-90 km/h
+        case .skateboard:
+            return (10.0, 30.0)  // 10-30 km/h
         }
     }
     
@@ -76,50 +73,6 @@ struct ExplorationMapView: View {
     private func randomSpeed(for mode: TransportMode) -> Double {
         let range = speedRange(for: mode)
         return Double.random(in: range.min...range.max)
-    }
-    
-    // Calculate subway speed based on station proximity
-    private func calculateSubwaySpeed() -> Double {
-        guard session.transportMode == .subway,
-              let stations = session.subwayStations,
-              let currentPos = currentPosition?.coordinate else {
-            return randomSpeed(for: session.transportMode)
-        }
-        
-        // Find nearest station
-        var nearestDistance = Double.infinity
-        var nearestIndex = 0
-        
-        for (index, station) in stations.enumerated() {
-            let distance = currentPos.distance(to: station.coordinate)
-            if distance < nearestDistance {
-                nearestDistance = distance
-                nearestIndex = index
-            }
-        }
-        
-        // If within 200m of a station, slow down to 0
-        if nearestDistance < 200 {
-            let slowdownFactor = nearestDistance / 200.0
-            let maxSpeed = Double.random(in: 50...90)
-            let speed = maxSpeed * slowdownFactor
-            
-            // If very close (< 50m), speed is 0
-            if nearestDistance < 50 {
-                // Check if we should reverse direction
-                if nearestIndex == 0 || nearestIndex == stations.count - 1 {
-                    // At terminal station, reverse direction
-                    subwayDirection *= -1
-                    targetStationIndex = nearestIndex + subwayDirection
-                }
-                return 0
-            }
-            
-            return speed
-        }
-        
-        // Between stations, run at full speed
-        return Double.random(in: 50...90)
     }
     
     // Dynamic zoom based on speed
@@ -131,8 +84,8 @@ struct ExplorationMapView: View {
             return 1500
         case .driving:
             return 3000
-        case .subway:
-            return 2000
+        case .skateboard:
+            return 1200
         }
     }
 
@@ -144,8 +97,8 @@ struct ExplorationMapView: View {
             return 1500
         case .driving:
             return 3000
-        case .subway:
-            return 2000
+        case .skateboard:
+            return 1200
         }
     }
     
@@ -191,7 +144,12 @@ struct ExplorationMapView: View {
                     MapPolyline(coordinates: revealedCoordinates)
                         .stroke(
                             Color.gray.opacity(0.3),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [10, 5])
+                            style: StrokeStyle(
+                                lineWidth: 4,
+                                lineCap: .round,
+                                lineJoin: .round,
+                                dash: [10, 5]
+                            )
                         )
                 }
             }
@@ -234,25 +192,14 @@ struct ExplorationMapView: View {
                 .tint(.blue)
             }
             
-            // Discovered POI markers with bubbles
+            // Discovered POI markers (icon only, no tooltip bubble)
             ForEach(discoveredPOIs) { poi in
                 Annotation(poi.name, coordinate: poi.coordinate) {
-                    POIBubbleMarker(poi: poi, hideAllBubbles: $hideAllBubbles)
+                    POIBubbleMarker(poi: poi)
                 }
             }
             
-            // Subway stations (only for subway mode)
-            if session.transportMode == .subway, let stations = session.subwayStations {
-                ForEach(stations) { station in
-                    Annotation(station.name, coordinate: station.coordinate) {
-                        SubwayStationMarker(
-                            station: station,
-                            isCurrent: isCurrentStation(station),
-                            hideAllLabels: $hideAllLabels
-                        )
-                    }
-                }
-            }
+
             
             // Destination marker (only show when journey is complete or very close, no label to avoid flickering)
             if let position = currentPosition, position.progress > 0.95 {
@@ -272,28 +219,15 @@ struct ExplorationMapView: View {
             }
         }
         .mapStyle(settings.selectedMapMode.style)
-        .onTapGesture { screenCoordinate in
-            // Hide all bubbles and labels when tapping on empty space
-            hideAllBubbles = true
-            hideAllLabels = true
-            
-            // Reset after a short delay to allow re-showing
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                hideAllBubbles = false
-                hideAllLabels = false
-            }
-        }
         .onMapCameraChange { context in
-            // Keep manual mode sticky: once user moves/zooms map, do not auto-follow until recenter is tapped.
+            // Only show recenter when user manually pans (drags) the map, not on zoom
             guard !isProgrammaticCameraChange, let currentPos = currentPosition?.coordinate else { return }
 
             let cameraCenter = context.region.center
             let distance = currentPos.distance(to: cameraCenter)
-            let expectedZoomMeters = zoomLevel(for: session.transportMode.speedMps)
-            let currentZoomMeters = max(context.region.span.latitudeDelta * 111_000, 1)
-            let zoomDiffRatio = abs(currentZoomMeters - expectedZoomMeters) / expectedZoomMeters
 
-            if distance > 40 || zoomDiffRatio > 0.12 {
+            // Only trigger on significant pan (drag), ignore zoom-only changes
+            if distance > 50 {
                 isFollowingUser = false
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     showRecenterButton = true
@@ -307,11 +241,7 @@ struct ExplorationMapView: View {
                 startPulseAnimation()
                 
                 // Initialize speed
-                if session.transportMode == .subway {
-                    displaySpeed = calculateSubwaySpeed()
-                } else {
-                    displaySpeed = randomSpeed(for: session.transportMode)
-                }
+                displaySpeed = randomSpeed(for: session.transportMode)
                 
                 // Start speed update timer
                 startSpeedUpdateTimer()
@@ -341,16 +271,8 @@ struct ExplorationMapView: View {
                 
                 updateRevealedRoute(progress: position.progress)
                 updateTraveledPath(position.coordinate)
-                
-                // Check for subway station arrival
-                if session.transportMode == .subway {
-                    checkSubwayStationArrival(at: position.coordinate)
-                }
             }
         }
-        
-        // Station toast overlay
-        stationToastView
         
         // Recenter button - moved higher to avoid being blocked
         if showRecenterButton {
@@ -384,74 +306,6 @@ struct ExplorationMapView: View {
         }
     }
     
-    // MARK: - Subway Station Detection
-    
-    private func isCurrentStation(_ station: SubwayStationInfo) -> Bool {
-        guard let index = currentStationIndex,
-              let stations = session.subwayStations,
-              index < stations.count else {
-            return false
-        }
-        return stations[index].id == station.id
-    }
-    
-    private func checkSubwayStationArrival(at coordinate: CLLocationCoordinate2D) {
-        guard let stations = session.subwayStations else { return }
-        
-        // Check if we're near any station (within 50 meters)
-        for (index, station) in stations.enumerated() {
-            let distance = coordinate.distance(to: station.coordinate)
-            
-            if distance < 50 {
-                // Check if this is a new station
-                if currentStationIndex != index {
-                    currentStationIndex = index
-                    currentStation = station
-                    
-                    // Check if at terminal station
-                    if index == 0 || index == stations.count - 1 {
-                        // At terminal, will reverse direction
-                        showStationNotification(station: station, isTerminal: true)
-                    } else {
-                        showStationNotification(station: station, isTerminal: false)
-                    }
-                }
-                return
-            }
-        }
-    }
-    
-    private func showStationNotification(station: SubwayStationInfo, isTerminal: Bool) {
-        currentStation = station
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-            showStationToast = true
-        }
-        
-        // Auto-hide after 3 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                showStationToast = false
-            }
-        }
-    }
-    
-    // MARK: - View Body Extension
-    
-    private var stationToastView: some View {
-        Group {
-            if showStationToast, let station = currentStation {
-                VStack {
-                    Spacer()
-                    
-                    SubwayStationToast(station: station)
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 200)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-        }
-    }
-    
     // MARK: - Pulsing Animation
     
     @State private var pulseScale: CGFloat = 1.0
@@ -481,27 +335,22 @@ struct ExplorationMapView: View {
     private func updateSpeed() {
         let newSpeed: Double
         
-        // Use special logic for subway
-        if session.transportMode == .subway {
-            newSpeed = calculateSubwaySpeed()
-        } else {
-            // For driving, make speed changes more gradual
-            if session.transportMode == .driving {
-                let range = speedRange(for: session.transportMode)
-                let targetSpeed = Double.random(in: range.min...range.max)
-                
-                // Smooth transition: only change speed by max 20 km/h at a time
-                let maxChange: Double = 20.0
-                let speedDiff = targetSpeed - displaySpeed
-                
-                if abs(speedDiff) > maxChange {
-                    newSpeed = displaySpeed + (speedDiff > 0 ? maxChange : -maxChange)
-                } else {
-                    newSpeed = targetSpeed
-                }
+        // For driving, make speed changes more gradual
+        if session.transportMode == .driving {
+            let range = speedRange(for: session.transportMode)
+            let targetSpeed = Double.random(in: range.min...range.max)
+            
+            // Smooth transition: only change speed by max 20 km/h at a time
+            let maxChange: Double = 20.0
+            let speedDiff = targetSpeed - displaySpeed
+            
+            if abs(speedDiff) > maxChange {
+                newSpeed = displaySpeed + (speedDiff > 0 ? maxChange : -maxChange)
             } else {
-                newSpeed = randomSpeed(for: session.transportMode)
+                newSpeed = targetSpeed
             }
+        } else {
+            newSpeed = randomSpeed(for: session.transportMode)
         }
         
         // Update display speed without animation to avoid visual glitches
@@ -524,6 +373,7 @@ struct ExplorationMapView: View {
     private func updateCameraToFollowUser(at coordinate: CLLocationCoordinate2D) {
         // Follow only in explicit follow mode.
         guard isFollowingUser else { return }
+        guard shouldUpdateFollowCamera(to: coordinate) else { return }
         
         let zoom = zoomLevel(for: session.transportMode.speedMps)
 
@@ -535,6 +385,8 @@ struct ExplorationMapView: View {
         guard let position = currentPosition?.coordinate else { return }
 
         isFollowingUser = true
+        lastCameraFollowCoordinate = nil
+        lastCameraFollowUpdateTime = nil
         let zoom = zoomLevel(for: session.transportMode.speedMps)
 
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
@@ -569,6 +421,23 @@ struct ExplorationMapView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             isProgrammaticCameraChange = false
         }
+    }
+
+    private func shouldUpdateFollowCamera(to coordinate: CLLocationCoordinate2D) -> Bool {
+        let now = Date()
+
+        if let lastCoordinate = lastCameraFollowCoordinate,
+           let lastUpdateTime = lastCameraFollowUpdateTime {
+            let distance = lastCoordinate.distance(to: coordinate)
+            let elapsed = now.timeIntervalSince(lastUpdateTime)
+            if distance < cameraFollowDistanceThreshold && elapsed < cameraFollowMinInterval {
+                return false
+            }
+        }
+
+        lastCameraFollowCoordinate = coordinate
+        lastCameraFollowUpdateTime = now
+        return true
     }
     
     private func updateTraveledPath(_ newCoordinate: CLLocationCoordinate2D) {
@@ -610,38 +479,9 @@ struct ExplorationMapView: View {
 
 struct POIBubbleMarker: View {
     let poi: DiscoveredPOI
-    @Binding var hideAllBubbles: Bool
-    @State private var showBubble = false
     
     var body: some View {
         VStack(spacing: 0) {
-            // Bubble
-            if showBubble && !hideAllBubbles {
-                VStack(spacing: 4) {
-                    Text(poi.name)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                    
-                    Text(poi.category)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.yellow.opacity(0.5), lineWidth: 2)
-                )
-                .transition(.scale.combined(with: .opacity))
-            }
-            
             // Pin
             ZStack {
                 Circle()
@@ -654,160 +494,7 @@ struct POIBubbleMarker: View {
                     .foregroundColor(.white)
             }
         }
-        .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.3)) {
-                showBubble = true
-            }
-            
-            // Auto-hide bubble after 5 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    showBubble = false
-                }
-            }
-        }
-        .onChange(of: hideAllBubbles) { _, newValue in
-            if newValue {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    showBubble = false
-                }
-            }
-        }
-        .onTapGesture {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                showBubble.toggle()
-            }
-        }
-    }
-}
-
-// MARK: - Subway Station Marker
-
-struct SubwayStationMarker: View {
-    let station: SubwayStationInfo
-    let isCurrent: Bool
-    @Binding var hideAllLabels: Bool
-    @State private var showLabel = false
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Station label
-            if showLabel && !hideAllLabels {
-                Text(station.name)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.blue)
-                            .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
-                    )
-                    .transition(.scale.combined(with: .opacity))
-            }
-            
-            // Station marker
-            ZStack {
-                // Outer ring for current station
-                if isCurrent {
-                    Circle()
-                        .stroke(Color.blue, lineWidth: 3)
-                        .frame(width: 32, height: 32)
-                        .scaleEffect(pulseScale)
-                }
-                
-                Circle()
-                    .fill(isCurrent ? Color.blue : Color.white)
-                    .frame(width: 20, height: 20)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.blue, lineWidth: 2)
-                    )
-                    .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
-                
-                if isCurrent {
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white)
-                }
-            }
-        }
-        .onAppear {
-            if isCurrent {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                    showLabel = true
-                }
-                startPulseAnimation()
-            }
-        }
-        .onChange(of: isCurrent) { _, newValue in
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                showLabel = newValue
-            }
-            if newValue {
-                startPulseAnimation()
-            }
-        }
-        .onChange(of: hideAllLabels) { _, newValue in
-            if newValue {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    showLabel = false
-                }
-            }
-        }
-        .onTapGesture {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                showLabel.toggle()
-            }
-        }
-    }
-    
-    @State private var pulseScale: CGFloat = 1.0
-    
-    private func startPulseAnimation() {
-        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-            pulseScale = 1.3
-        }
-    }
-}
-
-// MARK: - Subway Station Toast
-
-struct SubwayStationToast: View {
-    let station: SubwayStationInfo
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.blue)
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: "tram.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-            .shadow(color: Color.blue.opacity(0.5), radius: 8, x: 0, y: 4)
-            
-            VStack(alignment: .leading, spacing: 3) {
-                Text(L("subway.arriving"))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-                
-                Text(station.name)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.primary)
-            }
-            
-            Spacer()
-        }
-        .padding(16)
-        .themedRoundedBackground(cornerRadius: 16, depth: .inset)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-        )
-        .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
+        .accessibilityLabel(Text(poi.name))
     }
 }
 
@@ -828,8 +515,7 @@ struct SubwayStationToast: View {
             totalDistance: 5000,
             duration: 1500,
             transportMode: .cycling,
-            startTime: Date(),
-            subwayStations: nil
+            startTime: Date()
         ),
         currentPosition: VirtualPosition(
             coordinate: CLLocationCoordinate2D(latitude: 37.7849, longitude: -122.4244),

@@ -214,17 +214,23 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var sectionBackground: some View {
-        if settings.selectedVisualStyle == .liquidGlass {
-            let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-            ZStack {
-                shape.fill(Color.clear)
-
-                shape
-                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22), lineWidth: 1)
-            }
+        if settings.selectedVisualStyle == .neumorphism {
+            // Neumorphism: use NeumorphSurface directly for raised effect with shadows
+            NeumorphSurface(cornerRadius: 20, depth: .raised)
+                .shadow(
+                    color: colorScheme == .dark ? Color.black.opacity(0.4) : Color.black.opacity(0.12),
+                    radius: 12,
+                    x: 8,
+                    y: 8
+                )
+                .shadow(
+                    color: colorScheme == .dark ? Color.white.opacity(0.06) : Color.white.opacity(0.8),
+                    radius: 8,
+                    x: -6,
+                    y: -6
+                )
         } else {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.clear)
+            Color.clear
                 .glassCard(cornerRadius: 20)
         }
     }
@@ -239,7 +245,7 @@ struct SettingsView: View {
                 isSelected: settings.selectedVisualStyle == .liquidGlass
             ) {
                 HapticManager.selection()
-                withAnimation {
+                if settings.selectedVisualStyle != .liquidGlass {
                     settings.selectedVisualStyle = .liquidGlass
                 }
             }
@@ -250,7 +256,7 @@ struct SettingsView: View {
                 isSelected: settings.selectedVisualStyle == .neumorphism
             ) {
                 HapticManager.selection()
-                withAnimation {
+                if settings.selectedVisualStyle != .neumorphism {
                     settings.selectedVisualStyle = .neumorphism
                 }
             }
@@ -274,7 +280,7 @@ struct SettingsView: View {
                     isSelected: settings.selectedNeumorphismTone == .dark
                 ) {
                     HapticManager.selection()
-                    withAnimation {
+                    if settings.selectedNeumorphismTone != .dark {
                         settings.selectedNeumorphismTone = .dark
                     }
                 }
@@ -285,7 +291,7 @@ struct SettingsView: View {
                     isSelected: settings.selectedNeumorphismTone == .light
                 ) {
                     HapticManager.selection()
-                    withAnimation {
+                    if settings.selectedNeumorphismTone != .light {
                         settings.selectedNeumorphismTone = .light
                     }
                 }
@@ -300,7 +306,7 @@ struct SettingsView: View {
                 isSelected: settings.selectedLanguage == "system"
             ) {
                 HapticManager.selection()
-                withAnimation {
+                if settings.selectedLanguage != "system" {
                     settings.selectedLanguage = "system"
                 }
             }
@@ -310,7 +316,7 @@ struct SettingsView: View {
                 isSelected: settings.selectedLanguage == "en"
             ) {
                 HapticManager.selection()
-                withAnimation {
+                if settings.selectedLanguage != "en" {
                     settings.selectedLanguage = "en"
                 }
             }
@@ -320,7 +326,7 @@ struct SettingsView: View {
                 isSelected: settings.selectedLanguage == "zh-Hans"
             ) {
                 HapticManager.selection()
-                withAnimation {
+                if settings.selectedLanguage != "zh-Hans" {
                     settings.selectedLanguage = "zh-Hans"
                 }
             }
@@ -482,37 +488,9 @@ struct ModernOptionRow: View {
 
     @ViewBuilder
     private var optionRowBackground: some View {
-        if settings.selectedVisualStyle == .liquidGlass {
-            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-            if isSelected {
-                ZStack {
-                    shape.fill(Color.clear)
-                    shape
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.3, green: 0.5, blue: 0.8).opacity(0.22),
-                                    Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.22)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                    shape
-                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.18 : 0.30), lineWidth: 1)
-                }
-            } else {
-                ZStack {
-                    shape.fill(Color.clear)
-                    shape
-                        .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 1)
-                }
-            }
-        } else {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.clear)
-                .insetSurface(cornerRadius: 12, isActive: isSelected)
-        }
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(Color.clear)
+            .insetSurface(cornerRadius: 12, isActive: isSelected)
     }
 }
 
@@ -573,18 +551,9 @@ struct ModernActionRow: View {
 
     @ViewBuilder
     private var actionRowBackground: some View {
-        if settings.selectedVisualStyle == .liquidGlass {
-            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-            ZStack {
-                shape.fill(Color.clear)
-                shape
-                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20), lineWidth: 1)
-            }
-        } else {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.clear)
-                .insetSurface(cornerRadius: 12, isActive: false)
-        }
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(Color.clear)
+            .insetSurface(cornerRadius: 12, isActive: false)
     }
 }
 

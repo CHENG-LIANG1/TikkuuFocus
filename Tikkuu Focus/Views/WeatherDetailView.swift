@@ -417,10 +417,7 @@ struct HourlyTile: View {
         if isCurrent {
             return L("weather.now")
         }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: hour.date)
+        return FormatUtilities.formatHourMinute24(hour.date)
     }
 
     var body: some View {
@@ -446,7 +443,7 @@ struct HourlyTile: View {
                 NeumorphSurface(
                     cornerRadius: 14,
                     depth: isCurrent ? .raised : .inset,
-                    fill: isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : nil
+                    fill: isCurrent ? AnyShapeStyle(Color(red: 0.42, green: 0.56, blue: 0.92)) : nil
                 )
             } else {
                 RoundedRectangle(cornerRadius: 14)
@@ -465,15 +462,21 @@ struct DailyTile: View {
     let textColor: Color
     let secondaryColor: Color
 
+    private var weekdayLocale: Locale {
+        if settings.selectedLanguage == "system" {
+            return .autoupdatingCurrent
+        }
+        return Locale(identifier: settings.currentLanguage)
+    }
+
     private var dayText: String {
         if isToday {
             return L("weather.today")
         }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE"
-        formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage == "zh-Hans" ? "zh-Hans" : "en")
-        return formatter.string(from: day.date)
+        return FormatUtilities.formatWeekdayLong(
+            day.date,
+            localeIdentifier: weekdayLocale.identifier
+        )
     }
 
     private var normalizedStart: CGFloat {

@@ -37,18 +37,32 @@ struct HistoryView: View {
     // MARK: - Cached Computed Properties (Performance Optimization)
     
     @State private var cachedStats: CachedHistoryStats?
+
+    private struct LocationAggregate {
+        let location: String
+        let count: Int
+        let totalTime: TimeInterval
+    }
+
+    private struct TransportModeAggregate {
+        let mode: String
+        let count: Int
+        let distance: Double
+    }
     
     private struct CachedHistoryStats {
         let totalTime: TimeInterval
         let totalDistance: Double
         let completedCount: Int
         let totalPOIs: Int
-        let topLocations: [(String, Int)]
-        let transportModes: [(String, Int)]
+        let topLocations: [LocationAggregate]
+        let transportModes: [TransportModeAggregate]
         let longestJourney: JourneyRecord?
         let farthestDistance: JourneyRecord?
         let mostPOIs: JourneyRecord?
-        let fastestSpeed: JourneyRecord?
+        let fastestSpeedRecord: JourneyRecord?
+        let averageSpeed: Double
+        let fastestSpeed: Double
         let heatmapData: [Date: Int]
         let uniqueLocationsCount: Int
         let longestStreak: Int
@@ -58,84 +72,139 @@ struct HistoryView: View {
         let recordsHash: Int
     }
     
-    private func updateCachedStats() {
-        let hash = records.map { $0.id }.hashValue
+    private var recordsChangeToken: Int {
+        var hasher = Hasher()
+        hasher.combine(records.count)
+
+        for record in records {
+            hasher.combine(record.id)
+            hasher.combine(record.startTime.timeIntervalSinceReferenceDate)
+            hasher.combine(record.duration)
+            hasher.combine(record.distanceTraveled)
+            hasher.combine(record.discoveredPOICount)
+            hasher.combine(record.isCompleted)
+            hasher.combine(record.transportMode)
+            hasher.combine(record.startLocationName)
+        }
+
+        return hasher.finalize()
+    }
+
+    private func updateCachedStats(usingHash providedHash: Int? = nil) {
+        let hash = providedHash ?? recordsChangeToken
         
         // Only recalculate if data changed
         if let cached = cachedStats, cached.recordsHash == hash {
             return
         }
         
-        // Calculate all stats once
-        let totalTime = records.reduce(0) { $0 + $1.duration }
-        let totalDistance = records.reduce(0) { $0 + $1.distanceTraveled }
-        let completedCount = records.filter { $0.isCompleted }.count
-        let totalPOIs = records.reduce(0) { $0 + $1.discoveredPOICount }
-        
-        // Top locations
-        var locationCounts: [String: Int] = [:]
+        // Calculate all stats in one pass to reduce repeated work.
+        var totalTime: TimeInterval = 0
+        var totalDistance: Double = 0
+        var completedCount = 0
+        var totalPOIs = 0
+
+        var locationStats: [String: (count: Int, totalTime: TimeInterval)] = [:]
+        var modeStats: [String: (count: Int, distance: Double)] = [:]
+        var longestJourney: JourneyRecord?
+        var farthestDistance: JourneyRecord?
+        var mostPOIs: JourneyRecord?
+        var fastestSpeedRecord: JourneyRecord?
+        var totalSpeed: Double = 0
+        var speedSampleCount = 0
+        var fastestSpeed: Double = 0
+        var heatmapData: [Date: Int] = [:]
+        var uniqueLocationNames: Set<String> = []
+        var activeDays: Set<Date> = []
+        var walkingDistance: Double = 0
+        var nonDrivingDistance: Double = 0
+        var estimatedCalories = 0
+        let calendar = Calendar.current
+
         for record in records {
+            totalTime += record.duration
+            totalDistance += record.distanceTraveled
+            totalPOIs += record.discoveredPOICount
+            if record.isCompleted {
+                completedCount += 1
+            }
+
+            uniqueLocationNames.insert(record.startLocationName)
             let location = record.startLocationName
             if !location.isEmpty {
-                locationCounts[location, default: 0] += 1
+                var current = locationStats[location, default: (count: 0, totalTime: 0)]
+                current.count += 1
+                current.totalTime += record.duration
+                locationStats[location] = current
             }
-        }
-        let topLocations = locationCounts.sorted { $0.value > $1.value }.prefix(5).map { ($0.key, $0.value) }
-        
-        // Transport modes
-        var modeCounts: [String: Int] = [:]
-        for record in records {
-            modeCounts[record.transportMode, default: 0] += 1
-        }
-        let transportModes = modeCounts.sorted { $0.value > $1.value }.map { ($0.key, $0.value) }
-        
-        // Records
-        let longestJourney = records.max { $0.duration < $1.duration }
-        let farthestDistance = records.max { $0.distanceTraveled < $1.distanceTraveled }
-        let mostPOIs = records.max { $0.discoveredPOICount < $1.discoveredPOICount }
-        let fastestSpeed = records.filter { $0.duration > 0 }.max { 
-            ($0.distanceTraveled / $0.duration) < ($1.distanceTraveled / $1.duration)
-        }
-        
-        // Heatmap data
-        var heatmapData: [Date: Int] = [:]
-        let calendar = Calendar.current
-        for record in records {
-            let dateComponents = calendar.dateComponents([.year, .month, .day], from: record.startTime)
-            if let date = calendar.date(from: dateComponents) {
-                heatmapData[date, default: 0] += 1
+
+            var modeAggregate = modeStats[record.transportMode, default: (count: 0, distance: 0)]
+            modeAggregate.count += 1
+            modeAggregate.distance += record.distanceTraveled
+            modeStats[record.transportMode] = modeAggregate
+
+            if longestJourney == nil || record.duration > (longestJourney?.duration ?? 0) {
+                longestJourney = record
             }
-        }
-        
-        // Unique locations
-        let uniqueLocationsCount = Set(records.map { $0.startLocationName }).count
-        
-        // Longest streak
-        let longestStreak = calculateLongestStreak()
-        
-        // Estimated steps (walking only)
-        let walkingDistance = records.filter { $0.transportMode.lowercased() == "walking" }
-            .reduce(0.0) { $0 + $1.distanceTraveled }
-        let estimatedSteps = Int(walkingDistance * 1.3)
-        
-        // Estimated calories
-        let estimatedCalories = records.reduce(0) { sum, record in
+            if farthestDistance == nil || record.distanceTraveled > (farthestDistance?.distanceTraveled ?? 0) {
+                farthestDistance = record
+            }
+            if mostPOIs == nil || record.discoveredPOICount > (mostPOIs?.discoveredPOICount ?? 0) {
+                mostPOIs = record
+            }
+
+            if record.duration > 0 {
+                let speed = record.distanceTraveled / record.duration
+                totalSpeed += speed
+                speedSampleCount += 1
+                if speed > fastestSpeed {
+                    fastestSpeed = speed
+                    fastestSpeedRecord = record
+                }
+            }
+
+            let day = calendar.startOfDay(for: record.startTime)
+            heatmapData[day, default: 0] += 1
+            activeDays.insert(day)
+
+            let modeLower = record.transportMode.lowercased()
+            if modeLower == "walking" {
+                walkingDistance += record.distanceTraveled
+            }
+            if modeLower != "driving" {
+                nonDrivingDistance += record.distanceTraveled
+            }
+
             let hours = record.duration / 3600.0
             let caloriesPerHour: Double
-            switch record.transportMode.lowercased() {
+            switch modeLower {
             case "walking": caloriesPerHour = 200
             case "cycling": caloriesPerHour = 400
             case "driving": caloriesPerHour = 100
             default: caloriesPerHour = 150
             }
-            return sum + Int(hours * caloriesPerHour)
+            estimatedCalories += Int(hours * caloriesPerHour)
         }
-        
-        // CO2 saved
-        let nonDrivingDistance = records.filter { $0.transportMode.lowercased() != "driving" }
-            .reduce(0.0) { $0 + $1.distanceTraveled }
+
+        let topLocations = locationStats
+            .map { key, value in
+                LocationAggregate(location: key, count: value.count, totalTime: value.totalTime)
+            }
+            .sorted { $0.count > $1.count }
+            .prefix(5)
+
+        let transportModes = modeStats
+            .map { key, value in
+                TransportModeAggregate(mode: key, count: value.count, distance: value.distance)
+            }
+            .sorted { $0.count > $1.count }
+
+        let averageSpeed = speedSampleCount > 0 ? totalSpeed / Double(speedSampleCount) : 0
+        let uniqueLocationsCount = uniqueLocationNames.count
+        let longestStreak = calculateLongestStreak(from: activeDays)
+        let estimatedSteps = Int(walkingDistance * 1.3)
         let co2Saved = (nonDrivingDistance / 1000.0) * 0.12
-        
+
         cachedStats = CachedHistoryStats(
             totalTime: totalTime,
             totalDistance: totalDistance,
@@ -146,6 +215,8 @@ struct HistoryView: View {
             longestJourney: longestJourney,
             farthestDistance: farthestDistance,
             mostPOIs: mostPOIs,
+            fastestSpeedRecord: fastestSpeedRecord,
+            averageSpeed: averageSpeed,
             fastestSpeed: fastestSpeed,
             heatmapData: heatmapData,
             uniqueLocationsCount: uniqueLocationsCount,
@@ -156,34 +227,26 @@ struct HistoryView: View {
             recordsHash: hash
         )
     }
-    
-    private func calculateLongestStreak() -> Int {
-        guard !records.isEmpty else { return 0 }
-        
+
+    private func calculateLongestStreak(from activeDays: Set<Date>) -> Int {
+        guard !activeDays.isEmpty else { return 0 }
+
         let calendar = Calendar.current
-        let sortedRecords = records.sorted { $0.startTime < $1.startTime }
-        
+        let sortedDays = activeDays.sorted()
         var maxStreak = 1
         var currentStreak = 1
-        var lastDate: Date?
-        
-        for record in sortedRecords {
-            let recordDate = calendar.startOfDay(for: record.startTime)
-            
-            if let last = lastDate {
-                let daysDiff = calendar.dateComponents([.day], from: last, to: recordDate).day ?? 0
-                
-                if daysDiff == 1 {
-                    currentStreak += 1
-                    maxStreak = max(maxStreak, currentStreak)
-                } else if daysDiff > 1 {
-                    currentStreak = 1
-                }
+
+        for (previousDay, currentDay) in zip(sortedDays, sortedDays.dropFirst()) {
+            let daysDiff = calendar.dateComponents([.day], from: previousDay, to: currentDay).day ?? 0
+
+            if daysDiff == 1 {
+                currentStreak += 1
+                maxStreak = max(maxStreak, currentStreak)
+            } else if daysDiff > 1 {
+                currentStreak = 1
             }
-            
-            lastDate = recordDate
         }
-        
+
         return maxStreak
     }
     
@@ -257,8 +320,8 @@ struct HistoryView: View {
         .onAppear {
             updateCachedStats()
         }
-        .onChange(of: records.count) { _, _ in
-            updateCachedStats()
+        .onChange(of: recordsChangeToken) { _, newHash in
+            updateCachedStats(usingHash: newHash)
         }
         .sheet(item: $showingRecordDetail) { record in
             RecordDetailView(record: record)
@@ -406,8 +469,8 @@ struct HistoryView: View {
                 }
             }
         }
-        .padding(6)
-        .themedRoundedBackground(cornerRadius: 14, depth: .inset)
+        .padding(7)
+        .glassCard(cornerRadius: 16)
     }
     
     // MARK: - Overview Content
@@ -875,42 +938,30 @@ struct HistoryView: View {
     }
     
     private var fastestSpeedRecord: JourneyRecord? {
-        cachedStats?.fastestSpeed
+        cachedStats?.fastestSpeedRecord
     }
     
     private var topLocations: [(location: String, count: Int, totalTime: TimeInterval)] {
         guard let cached = cachedStats else { return [] }
-        return cached.topLocations.map { location, count in
-            let locationRecords = records.filter { $0.startLocationName == location }
-            let totalTime = locationRecords.reduce(0) { $0 + $1.duration }
-            return (location: location, count: count, totalTime: totalTime)
+        return cached.topLocations.map { item in
+            (location: item.location, count: item.count, totalTime: item.totalTime)
         }
     }
     
     private var transportModeStats: [(mode: String, count: Int, distance: Double)] {
         guard let cached = cachedStats else { return [] }
-        return cached.transportModes.map { mode, count in
-            let modeRecords = records.filter { $0.transportMode == mode }
-            let distance = modeRecords.reduce(0) { $0 + $1.distanceTraveled }
-            return (mode: mode, count: count, distance: distance)
+        return cached.transportModes.map { item in
+            (mode: item.mode, count: item.count, distance: item.distance)
         }
     }
     
     // New stats
     private var averageSpeed: Double {
-        guard !records.isEmpty else { return 0 }
-        let totalSpeed = records.reduce(0.0) { sum, record in
-            guard record.duration > 0 else { return sum }
-            return sum + (record.distanceTraveled / record.duration)
-        }
-        return totalSpeed / Double(records.count)
+        cachedStats?.averageSpeed ?? 0
     }
     
     private var fastestSpeed: Double {
-        records.map { record in
-            guard record.duration > 0 else { return 0 }
-            return record.distanceTraveled / record.duration
-        }.max() ?? 0
+        cachedStats?.fastestSpeed ?? 0
     }
     
     private var morningJourneys: Int {
@@ -1056,10 +1107,10 @@ struct TabButton: View {
                 Text(tab.displayName)
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundColor(isSelected ? .white : .secondary)
+            .foregroundColor(isSelected ? .white : .primary.opacity(0.78))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .insetSurface(cornerRadius: 10, isActive: isSelected)
+            .padding(.vertical, 11)
+            .insetSurface(cornerRadius: 12, isActive: isSelected)
         }
     }
 }
@@ -1373,7 +1424,7 @@ struct ExpandableRecordCard: View {
         case "walking": return "figure.walk"
         case "cycling": return "bicycle"
         case "driving": return "car.fill"
-        case "subway": return "tram.fill"
+        case "skateboard": return "figure.skateboarding"
         default: return "figure.walk"
         }
     }
@@ -1383,7 +1434,7 @@ struct ExpandableRecordCard: View {
         case "walking": return .green
         case "cycling": return .blue
         case "driving": return .purple
-        case "subway": return .orange
+        case "skateboard": return .cyan
         default: return .blue
         }
     }
@@ -1748,7 +1799,7 @@ struct TransportModeDetailView: View {
         case "walking": return "figure.walk"
         case "cycling": return "bicycle"
         case "driving": return "car.fill"
-        case "subway": return "tram.fill"
+        case "skateboard": return "figure.skateboarding"
         default: return "figure.walk"
         }
     }
@@ -1811,7 +1862,7 @@ struct TransportRecordRow: View {
         case "walking": return "figure.walk"
         case "cycling": return "bicycle"
         case "driving": return "car.fill"
-        case "subway": return "tram.fill"
+        case "skateboard": return "figure.skateboarding"
         default: return "figure.walk"
         }
     }
@@ -2530,7 +2581,7 @@ struct HistoryMetricRecordRow: View {
         case "walking": return "figure.walk"
         case "cycling": return "bicycle"
         case "driving": return "car.fill"
-        case "subway": return "tram.fill"
+        case "skateboard": return "figure.skateboarding"
         default: return "figure.walk"
         }
     }
@@ -2540,7 +2591,7 @@ struct HistoryMetricRecordRow: View {
         case "walking": return .green
         case "cycling": return .blue
         case "driving": return .purple
-        case "subway": return .orange
+        case "skateboard": return .cyan
         default: return .blue
         }
     }
@@ -2774,20 +2825,26 @@ struct CompletedDetailView: View {
 struct POIsDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let records: [JourneyRecord]
+    let poiItems: [RecordPOIItem]
+    let fallbackRecordsWithPOIs: [JourneyRecord]
     @State private var selectedPOI: RecordPOIItem?
     @State private var selectedRecord: JourneyRecord?
 
-    private var poiItems: [RecordPOIItem] {
-        records.flatMap { record in
-            record.discoveredPOIs.map { poi in
-                RecordPOIItem(record: record, poi: poi)
+    init(records: [JourneyRecord]) {
+        self.records = records
+
+        var decodedItems: [RecordPOIItem] = []
+        decodedItems.reserveCapacity(records.count * 2)
+
+        for record in records {
+            for poi in record.discoveredPOIs {
+                decodedItems.append(RecordPOIItem(record: record, poi: poi))
             }
         }
-        .sorted { $0.poi.discoveredAt > $1.poi.discoveredAt }
-    }
 
-    private var fallbackRecordsWithPOIs: [JourneyRecord] {
-        records.filter { $0.discoveredPOICount > 0 }
+        self.poiItems = decodedItems.sorted { $0.poi.discoveredAt > $1.poi.discoveredAt }
+        self.fallbackRecordsWithPOIs = records
+            .filter { $0.discoveredPOICount > 0 }
             .sorted { $0.discoveredPOICount > $1.discoveredPOICount }
     }
     

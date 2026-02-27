@@ -49,7 +49,7 @@ struct PrimaryButton: View {
                     NeumorphSurface(
                         cornerRadius: 16,
                         depth: .raised,
-                        fill: AnyShapeStyle(GradientStyles.primaryGradient)
+                        fill: AnyShapeStyle(Color(red: 0.42, green: 0.56, blue: 0.92))
                     )
                 } else {
                     RoundedRectangle(cornerRadius: 16)
@@ -157,7 +157,7 @@ struct GradientButton: View {
                     NeumorphSurface(
                         cornerRadius: 999,
                         depth: .raised,
-                        fill: AnyShapeStyle(gradient)
+                        fill: AnyShapeStyle(Color(red: 0.45, green: 0.55, blue: 0.90))
                     )
                 } else {
                     Capsule()

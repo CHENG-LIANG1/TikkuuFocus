@@ -7,11 +7,15 @@
 "transport.walking" = "Walking";
 "transport.cycling" = "Cycling";
 "transport.driving" = "Driving";
-"transport.subway" = "Subway";
+"transport.skateboard" = "Skateboard";
 
-// Subway
-"subway.arriving" = "Arriving at";
-"subway.station" = "Station";
+// Skateboard
+"skateboard.status" = "Skateboarding";
+"skateboard.speed" = "Cruising";
+
+// Transport Status
+"transport.status.warmingUp" = "Warming up";
+"transport.status.skateboarding" = "Skateboarding";
 
 // Journey States
 "journey.idle" = "Ready to Roam";
@@ -69,7 +73,7 @@
 "weather.today" = "Today";
 
 // Map Controls
-"map.recenter" = "Back to Position";
+"map.recenter" = "Recenter";
 
 // POI Messages
 "poi.discovered" = "Discovered: %@";
@@ -82,9 +86,7 @@
 "error.location.unavailable" = "Location unavailable. Please try again.";
 "error.journey.noRoute" = "Could not find a route to destination.";
 "error.journey.invalidDestination" = "Invalid destination. Please try again.";
-"error.subway.noNearbyLine" = "No subway lines found within 10 km. Please choose another transport mode or change your starting location.";
-"error.subway.searchFailed" = "Failed to search for subway lines. Please try again.";
-"error.subway.noNearbyLine.detailed" = "No subway lines found within 10 km. Please confirm there are subway stations near your location, or try selecting another transport mode.";
+
 
 // Permissions
 "permission.location.title" = "Location Access Required";
@@ -120,6 +122,14 @@
 "location.search" = "Search";
 "location.selected" = "Selected Location";
 "location.confirm" = "Confirm Location";
+"location.favorites" = "Favorites";
+"location.favorites.empty" = "No Favorites Yet";
+"location.favorites.empty.message" = "Save your favorite locations for quick access.";
+"location.favorite.add" = "Add to Favorites";
+"location.favorite.remove" = "Remove from Favorites";
+"location.history" = "Recent Locations";
+"location.history.clear" = "Clear";
+"location.history.empty" = "No Recent Locations";
 "location.status.permissionNeeded" = "Location permission needed";
 "location.status.ready" = "Location ready";
 "location.status.getting" = "Getting location...";
@@ -213,7 +223,7 @@
 "onboarding.v2.page1.feature1.title" = "Choose a start point";
 "onboarding.v2.page1.feature1.desc" = "Use current location or presets and begin instantly.";
 "onboarding.v2.page1.feature2.title" = "Switch transport modes";
-"onboarding.v2.page1.feature2.desc" = "Walk, cycle, drive, or subway for different journey styles.";
+"onboarding.v2.page1.feature2.desc" = "Walk, cycle, drive, or skateboard for different journey styles.";
 "onboarding.v2.page1.feature3.title" = "Discover naturally";
 "onboarding.v2.page1.feature3.desc" = "POIs appear along your path, not as distractions.";
 "onboarding.v2.page2.badge" = "During Focus";
@@ -631,8 +641,8 @@
 "trophy.special_cycling_pro.description" = "Complete 100 cycling journeys";
 "trophy.special_driving_expert.title" = "Driving Expert";
 "trophy.special_driving_expert.description" = "Complete 100 driving journeys";
-"trophy.special_subway_rider.title" = "Subway Rider";
-"trophy.special_subway_rider.description" = "Complete 100 subway journeys";
+"trophy.special_skateboard_rider.title" = "Skateboard Rider";
+"trophy.special_skateboard_rider.description" = "Complete 100 skateboard journeys";
 "trophy.special_walking_only.title" = "Walking Only";
 "trophy.special_walking_only.description" = "Complete 50 journeys using only walking";
 "trophy.special_no_driving.title" = "Eco-Friendly";
@@ -701,7 +711,7 @@
 
 // Onboarding Feature Descriptions
 "onboarding.page1.feature1.desc" = "Explore virtual destinations based on real locations";
-"onboarding.page1.feature2.desc" = "Choose walking, cycling, driving, or subway";
+"onboarding.page1.feature2.desc" = "Choose walking, cycling, driving, or skateboard";
 "onboarding.page1.feature3.desc" = "Start from your current location or preset cities";
 
 "onboarding.page2.feature1.desc" = "Discover landmarks, restaurants, and attractions";
@@ -724,7 +734,7 @@
 "journey.summary.done" = "Done";
 "journey.summary.day" = "Day";
 "journey.summary.night" = "Night";
-"journey.summary.subway" = "Subway";
+"journey.summary.skateboard" = "Skateboard";
 "journey.summary.line" = "Line";
 "journey.summary.photoPermission.title" = "Photo Library Access Required";
 "journey.summary.photoPermission.message" = "Please allow Roam Focus to save photos to your library in Settings.";

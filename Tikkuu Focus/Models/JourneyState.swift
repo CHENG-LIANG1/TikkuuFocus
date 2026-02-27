@@ -43,7 +43,34 @@ struct JourneySession: Equatable, Identifiable {
     let duration: TimeInterval // in seconds
     let transportMode: TransportMode
     let startTime: Date
-    let subwayStations: [SubwayStationInfo]? // For subway mode
+
+    // Precomputed route distances for fast interpolation during timer updates.
+    private let cumulativeRouteDistances: [Double]
+    private let routeDistanceForInterpolation: Double
+
+    init(
+        id: UUID,
+        startLocation: CLLocationCoordinate2D,
+        destinationLocation: CLLocationCoordinate2D,
+        route: [CLLocationCoordinate2D],
+        totalDistance: Double,
+        duration: TimeInterval,
+        transportMode: TransportMode,
+        startTime: Date
+    ) {
+        self.id = id
+        self.startLocation = startLocation
+        self.destinationLocation = destinationLocation
+        self.route = route
+        self.totalDistance = totalDistance
+        self.duration = duration
+        self.transportMode = transportMode
+        self.startTime = startTime
+
+        let cumulative = JourneySession.buildCumulativeRouteDistances(route)
+        self.cumulativeRouteDistances = cumulative
+        self.routeDistanceForInterpolation = cumulative.last ?? totalDistance
+    }
     
     var endTime: Date {
         startTime.addingTimeInterval(duration)
@@ -70,38 +97,57 @@ struct JourneySession: Equatable, Identifiable {
         guard !route.isEmpty else { return startLocation }
         guard progress > 0 else { return route.first ?? startLocation }
         guard progress < 1.0 else { return route.last ?? destinationLocation }
-        
-        // Calculate cumulative distances along the actual route
-        var cumulativeDistances: [Double] = [0]
-        for i in 1..<route.count {
-            let segmentDistance = route[i-1].distance(to: route[i])
-            cumulativeDistances.append(cumulativeDistances.last! + segmentDistance)
+
+        guard cumulativeRouteDistances.count >= 2 else {
+            return route.last ?? destinationLocation
         }
-        
-        // Use actual route distance instead of totalDistance
-        let actualRouteDistance = cumulativeDistances.last ?? totalDistance
-        let targetDistance = actualRouteDistance * progress
-        
-        // Find the segment containing the target distance
-        for i in 1..<cumulativeDistances.count {
-            if targetDistance <= cumulativeDistances[i] {
-                let segmentStart = cumulativeDistances[i-1]
-                let segmentEnd = cumulativeDistances[i]
-                let segmentLength = segmentEnd - segmentStart
-                
-                // Avoid division by zero
-                guard segmentLength > 0 else {
-                    return route[i-1]
-                }
-                
-                let segmentProgress = (targetDistance - segmentStart) / segmentLength
-                
-                // Interpolate along this specific road segment
-                return route[i-1].interpolate(to: route[i], fraction: segmentProgress)
+
+        let targetDistance = routeDistanceForInterpolation * progress
+        let index = segmentIndex(for: targetDistance)
+        let segmentStart = cumulativeRouteDistances[index - 1]
+        let segmentEnd = cumulativeRouteDistances[index]
+        let segmentLength = segmentEnd - segmentStart
+
+        // Avoid division by zero
+        guard segmentLength > 0 else {
+            return route[index - 1]
+        }
+
+        let segmentProgress = (targetDistance - segmentStart) / segmentLength
+
+        // Interpolate along this specific road segment
+        return route[index - 1].interpolate(to: route[index], fraction: segmentProgress)
+    }
+
+    private static func buildCumulativeRouteDistances(_ route: [CLLocationCoordinate2D]) -> [Double] {
+        guard !route.isEmpty else { return [] }
+        guard route.count > 1 else { return [0] }
+
+        var cumulative: [Double] = [0]
+        cumulative.reserveCapacity(route.count)
+
+        for i in 1..<route.count {
+            let segmentDistance = route[i - 1].distance(to: route[i])
+            cumulative.append(cumulative[i - 1] + segmentDistance)
+        }
+
+        return cumulative
+    }
+
+    private func segmentIndex(for targetDistance: Double) -> Int {
+        var low = 1
+        var high = cumulativeRouteDistances.count - 1
+
+        while low < high {
+            let mid = (low + high) / 2
+            if cumulativeRouteDistances[mid] < targetDistance {
+                low = mid + 1
+            } else {
+                high = mid
             }
         }
-        
-        return route.last ?? destinationLocation
+
+        return low
     }
     
     static func == (lhs: JourneySession, rhs: JourneySession) -> Bool {
@@ -163,24 +209,5 @@ extension CLLocationCoordinate2D: @retroactive Equatable {
         let lat = latitude + (coordinate.latitude - latitude) * fraction
         let lon = longitude + (coordinate.longitude - longitude) * fraction
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)
-    }
-}
-
-// MARK: - Subway Station Info
-
-/// Information about a subway station for display on the map
-struct SubwayStationInfo: Equatable, Identifiable {
-    let id: UUID
-    let name: String
-    let coordinate: CLLocationCoordinate2D
-    
-    init(id: UUID = UUID(), name: String, coordinate: CLLocationCoordinate2D) {
-        self.id = id
-        self.name = name
-        self.coordinate = coordinate
-    }
-    
-    static func == (lhs: SubwayStationInfo, rhs: SubwayStationInfo) -> Bool {
-        lhs.id == rhs.id
     }
 }

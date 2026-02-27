@@ -231,9 +231,10 @@ struct ActivityHeatmapView: View {
     
     private func monthLabel(for date: Date?) -> String {
         guard let date = date else { return "" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM"
-        return formatter.string(from: date)
+        return FormatUtilities.formatMonthShort(
+            date,
+            localeIdentifier: Locale.autoupdatingCurrent.identifier
+        )
     }
 }
 

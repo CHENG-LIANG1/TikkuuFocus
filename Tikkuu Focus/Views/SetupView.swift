@@ -12,6 +12,8 @@ import MapKit
 
 struct SetupView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var locationManager = LocationManager()
     @StateObject private var journeyManager = JourneyManager()
     @StateObject private var weatherManager = WeatherManager()
@@ -28,7 +30,6 @@ struct SetupView: View {
     @State private var showSettings = false
     @State private var showTrophies = false
     @ObservedObject private var settings = AppSettings.shared
-    @State private var refreshID = UUID()
     @State private var cardsAppeared = false
     @State private var buttonScale: CGFloat = 1.0
     @State private var buttonGlow: CGFloat = 0
@@ -40,29 +41,38 @@ struct SetupView: View {
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var allRecords: [JourneyRecord]
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     
-    // MARK: - Performance Optimization
+    // MARK: - Theme Colors
     
-    // Throttle weather updates to reduce CPU usage
-    private let weatherUpdateThrottle = PerformanceOptimizer.shared.throttle(interval: 5.0) {
-        // Weather update logic
+    private var isNeumorphism: Bool {
+        settings.selectedVisualStyle == .neumorphism
     }
     
-    // Cache journey count to avoid repeated queries
-    @State private var cachedJourneyCount: Int = 0
+    private var isNeumorphismLight: Bool {
+        isNeumorphism && settings.selectedNeumorphismTone == .light
+    }
+
+    private var isEnergySavingMode: Bool {
+        reduceMotion || ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
     
-    private func updateJourneyCount() {
-        cachedJourneyCount = allRecords.count
+    private var baseTextColor: Color {
+        isNeumorphism 
+            ? (isNeumorphismLight ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white)
+            : weatherManager.optimalTextColor
+    }
+    
+    private var baseSecondaryTextColor: Color {
+        isNeumorphism 
+            ? (isNeumorphismLight ? Color(red: 0.45, green: 0.50, blue: 0.58) : Color.white.opacity(0.7))
+            : weatherManager.optimalSecondaryTextColor
     }
     
     var body: some View {
-        let isNeumorphism = settings.selectedVisualStyle == .neumorphism
         let weatherColors = weatherManager.weatherGradientColors
         let weatherCondition = weatherManager.weatherCondition
         let isDaytime = weatherManager.isDaytime
         let animSpeed = weatherManager.gradientAnimationSpeed
         let overlayInt = weatherManager.overlayIntensity
-        let baseTextColor: Color = isNeumorphism ? .primary : weatherManager.optimalTextColor
-        let baseSecondaryTextColor: Color = isNeumorphism ? .secondary : weatherManager.optimalSecondaryTextColor
         
         return ZStack {
             if isNeumorphism {
@@ -116,13 +126,6 @@ struct SetupView: View {
                         .offset(y: cardsAppeared ? 0 : 20)
                         .blur(radius: cardsAppeared ? 0 : 4)
                         .animation(AnimationConfig.smoothSpring.delay(0.16), value: cardsAppeared)
-                        
-                    startButton
-                        .scaleEffect(cardsAppeared ? 1 : 0.9)
-                        .opacity(cardsAppeared ? 1 : 0)
-                        .offset(y: cardsAppeared ? 0 : 20)
-                        .blur(radius: cardsAppeared ? 0 : 4)
-                        .animation(AnimationConfig.smoothSpring.delay(0.20), value: cardsAppeared)
                 }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 24)
@@ -130,6 +133,17 @@ struct SetupView: View {
             }
             .environment(\.adaptiveTextColor, baseTextColor)
             .environment(\.adaptiveSecondaryTextColor, baseSecondaryTextColor)
+            .safeAreaInset(edge: .bottom) {
+                startButton
+                    .scaleEffect(cardsAppeared ? 1 : 0.9)
+                    .opacity(cardsAppeared ? 1 : 0)
+                    .offset(y: cardsAppeared ? 0 : 20)
+                    .blur(radius: cardsAppeared ? 0 : 4)
+                    .animation(AnimationConfig.smoothSpring.delay(0.20), value: cardsAppeared)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+            }
 
             if let preloadCoordinate = mapPreloadCoordinate {
                 MapPreloadView(center: preloadCoordinate)
@@ -137,7 +151,6 @@ struct SetupView: View {
                     .accessibilityHidden(true)
             }
         }
-        .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
             setupLocation()
@@ -151,11 +164,16 @@ struct SetupView: View {
             withAnimation(AnimationConfig.smoothSpring.delay(0.05)) {
                 cardsAppeared = true
             }
-            
-            // Start button breathing animation
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                buttonGlow = 1.0
-            }
+            updateButtonGlowAnimation()
+        }
+        .onChange(of: scenePhase) { _, _ in
+            updateButtonGlowAnimation()
+        }
+        .onChange(of: reduceMotion) { _, _ in
+            updateButtonGlowAnimation()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            updateButtonGlowAnimation()
         }
         .onChange(of: selectedLocation) { _, _ in
             fetchWeatherForSelectedLocation()
@@ -178,26 +196,41 @@ struct SetupView: View {
             }
         }
         .onChange(of: journeyManager.state) { _, newState in
-            if case .failed(let error) = newState {
+            switch newState {
+            case .active, .paused, .completed:
+                locationManager.stopUpdatingLocation()
+            case .failed(let error):
                 errorMessage = error
                 showErrorAlert = true
                 isStarting = false
-            } else if case .idle = newState {
+                if locationManager.isAuthorized {
+                    locationManager.startUpdatingLocation()
+                }
+            case .idle:
                 // Reset starting state when journey ends
                 isStarting = false
+                if locationManager.isAuthorized {
+                    locationManager.startUpdatingLocation()
+                }
+            case .preparing:
+                break
             }
-        }
-        .onChange(of: settings.selectedLanguage) { _, _ in
-            refreshID = UUID()
         }
         .onChange(of: isStarting) { _, newValue in
             if newValue {
-                // Start preparing animations
-                withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
-                    preparingRotation = 360
-                }
-                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                    preparingPulse = 1.15
+                if isEnergySavingMode {
+                    preparingRotation = 0
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        preparingPulse = 1.05
+                    }
+                } else {
+                    // Start preparing animations
+                    withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
+                        preparingRotation = 360
+                    }
+                    withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                        preparingPulse = 1.15
+                    }
                 }
             } else {
                 // Reset animations
@@ -412,12 +445,16 @@ struct SetupView: View {
                                 if settings.selectedVisualStyle == .neumorphism {
                                     Circle()
                                         .fill(NeumorphismStyle.surface(for: colorScheme))
-                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 11, x: 7, y: 7)
-                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 8, x: -6, y: -6)
+                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 6, x: 4, y: 4)
+                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 4, x: -3, y: -3)
                                 } else {
+                                    // Liquid Glass: transparent with subtle border
                                     Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                        .fill(Color.clear)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(baseTextColor.opacity(0.25), lineWidth: 1.0)
+                                        )
                                 }
                             }
                         )
@@ -434,8 +471,8 @@ struct SetupView: View {
             // Center title (absolutely centered)
             Text("Roam Focus")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(weatherManager.optimalTextColor)
-                .shadow(color: weatherManager.isBackgroundDark ? Color.black.opacity(0.3) : Color.white.opacity(0.5), radius: 2, x: 0, y: 1)
+                .foregroundColor(baseTextColor)
+                .shadow(color: isNeumorphismLight ? Color.white.opacity(0.5) : (weatherManager.isBackgroundDark ? Color.black.opacity(0.3) : Color.white.opacity(0.5)), radius: 2, x: 0, y: 1)
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
                 .opacity(cardsAppeared ? 1 : 0)
                 .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.0), value: cardsAppeared)
@@ -452,19 +489,23 @@ struct SetupView: View {
                 } label: {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(weatherManager.optimalTextColor)
+                        .foregroundColor(baseTextColor)
                         .frame(width: 44, height: 44)
                         .background(
                             Group {
                                 if settings.selectedVisualStyle == .neumorphism {
                                     Circle()
                                         .fill(NeumorphismStyle.surface(for: colorScheme))
-                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 11, x: 7, y: 7)
-                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 8, x: -6, y: -6)
+                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 6, x: 4, y: 4)
+                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 4, x: -3, y: -3)
                                 } else {
+                                    // Liquid Glass: transparent with subtle border
                                     Circle()
-                                        .fill(.ultraThinMaterial)
-                                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+                                        .fill(Color.clear)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(baseTextColor.opacity(0.25), lineWidth: 1.0)
+                                        )
                                 }
                             }
                         )
@@ -514,7 +555,7 @@ struct SetupView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(L("location.selectStart"))
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(weatherManager.optimalTextColor)
+                    .foregroundColor(baseTextColor)
                 
                 HStack(spacing: 12) {
                     // Location icon or emoji
@@ -542,21 +583,23 @@ struct SetupView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(selectedLocation.displayName)
+                        Text(locationDisplayName)
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(weatherManager.optimalTextColor)
+                            .foregroundColor(baseTextColor)
                         
-                        Text(locationSubtitle)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(weatherManager.optimalSecondaryTextColor)
+                        if let subtitle = locationSubtitle {
+                            Text(subtitle)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(baseSecondaryTextColor)
+                        }
                     }
-                    .id(selectedLocation.displayName) // Force refresh when location changes
+                    .id(locationDisplayName) // Force refresh when location changes
                     
                     Spacer()
                     
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(weatherManager.optimalSecondaryTextColor)
+                        .foregroundColor(baseSecondaryTextColor)
                 }
             }
             .padding(20)
@@ -575,10 +618,26 @@ struct SetupView: View {
         }
     }
     
-    private var locationSubtitle: String {
+    /// Main display name for the location card - shows specific name for current location
+    private var locationDisplayName: String {
         switch selectedLocation {
         case .currentLocation:
-            return locationManager.currentLocation != nil ? L("location.status.gpsReady") : L("location.status.waiting")
+            // Show actual location name if available, otherwise show "Current Location"
+            let name = locationManager.currentLocationName
+            return !name.isEmpty ? name : L("location.current")
+        case .preset(let location):
+            return location.localizedName
+        case .custom(_, let name):
+            return name
+        }
+    }
+    
+    /// Subtitle shown below the main name (nil for current location to avoid duplication)
+    private var locationSubtitle: String? {
+        switch selectedLocation {
+        case .currentLocation:
+            // No subtitle for current location - the name itself is sufficient
+            return nil
         case .preset(let location):
             return location.country
         case .custom:
@@ -592,7 +651,7 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L("label.selectTransport"))
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(weatherManager.optimalTextColor)
+                .foregroundColor(baseTextColor)
             
             HStack(spacing: 10) {
                 ForEach(TransportMode.allCases) { mode in
@@ -619,7 +678,7 @@ struct SetupView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L("label.selectDuration"))
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(weatherManager.optimalTextColor)
+                .foregroundColor(baseTextColor)
             
             VStack(spacing: 14) {
                 // Duration picker
@@ -708,7 +767,7 @@ struct SetupView: View {
                     .scaleEffect(preparingPulse)
                     .transition(.scale.combined(with: .opacity))
                     
-                    Text(L("label.preparing"))
+                    Text(L("transport.status.warmingUp"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .transition(.opacity)
                 } else {
@@ -793,8 +852,8 @@ struct SetupView: View {
                             shape
                                 .strokeBorder(Color.white.opacity(0.28), lineWidth: 1.1)
 
-                            // Shimmer effect (only when not preparing)
-                            if canStartJourney && !isStarting {
+                            // Shimmer effect (only when not preparing and motion is enabled)
+                            if canStartJourney && !isStarting && !isEnergySavingMode {
                                 shape
                                     .fill(
                                         LinearGradient(
@@ -838,7 +897,6 @@ struct SetupView: View {
         .opacity(canStartJourney ? 1.0 : 0.5)
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: canStartJourney)
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isStarting)
-        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: buttonGlow)
     }
     
     private var canStartJourney: Bool {
@@ -852,6 +910,18 @@ struct SetupView: View {
             return locationManager.isAuthorized && locationManager.currentLocation != nil
         case .preset, .custom:
             return true // Preset and custom locations are always ready
+        }
+    }
+
+    private func updateButtonGlowAnimation() {
+        guard scenePhase == .active, !isEnergySavingMode else {
+            buttonGlow = 0
+            return
+        }
+
+        buttonGlow = 0
+        withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+            buttonGlow = 1.0
         }
     }
     
@@ -1153,10 +1223,10 @@ struct HistorySummaryWidget: View {
     }
     
     private var currentMonthName: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM"
-        formatter.locale = Locale(identifier: AppSettings.shared.selectedLanguage == "zh-Hans" ? "zh-Hans" : "en")
-        return formatter.string(from: Date())
+        let localeIdentifier = AppSettings.shared.selectedLanguage == "system"
+            ? Locale.autoupdatingCurrent.identifier
+            : AppSettings.shared.currentLanguage
+        return FormatUtilities.formatMonthLong(Date(), localeIdentifier: localeIdentifier)
     }
     
     var body: some View {
@@ -1219,6 +1289,8 @@ struct HistorySummaryWidget: View {
                         .foregroundColor(adaptiveSecondaryTextColor)
                 }
             }
+            // Match WeatherWidget height for consistent card sizing
+            .frame(height: 52, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -1282,13 +1354,15 @@ struct WeatherWidget: View {
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(adaptiveTextColor)
                 
-                if !weatherManager.weatherDescription.isEmpty {
-                    Text(weatherManager.weatherDescription)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(adaptiveSecondaryTextColor)
-                        .lineLimit(1)
-                }
+                // Always show description to maintain consistent card height
+                Text(weatherManager.isLoading ? L("common.loading") : weatherManager.weatherDescription)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(adaptiveSecondaryTextColor)
+                    .lineLimit(1)
+                    .opacity(weatherManager.isLoading || !weatherManager.weatherDescription.isEmpty ? 1 : 0)
             }
+            // Ensure consistent height during loading
+            .frame(height: 52, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)

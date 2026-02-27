@@ -15,6 +15,7 @@ struct Tikkuu_FocusApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             JourneyRecord.self,
+            SavedLocation.self,
         ])
         
         // Get the app support directory and ensure it exists

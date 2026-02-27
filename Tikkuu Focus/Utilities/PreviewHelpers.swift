@@ -35,8 +35,7 @@ extension JourneyManager {
             totalDistance: 5000, // 5km
             duration: 1500, // 25 minutes
             transportMode: .cycling,
-            startTime: Date().addingTimeInterval(-300), // Started 5 minutes ago
-            subwayStations: nil
+            startTime: Date().addingTimeInterval(-300) // Started 5 minutes ago
         )
         
         manager.state = .active(session)
@@ -75,8 +74,7 @@ extension JourneyManager {
             totalDistance: 5000,
             duration: 1500,
             transportMode: .cycling,
-            startTime: Date().addingTimeInterval(-1500), // Completed
-            subwayStations: nil
+            startTime: Date().addingTimeInterval(-1500) // Completed
         )
         
         manager.state = .completed(session)

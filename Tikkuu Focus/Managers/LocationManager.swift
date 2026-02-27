@@ -14,10 +14,76 @@ import Combine
 class LocationManager: NSObject, ObservableObject {
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var currentLocation: CLLocation?
+    @Published var currentLocationName: String = ""
     @Published var error: LocationError?
     
     private let locationManager = CLLocationManager()
     private var hasRequestedLocation = false
+    private var geocoder = CLGeocoder()
+    private var lastGeocodedCoordinate: CLLocationCoordinate2D?
+    
+    /// Reverse geocode coordinate to get location name
+    func reverseGeocode(_ coordinate: CLLocationCoordinate2D?) async -> String {
+        guard let coordinate = coordinate else {
+            return L("location.current")
+        }
+        
+        // Use cached name if coordinate hasn't changed significantly
+        if let lastCoord = lastGeocodedCoordinate,
+           abs(lastCoord.latitude - coordinate.latitude) < 0.001,
+           abs(lastCoord.longitude - coordinate.longitude) < 0.001,
+           !currentLocationName.isEmpty {
+            return currentLocationName
+        }
+        
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        
+        // Use app language for geocoding results
+        let appLanguage = AppSettings.shared.currentLanguage
+        let locale = Locale(identifier: appLanguage)
+        
+        do {
+            let placemarks = try await geocoder.reverseGeocodeLocation(location, preferredLocale: locale)
+            guard let placemark = placemarks.first else {
+                return L("location.current")
+            }
+            
+            // Build location name from available components
+            // Priority: Name > SubLocality > Locality > AdministrativeArea
+            var nameComponents: [String] = []
+            
+            // Check for named locations (like "Apple Park", "Huawei Nanjing Research Institute")
+            if let name = placemark.name, !name.isEmpty,
+               !name.contains("\u{53f7}"), // Not a street number
+               !name.matches(pattern: "^\\d+") { // Doesn't start with number
+                nameComponents.append(name)
+            } else if let subLocality = placemark.subLocality, !subLocality.isEmpty {
+                nameComponents.append(subLocality)
+            } else if let locality = placemark.locality, !locality.isEmpty {
+                nameComponents.append(locality)
+            } else if let administrativeArea = placemark.administrativeArea, !administrativeArea.isEmpty {
+                nameComponents.append(administrativeArea)
+            }
+            
+            // If we have a locality that's different from the name, add it
+            if let locality = placemark.locality, !locality.isEmpty,
+               !nameComponents.contains(locality) {
+                nameComponents.append(locality)
+            }
+            
+            let locationName = nameComponents.joined(separator: ", ")
+            
+            await MainActor.run {
+                self.currentLocationName = locationName.isEmpty ? L("location.current") : locationName
+                self.lastGeocodedCoordinate = coordinate
+            }
+            
+            return locationName.isEmpty ? L("location.current") : locationName
+            
+        } catch {
+            return L("location.current")
+        }
+    }
     
     override init() {
         super.init()
@@ -85,6 +151,9 @@ extension LocationManager: CLLocationManagerDelegate {
             guard let location = locations.last else { return }
             currentLocation = location
             error = nil
+            
+            // Reverse geocode to get location name
+            _ = await reverseGeocode(location.coordinate)
         }
     }
     
@@ -134,5 +203,17 @@ enum LocationError: LocalizedError, Equatable {
         default:
             return false
         }
+    }
+}
+
+// MARK: - String Extension for Regex
+
+private extension String {
+    func matches(pattern: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return false
+        }
+        let range = NSRange(location: 0, length: utf16.count)
+        return regex.firstMatch(in: self, options: [], range: range) != nil
     }
 }

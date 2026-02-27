@@ -29,11 +29,11 @@ struct LiquidGlassStyle {
     )
 
     static func glassBackground(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color.white.opacity(0.01) : Color.white.opacity(0.25)
+        colorScheme == .dark ? Color.white.opacity(0.006) : Color.white.opacity(0.12)
     }
 
     static func glassBorder(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.3)
+        colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.2)
     }
 
     static func shadowColor(for colorScheme: ColorScheme) -> Color {
@@ -41,7 +41,57 @@ struct LiquidGlassStyle {
     }
 
     static func innerGlow(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark ? Color.white.opacity(0.03) : Color.white.opacity(0.4)
+        colorScheme == .dark ? Color.white.opacity(0.015) : Color.white.opacity(0.22)
+    }
+
+    static func glassMaterialOpacity(for colorScheme: ColorScheme) -> Double {
+        colorScheme == .dark ? 0.62 : 0.68
+    }
+
+    static func glassLayerFill(for colorScheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color.white.opacity(0.035),
+                    Color.white.opacity(0.014),
+                    Color(red: 0.16, green: 0.22, blue: 0.33).opacity(0.04)
+                ]
+                : [
+                    Color.white.opacity(0.12),
+                    Color.white.opacity(0.07),
+                    Color(red: 0.84, green: 0.91, blue: 0.99).opacity(0.05)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static func glassInsetFill(for colorScheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color.white.opacity(0.028),
+                    Color.white.opacity(0.012),
+                    Color.black.opacity(0.05)
+                ]
+                : [
+                    Color.white.opacity(0.11),
+                    Color.white.opacity(0.06),
+                    Color(red: 0.82, green: 0.89, blue: 0.98).opacity(0.04)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    static func glassEdgeStroke(for colorScheme: ColorScheme) -> LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [Color.white.opacity(0.15), Color.white.opacity(0.035)]
+                : [Color.white.opacity(0.24), Color.white.opacity(0.07)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
 
@@ -93,7 +143,8 @@ struct NeumorphismStyle {
         }
 
         if colorScheme == .dark {
-            return darkPressed
+            // Use a lighter color for unselected cards in dark mode
+            return Color(red: 0.18, green: 0.18, blue: 0.28)
         }
         return Color(red: 0.84, green: 0.87, blue: 0.93)
     }
@@ -111,46 +162,46 @@ struct NeumorphismStyle {
 
     static func raisedTopHighlight(for colorScheme: ColorScheme) -> Color {
         if isLightTone {
-            return Color(red: 0.745, green: 0.815, blue: 0.910).opacity(0.34)
+            return Color.white.opacity(0.5)
         }
 
         if colorScheme == .dark {
-            return Color(red: 0.345, green: 0.405, blue: 0.580).opacity(0.34)
+            return Color(red: 0.4, green: 0.45, blue: 0.55).opacity(0.2)
         }
-        return Color.white.opacity(1.0)
+        return Color.white.opacity(0.8)
     }
 
     static func raisedBottomShadow(for colorScheme: ColorScheme) -> Color {
         if isLightTone {
-            return Color(red: 0.545, green: 0.612, blue: 0.698).opacity(0.52)
+            return Color.black.opacity(0.1)
         }
 
         if colorScheme == .dark {
-            return Color(red: 0.110, green: 0.120, blue: 0.190).opacity(0.95)
+            return Color.black.opacity(0.4)
         }
-        return Color.black.opacity(0.24)
+        return Color.black.opacity(0.15)
     }
 
     static func innerTopHighlight(for colorScheme: ColorScheme) -> Color {
         if isLightTone {
-            return Color(red: 0.760, green: 0.830, blue: 0.920).opacity(0.64)
+            return Color.white.opacity(0.6)
         }
 
         if colorScheme == .dark {
-            return Color(red: 0.335, green: 0.395, blue: 0.575).opacity(0.68)
+            return Color(red: 0.4, green: 0.45, blue: 0.55).opacity(0.4)
         }
-        return Color.white.opacity(0.92)
+        return Color.white.opacity(0.8)
     }
 
     static func innerBottomShadow(for colorScheme: ColorScheme) -> Color {
         if isLightTone {
-            return Color(red: 0.490, green: 0.560, blue: 0.650).opacity(0.72)
+            return Color.black.opacity(0.15)
         }
 
         if colorScheme == .dark {
-            return Color(red: 0.090, green: 0.105, blue: 0.170).opacity(0.88)
+            return Color.black.opacity(0.5)
         }
-        return Color.black.opacity(0.22)
+        return Color.black.opacity(0.2)
     }
 
     static func ambientStart(for colorScheme: ColorScheme) -> Color {
@@ -197,100 +248,99 @@ struct NeumorphSurface: View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
         ZStack {
+            // Base surface
             shape
                 .fill(fill ?? AnyShapeStyle(depth == .inset
                                             ? NeumorphismStyle.pressedSurface(for: colorScheme)
                                             : NeumorphismStyle.surface(for: colorScheme)))
-
-            if depth == .raised {
-                // Raised surfaces keep only a subtle tonal rim.
-                shape
-                    .strokeBorder(NeumorphismStyle.border(for: colorScheme), lineWidth: colorScheme == .dark ? 1.0 : 0.9)
-
+            
+            // Inner gradient overlay for subtle depth
+            if depth == .inset {
+                // Inset: subtle darker at top-left
                 shape
                     .fill(
                         LinearGradient(
                             colors: [
-                                NeumorphismStyle.raisedTopHighlight(for: colorScheme).opacity(0.16),
+                                Color.black.opacity(colorScheme == .dark ? 0.2 : 0.05),
                                 Color.clear,
-                                NeumorphismStyle.raisedBottomShadow(for: colorScheme).opacity(0.10)
+                                Color.white.opacity(colorScheme == .dark ? 0.03 : 0.15)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
             } else {
-                // Inset surfaces: no outer border, only inner carved edges.
-                shape
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                NeumorphismStyle.innerTopHighlight(for: colorScheme),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 2.2
-                    )
-
-                shape
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                Color.clear,
-                                NeumorphismStyle.innerBottomShadow(for: colorScheme)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 2.2
-                    )
-
+                // Raised: subtle lighter at top-left
                 shape
                     .fill(
                         LinearGradient(
                             colors: [
+                                Color.white.opacity(colorScheme == .dark ? 0.05 : 0.25),
                                 Color.clear,
-                                NeumorphismStyle.innerBottomShadow(for: colorScheme).opacity(0.16)
+                                Color.black.opacity(colorScheme == .dark ? 0.15 : 0.04)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .clipShape(shape)
-
-                shape
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                NeumorphismStyle.innerTopHighlight(for: colorScheme).opacity(0.10),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(shape)
             }
         }
+        // Soft outer shadows for raised effect - lighter and more subtle
         .shadow(
             color: depth == .raised
-            ? NeumorphismStyle.raisedBottomShadow(for: colorScheme)
-            : .clear,
-            radius: depth == .raised ? 10 : 0,
-            x: depth == .raised ? 6 : 0,
-            y: depth == .raised ? 6 : 0
+                ? (colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.08))
+                : .clear,
+            radius: depth == .raised ? 6 : 0,
+            x: depth == .raised ? 4 : 0,
+            y: depth == .raised ? 4 : 0
         )
         .shadow(
             color: depth == .raised
-            ? NeumorphismStyle.raisedTopHighlight(for: colorScheme)
-            : .clear,
-            radius: depth == .raised ? 3 : 0,
-            x: depth == .raised ? -1 : 0,
-            y: depth == .raised ? -1 : 0
+                ? (colorScheme == .dark ? Color.white.opacity(0.05) : Color.white.opacity(0.5))
+                : .clear,
+            radius: depth == .raised ? 4 : 0,
+            x: depth == .raised ? -3 : 0,
+            y: depth == .raised ? -3 : 0
         )
-        .compositingGroup()
+        // Subtle inner shadow for inset effect
+        .overlay(
+            Group {
+                if depth == .inset {
+                    ZStack {
+                        // Top-left inner shadow (dark) - more subtle
+                        shape
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        Color.black.opacity(colorScheme == .dark ? 0.35 : 0.1),
+                                        Color.clear
+                                    ],
+                                    center: .topLeading,
+                                    startRadius: 0,
+                                    endRadius: 60
+                                )
+                                .blendMode(.multiply)
+                            )
+                        
+                        // Bottom-right inner highlight - more subtle
+                        shape
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        Color.white.opacity(colorScheme == .dark ? 0.08 : 0.25),
+                                        Color.clear
+                                    ],
+                                    center: .bottomTrailing,
+                                    startRadius: 0,
+                                    endRadius: 60
+                                )
+                                .blendMode(colorScheme == .dark ? .plusLighter : .overlay)
+                            )
+                    }
+                }
+            }
+        )
+        .clipShape(shape)
     }
 }
 
@@ -333,15 +383,43 @@ struct GlassCardModifier: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
         if settings.selectedVisualStyle == .neumorphism {
-            NeumorphSurface(cornerRadius: cornerRadius, depth: .inset)
+            // Use raised effect for cards with soft subtle shadows
+            NeumorphSurface(cornerRadius: cornerRadius, depth: .raised)
+                .shadow(
+                    color: colorScheme == .dark ? Color.black.opacity(0.25) : Color.black.opacity(0.08),
+                    radius: 8,
+                    x: 5,
+                    y: 5
+                )
+                .shadow(
+                    color: colorScheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.6),
+                    radius: 6,
+                    x: -4,
+                    y: -4
+                )
         } else {
             ZStack {
-                shape.fill(Color.clear)
+                shape
+                    .fill(.ultraThinMaterial)
+                    .opacity(LiquidGlassStyle.glassMaterialOpacity(for: colorScheme))
+
+                shape.fill(LiquidGlassStyle.glassLayerFill(for: colorScheme))
 
                 shape
-                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22), lineWidth: 1)
+                    .fill(
+                        LinearGradient(
+                            colors: [LiquidGlassStyle.innerGlow(for: colorScheme), Color.clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .blendMode(colorScheme == .dark ? .screen : .overlay)
+
+                shape
+                    .strokeBorder(LiquidGlassStyle.glassEdgeStroke(for: colorScheme), lineWidth: 0.8)
             }
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.06), radius: 6, x: 0, y: 3)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.26 : 0.12), radius: 14, x: 0, y: 8)
+            .shadow(color: Color.white.opacity(colorScheme == .dark ? 0.04 : 0.20), radius: 8, x: 0, y: -1)
         }
     }
 }
@@ -409,29 +487,52 @@ struct InsetSurfaceModifier: ViewModifier {
                 shape
                     .fill(
                         AnyShapeStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.3, green: 0.5, blue: 0.8),
-                                    Color(red: 0.5, green: 0.3, blue: 0.7)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            LiquidGlassStyle.primaryGradient
                         )
                     )
                     .overlay(
-                        shape.stroke(Color.clear, lineWidth: 1)
+                        shape
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(colorScheme == .dark ? 0.26 : 0.36), Color.clear],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .blendMode(colorScheme == .dark ? .plusLighter : .overlay)
+                    )
+                    .overlay(
+                        shape
+                            .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.24 : 0.36), lineWidth: 0.8)
+                    )
+                    .shadow(
+                        color: Color.blue.opacity(colorScheme == .dark ? 0.36 : 0.22),
+                        radius: 10,
+                        x: 0,
+                        y: 6
                     )
             } else {
                 ZStack {
-                    shape.fill(Color.clear)
+                    shape
+                        .fill(.ultraThinMaterial)
+                        .opacity(LiquidGlassStyle.glassMaterialOpacity(for: colorScheme) * 0.9)
+
+                    shape.fill(LiquidGlassStyle.glassInsetFill(for: colorScheme))
 
                     shape
-                        .stroke(
-                            Color.white.opacity(colorScheme == .dark ? 0.12 : 0.20),
-                            lineWidth: 1
+                        .fill(
+                            LinearGradient(
+                                colors: [LiquidGlassStyle.innerGlow(for: colorScheme), Color.clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
+                        .blendMode(colorScheme == .dark ? .screen : .overlay)
+
+                    shape
+                        .strokeBorder(LiquidGlassStyle.glassEdgeStroke(for: colorScheme), lineWidth: 0.6)
                 }
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.07), radius: 4, x: 0, y: 2)
             }
         }
     }
@@ -450,11 +551,21 @@ struct ThemedRoundedBackgroundModifier: ViewModifier {
                     NeumorphSurface(cornerRadius: cornerRadius, depth: depth)
                 } else {
                     let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    shape
-                        .fill(Color.clear)
-                        .overlay(
-                            shape.strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.14 : 0.22), lineWidth: 1)
-                        )
+                    ZStack {
+                        shape
+                            .fill(.ultraThinMaterial)
+                            .opacity(LiquidGlassStyle.glassMaterialOpacity(for: colorScheme))
+                        shape.fill(LiquidGlassStyle.glassLayerFill(for: colorScheme))
+                        shape.strokeBorder(LiquidGlassStyle.glassEdgeStroke(for: colorScheme), lineWidth: 0.75)
+                    }
+                    .shadow(
+                        color: Color.black.opacity(depth == .raised
+                                                    ? (colorScheme == .dark ? 0.22 : 0.10)
+                                                    : (colorScheme == .dark ? 0.15 : 0.06)),
+                        radius: depth == .raised ? 10 : 6,
+                        x: 0,
+                        y: depth == .raised ? 6 : 3
+                    )
                 }
             }
     }

@@ -1,146 +1,169 @@
-# Location Picker 更新说明
+# Location Picker Update - v1.4.1
 
-## ✅ 已完成的改进
+## Summary
 
-### 1. **预设地点更新**
-- ❌ 移除：香港 (Hong Kong)
-- ✅ 新增：南京 (Nanjing, China)
-  - 坐标：32.0603°N, 118.7969°E
-  - 图标：🏯
-  - 中文名：中国南京
+Fixed map search crash and added new location management features including current location indicator, recenter button, favorites system, and pinned location history.
 
-### 2. **地图选择功能完全重写** 🗺️
+## Changes
 
-#### 核心功能
-- ✅ **点击地图选择位置**：使用 `MapReader` 实现真正的地图点击
-- ✅ **确认按钮**：选择位置后显示确认按钮
-- ✅ **位置搜索**：支持搜索地点名称
-- ✅ **反向地理编码**：自动获取选中位置的地址名称
+### 1. Fixed Map Search Crash
 
-#### 搜索功能 🔍
-- 🔎 顶部搜索栏，支持输入地点名称
-- 📋 实时显示搜索结果列表
-- 🎯 点击搜索结果自动定位到该位置
-- 🗺️ 使用 `MKLocalSearch` 进行地点搜索
-- 🌍 搜索范围基于当前地图视野
+**Problem**: The map search functionality was using a completion-handler based API with `[self]` capture, which could cause threading issues and crashes.
 
-#### 地图交互
-- 👆 点击地图任意位置选择坐标
-- 📍 红色大头针标记选中位置
-- 🎥 自动缩放到选中位置
-- 📝 自动获取位置名称（通过反向地理编码）
-
-#### 确认流程
-1. 点击地图或搜索选择位置
-2. 底部显示玻璃态卡片，展示位置名称
-3. 点击"确认位置"按钮完成选择
-4. 自动返回并应用选择
-
-### 3. **UI 设计** 🎨
-
-#### 搜索栏
-- 🔍 放大镜图标
-- ⌨️ 实时输入
-- ❌ 清除按钮
-- 🔵 搜索按钮（渐变色）
-- ⏳ 加载指示器
-
-#### 搜索结果列表
-- 📋 滚动列表
-- 📍 地点名称 + 详细地址
-- 🎨 玻璃态背景
-- 📏 分隔线
-
-#### 确认卡片
-- 💎 玻璃态设计
-- 📝 显示"已选位置"标签
-- 🏷️ 显示位置名称
-- ✅ 渐变色确认按钮
-- ✨ 阴影效果
-
-### 4. **本地化支持** 🌍
-新增翻译：
-- `location.search` - "搜索" / "Search"
-- `location.selected` - "已选位置" / "Selected Location"
-- `location.confirm` - "确认位置" / "Confirm Location"
-
-### 5. **技术实现** 🔧
-
-#### MapReader
+**Solution**: Replaced with async/await pattern:
 ```swift
-MapReader { proxy in
-    Map(position: $cameraPosition) {
-        // 地图内容
-    }
-    .onTapGesture { screenCoordinate in
-        if let coordinate = proxy.convert(screenCoordinate, from: .local) {
-            selectLocation(coordinate: coordinate)
-        }
-    }
+// Old (problematic)
+search.start { [self] response, error in
+    // UI updates on background thread
+}
+
+// New (fixed)
+let response = try await search.start()
+await MainActor.run {
+    // UI updates on main thread
 }
 ```
 
-#### 搜索实现
-```swift
-let request = MKLocalSearch.Request()
-request.naturalLanguageQuery = searchText
-request.region = currentRegion
+### 2. Current Location Indicator
 
-let search = MKLocalSearch(request: request)
-search.start { response, error in
-    // 处理搜索结果
+Added a pulsing blue dot indicator on the map showing the user's current location:
+- Animated pulse effect for visibility
+- Smooth animation using `withAnimation`
+- Automatically updates as location changes
+
+### 3. Recenter Button
+
+Added a "Recenter" button to quickly return to current location:
+- Located at the bottom of the map view
+- Smooth camera animation when tapped
+- Only shown when location is available
+
+### 4. Favorite Locations
+
+Added a favorites system for saving frequently used locations:
+- Star button to add current selection to favorites
+- Favorites displayed in the main location picker as a grid
+- Maximum 4 favorites shown in main view
+- Full favorites list accessible via sheet from map
+- Favorites picker sheet with delete capability
+
+### 5. Location History
+
+Added automatic history tracking:
+- Automatically saves selected custom locations
+- Shows last 5 locations in main picker
+- Maximum 20 items stored (older items auto-removed)
+- Swipe to delete or favorite
+- Clear all history button
+- Smart deduplication (locations within 100m update timestamp instead of creating new entry)
+
+## New Localization Keys
+
+### English (en.lproj)
+```
+location.favorites = "Favorites"
+location.favorites.empty = "No Favorites Yet"
+location.favorites.empty.message = "Save your favorite locations for quick access."
+location.favorite.add = "Add to Favorites"
+location.favorite.remove = "Remove from Favorites"
+location.history = "Recent Locations"
+location.history.clear = "Clear"
+location.history.empty = "No Recent Locations"
+map.recenter = "Recenter"
+```
+
+### Chinese (zh-Hans.lproj)
+```
+location.favorites = "收藏地点"
+location.favorites.empty = "暂无收藏"
+location.favorites.empty.message = "收藏您常用的地点以便快速访问。"
+location.favorite.add = "添加到收藏"
+location.favorite.remove = "取消收藏"
+location.history = "最近使用"
+location.history.clear = "清空"
+location.history.empty = "暂无记录"
+map.recenter = "重新居中"
+```
+
+## Files Modified
+
+1. **Tikkuu Focus/Views/LocationPickerView.swift**
+   - Fixed search crash with async/await
+   - Added MapReader for proper coordinate conversion
+   - Added current location indicator
+   - Added recenter button
+   - Added favorites UI
+   - Added history UI
+   - Added FavoritesPickerSheet
+
+2. **Tikkuu Focus/Models/SavedLocation.swift** (New)
+   - SavedLocation SwiftData model
+   - LocationStore for managing favorites and history
+
+3. **Tikkuu Focus/Tikkuu_FocusApp.swift**
+   - Added SavedLocation to model container schema
+
+4. **Tikkuu Focus/Resources/en.lproj/Localizable.strings**
+   - Added new localization keys
+
+5. **Tikkuu Focus/Resources/zh-Hans.lproj/Localizable.strings**
+   - Added Chinese translations
+
+## Data Model
+
+### SavedLocation (SwiftData)
+```swift
+@Model
+final class SavedLocation {
+    var id: UUID
+    var name: String
+    var latitude: Double
+    var longitude: Double
+    var timestamp: Date
+    var isFavorite: Bool
+    var emoji: String?
 }
 ```
 
-#### 反向地理编码
-```swift
-let geocoder = CLGeocoder()
-geocoder.reverseGeocodeLocation(location) { placemarks, error in
-    // 获取地址信息
-}
-```
+## UI Components
 
-## 🎯 用户体验提升
+### FavoriteLocationCard
+- Grid-based layout (2 columns)
+- Emoji display
+- Selection indicator
+- Yellow border when selected
 
-### 之前的问题
-- ❌ 无法点击地图选择位置
-- ❌ 没有确认按钮
-- ❌ 不支持搜索
-- ❌ 无法获取位置名称
+### HistoryLocationRow
+- List-based layout
+- Clock icon with relative timestamp
+- Star button for quick favorite
+- Swipe actions (delete, favorite)
 
-### 现在的体验
-- ✅ 点击地图任意位置即可选择
-- ✅ 清晰的确认流程
-- ✅ 强大的搜索功能
-- ✅ 自动获取地址名称
-- ✅ 流畅的动画和反馈
-- ✅ 统一的玻璃态设计
+### CurrentLocationIndicator
+- Pulsing animation
+- Blue dot with white border
+- Shadow for depth
 
-## 📱 使用流程
+### SelectedLocationMarker
+- Red pin icon
+- Matching style with app theme
 
-### 方式一：点击地图
-1. 打开"从地图选择"
-2. 点击地图上的任意位置
-3. 查看底部显示的位置信息
-4. 点击"确认位置"按钮
+## Testing Checklist
 
-### 方式二：搜索地点
-1. 打开"从地图选择"
-2. 在顶部搜索栏输入地点名称
-3. 点击搜索或按回车
-4. 从结果列表中选择地点
-5. 点击"确认位置"按钮
+- [ ] Map search no longer crashes
+- [ ] Search results appear correctly
+- [ ] Current location indicator shows when GPS available
+- [ ] Recenter button moves camera to current location
+- [ ] Add to favorites works from map picker
+- [ ] Favorites appear in main location picker
+- [ ] Favorites picker sheet shows all favorites
+- [ ] Delete favorite removes it from list
+- [ ] Selecting location adds to history
+- [ ] History shows in main picker
+- [ ] Clear history removes all items
+- [ ] Swipe to favorite in history works
+- [ ] Localization shows correct language
 
-## 🚀 技术亮点
+## Migration Notes
 
-- 🗺️ **MapReader**：iOS 17+ 新特性，实现精确的地图点击
-- 🔍 **MKLocalSearch**：强大的地点搜索引擎
-- 📍 **CLGeocoder**：反向地理编码获取地址
-- 🎨 **统一设计**：与应用其他部分保持一致的玻璃态风格
-- ⚡️ **性能优化**：异步搜索和地理编码
-- 🌍 **完整本地化**：中英文全面支持
-
----
-
-**更新日期**: 2026年2月8日  
-**版本**: 1.5.1
+This update adds a new SwiftData model (SavedLocation). The app will automatically create the new table on first launch. No manual migration is required.

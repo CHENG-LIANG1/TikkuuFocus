@@ -7,13 +7,139 @@
 
 import SwiftUI
 
+// MARK: - Neumorphic Transport Mode Button
+
+struct NeumorphicTransportModeButton: View {
+    let mode: TransportMode
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    private var textColor: Color {
+        let isLight = AppSettings.shared.selectedNeumorphismTone == .light
+        if isSelected {
+            return isLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+        }
+        return isLight ? Color(red: 0.40, green: 0.44, blue: 0.52) : .white.opacity(0.7)
+    }
+
+    private var unselectedShadowColor: Color {
+        let isLight = AppSettings.shared.selectedNeumorphismTone == .light
+        return isLight ? Color.black.opacity(0.08) : Color.black.opacity(0.24)
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: mode.iconName)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(textColor)
+                    .frame(height: 24)
+
+                Text(L("transport.\(mode.rawValue.lowercased())"))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(textColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, minHeight: 80)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 8)
+            .background(
+                NeumorphSurface(
+                    cornerRadius: 16,
+                    depth: isSelected ? .raised : .inset,
+                    fill: isSelected ? AnyShapeStyle(Color(red: 0.42, green: 0.58, blue: 0.95)) : nil
+                )
+            )
+            .shadow(
+                color: isSelected ? Color.clear : unselectedShadowColor,
+                radius: isSelected ? 0 : 5,
+                x: 0,
+                y: isSelected ? 0 : 3
+            )
+            .scaleEffect(isPressed ? 0.96 : (isSelected ? 1.0 : 0.98))
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
+            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .pressEvents {
+            isPressed = true
+        } onRelease: {
+            isPressed = false
+        }
+    }
+}
+
+// MARK: - Neumorphic Duration Button
+
+struct NeumorphicDurationButton: View {
+    let duration: Int
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    private var textColor: Color {
+        let isLight = AppSettings.shared.selectedNeumorphismTone == .light
+        if isSelected {
+            return isLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+        }
+        return isLight ? Color(red: 0.40, green: 0.44, blue: 0.52) : .white.opacity(0.7)
+    }
+
+    private var unselectedShadowColor: Color {
+        let isLight = AppSettings.shared.selectedNeumorphismTone == .light
+        return isLight ? Color.black.opacity(0.08) : Color.black.opacity(0.24)
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Text("\(duration)")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(textColor)
+
+                Text(L("time.unit.min"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(textColor.opacity(0.82))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                NeumorphSurface(
+                    cornerRadius: 16,
+                    depth: isSelected ? .raised : .inset,
+                    fill: isSelected ? AnyShapeStyle(Color(red: 0.95, green: 0.55, blue: 0.35)) : nil
+                )
+            )
+            .shadow(
+                color: isSelected ? Color.clear : unselectedShadowColor,
+                radius: isSelected ? 0 : 5,
+                x: 0,
+                y: isSelected ? 0 : 3
+            )
+            .scaleEffect(isPressed ? 0.96 : (isSelected ? 1.0 : 0.98))
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
+            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .pressEvents {
+            isPressed = true
+        } onRelease: {
+            isPressed = false
+        }
+    }
+}
+
 // MARK: - Transport Mode Selector
 
 struct TransportModeSelector: View {
     @Binding var selectedMode: TransportMode
     let cardsAppeared: Bool
     
-    private let modes: [TransportMode] = [.walking, .cycling, .driving, .subway]
+    private let modes: [TransportMode] = [.walking, .cycling, .driving, .skateboard]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -50,55 +176,59 @@ struct TransportModeButton: View {
     let isSelected: Bool
     let action: () -> Void
 
-    private var selectedTextColor: Color {
-        settings.isNeumorphismLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+    var body: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            NeumorphicTransportModeButton(
+                mode: mode,
+                isSelected: isSelected,
+                action: action
+            )
+        } else {
+            LiquidGlassTransportModeButton(
+                mode: mode,
+                isSelected: isSelected,
+                action: action
+            )
+        }
     }
-    
+}
+
+// MARK: - Liquid Glass Transport Mode Button
+
+struct LiquidGlassTransportModeButton: View {
+    let mode: TransportMode
+    let isSelected: Bool
+    let action: () -> Void
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
                 Image(systemName: mode.iconName)
                     .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(isSelected ? selectedTextColor : .primary)
+                    .foregroundColor(isSelected ? .white : .primary)
                     .frame(height: 24)
-                
+
                 Text(L("transport.\(mode.rawValue.lowercased())"))
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(isSelected ? selectedTextColor : .secondary)
+                    .foregroundColor(isSelected ? .white : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, minHeight: 80)
             .padding(.vertical, 12)
             .padding(.horizontal, 8)
-            .background {
-                if settings.selectedVisualStyle == .neumorphism {
-                    NeumorphSurface(
-                        cornerRadius: 16,
-                        depth: isSelected ? .raised : .inset,
-                        fill: isSelected ? AnyShapeStyle(GradientStyles.primaryGradient) : nil
-                    )
-                } else {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            isSelected ?
-                            AnyShapeStyle(GradientStyles.primaryGradient) :
-                            AnyShapeStyle(.ultraThinMaterial)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .strokeBorder(
-                                    isSelected ? Color.clear : Color.primary.opacity(0.1),
-                                    lineWidth: 1
-                                )
-                        )
+            .background(
+                Group {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(GradientStyles.primaryGradient)
+                            .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                    } else {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.clear)
+                            .insetSurface(cornerRadius: 16, isActive: false)
+                    }
                 }
-            }
-            .shadow(
-                color: isSelected ? Color.blue.opacity(0.3) : Color.clear,
-                radius: 10,
-                x: 0,
-                y: 5
             )
             .scaleEffect(isSelected ? 1.0 : 0.98)
             .animation(AnimationConfig.snappy, value: isSelected)
@@ -161,51 +291,55 @@ struct DurationButton: View {
     let isSelected: Bool
     let action: () -> Void
 
-    private var selectedTextColor: Color {
-        settings.isNeumorphismLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+    var body: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            NeumorphicDurationButton(
+                duration: duration,
+                isSelected: isSelected,
+                action: action
+            )
+        } else {
+            LiquidGlassDurationButton(
+                duration: duration,
+                isSelected: isSelected,
+                action: action
+            )
+        }
     }
-    
+}
+
+// MARK: - Liquid Glass Duration Button
+
+struct LiquidGlassDurationButton: View {
+    let duration: Int
+    let isSelected: Bool
+    let action: () -> Void
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Text("\(duration)")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(isSelected ? selectedTextColor : .primary)
-                
+                    .foregroundColor(isSelected ? .white : .primary)
+
                 Text(L("time.unit.min"))
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isSelected ? selectedTextColor.opacity(0.82) : .secondary)
+                    .foregroundColor(isSelected ? .white.opacity(0.82) : .secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background {
-                if settings.selectedVisualStyle == .neumorphism {
-                    NeumorphSurface(
-                        cornerRadius: 16,
-                        depth: isSelected ? .raised : .inset,
-                        fill: isSelected ? AnyShapeStyle(GradientStyles.accentGradient) : nil
-                    )
-                } else {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            isSelected ?
-                            AnyShapeStyle(GradientStyles.accentGradient) :
-                            AnyShapeStyle(.ultraThinMaterial)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .strokeBorder(
-                                    isSelected ? Color.clear : Color.primary.opacity(0.1),
-                                    lineWidth: 1
-                                )
-                        )
+            .background(
+                Group {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(GradientStyles.accentGradient)
+                            .shadow(color: Color.orange.opacity(0.3), radius: 10, x: 0, y: 5)
+                    } else {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.clear)
+                            .insetSurface(cornerRadius: 16, isActive: false)
+                    }
                 }
-            }
-            .shadow(
-                color: isSelected ? Color.orange.opacity(0.3) : Color.clear,
-                radius: 10,
-                x: 0,
-                y: 5
             )
             .scaleEffect(isSelected ? 1.0 : 0.98)
             .animation(AnimationConfig.snappy, value: isSelected)
@@ -246,7 +380,9 @@ struct LocationSourceSelector: View {
                 }
             }
             .padding(14)
-            .themedRoundedBackground(cornerRadius: 12, depth: .inset)
+            .background(
+                NeumorphSurface(cornerRadius: 12, depth: .inset)
+            )
         }
     }
 }

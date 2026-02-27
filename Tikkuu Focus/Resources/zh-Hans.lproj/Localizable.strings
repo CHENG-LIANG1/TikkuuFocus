@@ -7,11 +7,15 @@
 "transport.walking" = "步行";
 "transport.cycling" = "骑行";
 "transport.driving" = "驾驶";
-"transport.subway" = "地铁";
+"transport.skateboard" = "滑板";
 
-// Subway
-"subway.arriving" = "到达站点";
-"subway.station" = "站";
+// Skateboard
+"skateboard.status" = "滑板中";
+"skateboard.speed" = "滑行";
+
+// Transport Status
+"transport.status.warmingUp" = "正在热身";
+"transport.status.skateboarding" = "滑板中";
 
 // Journey States
 "journey.idle" = "准备漫游";
@@ -80,9 +84,7 @@
 "error.location.unavailable" = "位置不可用。请重试。";
 "error.journey.noRoute" = "无法找到到达目的地的路线。";
 "error.journey.invalidDestination" = "无效的目的地。请重试。";
-"error.subway.noNearbyLine" = "附近 10 公里内没有地铁线路。请选择其他出行方式或更换出发地点。";
-"error.subway.searchFailed" = "搜索地铁线路失败。请重试。";
-"error.subway.noNearbyLine.detailed" = "未找到附近的地铁线路（搜索范围：10公里）。请确认您的位置附近有地铁站，或尝试选择其他交通方式。";
+
 
 // Permissions
 "permission.location.title" = "需要位置访问权限";
@@ -118,6 +120,14 @@
 "location.search" = "搜索";
 "location.selected" = "已选位置";
 "location.confirm" = "确认位置";
+"location.favorites" = "收藏地点";
+"location.favorites.empty" = "暂无收藏";
+"location.favorites.empty.message" = "收藏您常用的地点以便快速访问。";
+"location.favorite.add" = "添加到收藏";
+"location.favorite.remove" = "取消收藏";
+"location.history" = "最近使用";
+"location.history.clear" = "清空";
+"location.history.empty" = "暂无记录";
 "location.status.permissionNeeded" = "需要位置权限";
 "location.status.ready" = "位置已就绪";
 "location.status.getting" = "正在获取位置...";
@@ -211,7 +221,7 @@
 "onboarding.v2.page1.feature1.title" = "选择出发地点";
 "onboarding.v2.page1.feature1.desc" = "可用当前位置或预设城市，快速开始。";
 "onboarding.v2.page1.feature2.title" = "切换交通方式";
-"onboarding.v2.page1.feature2.desc" = "步行、骑行、驾驶、地铁，体验不同节奏。";
+"onboarding.v2.page1.feature2.desc" = "步行、骑行、驾驶、滑板，体验不同节奏。";
 "onboarding.v2.page1.feature3.title" = "自然发现";
 "onboarding.v2.page1.feature3.desc" = "沿途出现景点信息，不打断专注。";
 "onboarding.v2.page2.badge" = "专注中";
@@ -540,8 +550,8 @@
 "trophy.special_cycling_pro.description" = "完成 100 次骑行旅程";
 "trophy.special_driving_expert.title" = "驾驶专家";
 "trophy.special_driving_expert.description" = "完成 100 次驾驶旅程";
-"trophy.special_subway_rider.title" = "地铁达人";
-"trophy.special_subway_rider.description" = "完成 100 次地铁旅程";
+"trophy.special_skateboard_rider.title" = "滑板达人";
+"trophy.special_skateboard_rider.description" = "完成 100 次滑板旅程";
 "trophy.special_walking_only.title" = "纯步行者";
 "trophy.special_walking_only.description" = "仅使用步行完成 50 次旅程";
 "trophy.special_no_driving.title" = "环保出行";
@@ -708,7 +718,7 @@
 
 // Onboarding Feature Descriptions
 "onboarding.page1.feature1.desc" = "基于真实地点探索虚拟目的地";
-"onboarding.page1.feature2.desc" = "选择步行、骑行、驾驶或地铁";
+"onboarding.page1.feature2.desc" = "选择步行、骑行、驾驶或滑板";
 "onboarding.page1.feature3.desc" = "从当前位置或预设城市出发";
 
 "onboarding.page2.feature1.desc" = "发现地标、餐厅和景点";
@@ -720,7 +730,7 @@
 "onboarding.page4.feature3.desc" = "在专注的同时发现新地方";
 
 // Map Controls
-"map.recenter" = "回到当前位置";
+"map.recenter" = "重新居中";
 
 "Done" = "完成";
 "trophy.detail" = "奖杯详情";
@@ -732,7 +742,6 @@
 "journey.summary.stopped.badge" = "已停止";
 "guide.firstJourney.tapHistory" = "点击这里查看历史";
 "guide.firstJourney.gotIt" = "知道了！";
-"error.subway.noNearbyLine.detailed" = "未找到附近的地铁线路（搜索范围：10公里）。请确认您的位置附近有地铁站，或尝试选择其他交通方式。";
 
 
 "history.stats.activityHeatmap" = "活动热力图";
@@ -747,7 +756,7 @@
 "journey.summary.done" = "完成";
 "journey.summary.day" = "白天";
 "journey.summary.night" = "夜晚";
-"journey.summary.subway" = "地铁";
+"journey.summary.skateboard" = "滑板";
 "journey.summary.line" = "号线";
 "journey.summary.photoPermission.title" = "需要相册访问权限";
 "journey.summary.photoPermission.message" = "请在设置中允许 Roam Focus 保存照片到您的相册。";

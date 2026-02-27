@@ -19,6 +19,7 @@ struct TrophyView: View {
     @State private var showTrophyDetail = false
     @State private var isLoading = true
     @State private var previousCategory: TrophyCategory? = nil
+    @State private var scrollToTopTrigger = UUID()
     
     var body: some View {
         NavigationStack {
@@ -50,26 +51,34 @@ struct TrophyView: View {
                             .padding(.bottom, 16)
                         
                         // Trophy grid
-                        ScrollView(showsIndicators: false) {
-                            LazyVGrid(columns: [
-                                GridItem(.flexible(), spacing: 12),
-                                GridItem(.flexible(), spacing: 12)
-                            ], spacing: 12) {
-                                ForEach(filteredTrophies) { trophy in
-                                    TrophyCard(trophy: trophy)
-                                        .onTapGesture {
-                                            HapticManager.light()
-                                            // Ensure trophy data is valid before showing detail
-                                            if !trophy.localizedTitle.isEmpty && !trophy.localizedDescription.isEmpty {
-                                                selectedTrophy = trophy
-                                                showTrophyDetail = true
+                        ScrollViewReader { proxy in
+                            ScrollView(showsIndicators: false) {
+                                LazyVGrid(columns: [
+                                    GridItem(.flexible(), spacing: 12),
+                                    GridItem(.flexible(), spacing: 12)
+                                ], spacing: 12) {
+                                    ForEach(filteredTrophies) { trophy in
+                                        TrophyCard(trophy: trophy)
+                                            .id(trophy.id)
+                                            .onTapGesture {
+                                                HapticManager.light()
+                                                // Ensure trophy data is valid before showing detail
+                                                if !trophy.localizedTitle.isEmpty && !trophy.localizedDescription.isEmpty {
+                                                    selectedTrophy = trophy
+                                                    showTrophyDetail = true
+                                                }
                                             }
-                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.bottom, 40)
+                                .id("trophyGridTop")
+                            }
+                            .onChange(of: scrollToTopTrigger) { _, _ in
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    proxy.scrollTo("trophyGridTop", anchor: .top)
                                 }
                             }
-                            .padding(.horizontal, 24)
-                            .padding(.bottom, 40)
-                            .id(selectedCategory?.rawValue ?? "all")
                         }
                     }
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -254,6 +263,7 @@ struct TrophyView: View {
                     HapticManager.selection()
                     previousCategory = selectedCategory
                     selectedCategory = nil
+                    scrollToTopTrigger = UUID()
                 }
                 
                 ForEach(TrophyCategory.allCases, id: \.self) { category in
@@ -265,10 +275,21 @@ struct TrophyView: View {
                         HapticManager.selection()
                         previousCategory = selectedCategory
                         selectedCategory = category
+                        scrollToTopTrigger = UUID()
                     }
                 }
             }
             .padding(.horizontal, 4)
+            .padding(.vertical, 4)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+        .background {
+            if settings.selectedVisualStyle == .neumorphism {
+                NeumorphSurface(cornerRadius: 18, depth: .inset)
+            } else {
+                Color.clear
+            }
         }
     }
     
@@ -415,6 +436,29 @@ struct CategoryButton: View {
     let label: String
     let isSelected: Bool
     let action: () -> Void
+
+    private var isLightTone: Bool {
+        settings.selectedNeumorphismTone == .light
+    }
+
+    private var selectedTextColor: Color {
+        isLightTone ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+    }
+
+    private var unselectedTextColor: Color {
+        isLightTone ? Color(red: 0.42, green: 0.46, blue: 0.54) : .white.opacity(0.72)
+    }
+
+    private var selectedFill: AnyShapeStyle {
+        let baseColor = isLightTone
+            ? Color(red: 0.70, green: 0.80, blue: 0.97)
+            : Color(red: 0.40, green: 0.54, blue: 0.90)
+        return AnyShapeStyle(baseColor.opacity(isLightTone ? 0.95 : 0.78))
+    }
+
+    private var unselectedShadowColor: Color {
+        isLightTone ? Color.black.opacity(0.07) : Color.black.opacity(0.22)
+    }
     
     var body: some View {
         Button(action: action) {
@@ -425,21 +469,41 @@ struct CategoryButton: View {
                 Text(label)
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundColor(isSelected ? .white : .secondary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .foregroundColor(isSelected ? selectedTextColor : unselectedTextColor)
+            .padding(.horizontal, 15)
+            .padding(.vertical, 9)
             .background {
                 if settings.selectedVisualStyle == .neumorphism {
                     NeumorphSurface(
                         cornerRadius: 999,
                         depth: isSelected ? .raised : .inset,
-                        fill: isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : nil
+                        fill: isSelected ? selectedFill : nil
                     )
                 } else {
+                    // Liquid Glass: highlight color when selected, subtle border when not
                     Capsule()
-                        .fill(isSelected ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.2)))
+                        .fill(isSelected ? Color.white.opacity(0.25) : Color.clear)
+                        .overlay(
+                            Capsule()
+                                .stroke(isSelected ? Color.white.opacity(0.4) : Color.primary.opacity(0.25), lineWidth: 1.5)
+                        )
                 }
             }
+            .overlay {
+                if settings.selectedVisualStyle == .neumorphism && isSelected {
+                    Capsule()
+                        .stroke(
+                            Color.white.opacity(isLightTone ? 0.44 : 0.20),
+                            lineWidth: 0.8
+                        )
+                }
+            }
+            .shadow(
+                color: settings.selectedVisualStyle == .neumorphism && !isSelected ? unselectedShadowColor : .clear,
+                radius: settings.selectedVisualStyle == .neumorphism && !isSelected ? 4 : 0,
+                x: 0,
+                y: settings.selectedVisualStyle == .neumorphism && !isSelected ? 2 : 0
+            )
         }
     }
 }
@@ -567,7 +631,7 @@ struct TrophyDetailView: View {
                     NeumorphSurface(
                         cornerRadius: 999,
                         depth: .raised,
-                        fill: AnyShapeStyle(trophy.isUnlocked ? trophy.color : Color.gray)
+                        fill: trophy.isUnlocked ? AnyShapeStyle(trophy.color) : AnyShapeStyle(Color.gray.opacity(0.5))
                     )
                 } else {
                     Capsule()
