@@ -24,6 +24,7 @@ fileprivate struct JourneyConfig {
     static let preparedPlanMaxAge: TimeInterval = 180 // seconds
     static let preparationMatchDistance: CLLocationDistance = 220 // meters
     static let poiMovementThreshold: Double = 50 // meters
+    static let routeDistanceAcceptanceRatio: Double = 0.15 // 15%
 }
 
 /// Manages the journey logic: destination generation, routing, and progress tracking
@@ -119,7 +120,8 @@ class JourneyManager: ObservableObject {
         do {
             let resolvedStart = await resolveRoutableStartCoordinate(
                 from: location,
-                transportMode: transportMode
+                transportMode: transportMode,
+                validateForPreset: isPresetCity
             )
 
             // Calculate distance based on speed and duration
@@ -233,6 +235,7 @@ class JourneyManager: ObservableObject {
     ) async throws -> (destination: CLLocationCoordinate2D, route: RouteResult) {
         let maxAttempts = 6
         var lastError: Error = JourneyError.noRouteFound
+        var bestCandidate: (destination: CLLocationCoordinate2D, route: RouteResult, distanceErrorRatio: Double)?
         
         // Try different bearings
         let bearings = [
@@ -248,19 +251,32 @@ class JourneyManager: ObservableObject {
                 let route = try await calculateRouteStrict(
                     from: start,
                     to: destination,
-                    transportMode: transportMode
+                    transportMode: transportMode,
+                    targetDistance: distance
                 )
-                // Successfully found a routable path
-                return (destination, route)
+                let distanceErrorRatio = abs(route.distance - distance) / max(distance, 1)
+                if bestCandidate == nil || distanceErrorRatio < (bestCandidate?.distanceErrorRatio ?? .greatestFiniteMagnitude) {
+                    bestCandidate = (destination, route, distanceErrorRatio)
+                }
+
+                // Early-return once we find a route close enough to requested distance.
+                if distanceErrorRatio <= JourneyConfig.routeDistanceAcceptanceRatio {
+                    return (destination, route)
+                }
             } catch {
                 lastError = error
-                // Small delay between retries to avoid rate limiting
-                if index < maxAttempts - 1 {
-                    try? await Task.sleep(nanoseconds: JourneyConfig.retryDelay)
-                }
+            }
+
+            // Small delay between retries to avoid rate limiting
+            if index < maxAttempts - 1 {
+                try? await Task.sleep(nanoseconds: JourneyConfig.retryDelay)
             }
         }
-        
+
+        if let bestCandidate {
+            return (bestCandidate.destination, bestCandidate.route)
+        }
+
         throw lastError
     }
 
@@ -268,10 +284,24 @@ class JourneyManager: ObservableObject {
     /// Optimized to minimize API calls.
     private func resolveRoutableStartCoordinate(
         from coordinate: CLLocationCoordinate2D,
-        transportMode: TransportMode
+        transportMode: TransportMode,
+        validateForPreset: Bool
     ) async -> CLLocationCoordinate2D {
-        // For most cases, the coordinate is already valid - trust the user's selection
-        // Only do validation for preset cities which might have imprecise coordinates
+        // Keep current-location and custom picks fast; only validate pre-defined preset starts.
+        guard validateForPreset else { return coordinate }
+
+        if await hasNearbyRoute(at: coordinate, transportMode: transportMode) {
+            return coordinate
+        }
+
+        if let nearbyAddress = await findNearestAddressCandidate(around: coordinate, transportMode: transportMode) {
+            return nearbyAddress
+        }
+
+        if let radialCandidate = await findNearestRoutableByRadialScan(around: coordinate, transportMode: transportMode) {
+            return radialCandidate
+        }
+
         return coordinate
     }
 
@@ -389,22 +419,29 @@ class JourneyManager: ObservableObject {
     /// Calculate route from start to destination (strict - throws on failure)
     private func calculateRouteStrict(from start: CLLocationCoordinate2D,
                                       to destination: CLLocationCoordinate2D,
-                                      transportMode: TransportMode) async throws -> RouteResult {
+                                      transportMode: TransportMode,
+                                      targetDistance: Double? = nil) async throws -> RouteResult {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: start))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
         request.transportType = mapTransportType(for: transportMode)
+        request.requestsAlternateRoutes = true
         
         let directions = MKDirections(request: request)
         let response = try await directions.calculate()
-        
-        guard let route = response.routes.first else {
+
+        let validRoutes = response.routes.filter { $0.polyline.pointCount > 1 && $0.distance > 0 }
+        guard !validRoutes.isEmpty else {
             throw JourneyError.noRouteFound
         }
-        
-        // Ensure route has valid points
-        guard route.polyline.pointCount > 1 && route.distance > 0 else {
-            throw JourneyError.noRouteFound
+
+        let route: MKRoute
+        if let targetDistance {
+            route = validRoutes.min {
+                abs($0.distance - targetDistance) < abs($1.distance - targetDistance)
+            } ?? validRoutes[0]
+        } else {
+            route = validRoutes[0]
         }
         
         let coordinates = route.polyline.coordinates()
@@ -545,7 +582,8 @@ class JourneyManager: ObservableObject {
     ) async -> PreparedJourneyPlan? {
         let resolvedStart = await resolveRoutableStartCoordinate(
             from: request.requestedStart,
-            transportMode: request.transportMode
+            transportMode: request.transportMode,
+            validateForPreset: request.isPresetCity
         )
 
         let distance = request.transportMode.speedMps * request.duration

@@ -21,6 +21,10 @@ class LocationManager: NSObject, ObservableObject {
     private var hasRequestedLocation = false
     private var geocoder = CLGeocoder()
     private var lastGeocodedCoordinate: CLLocationCoordinate2D?
+    private var lastGeocodeTime: Date = .distantPast
+    private var geocodeTask: Task<Void, Never>?
+    private let geocodeMinInterval: TimeInterval = 45
+    private let geocodeMinDistance: CLLocationDistance = 150
     
     /// Reverse geocode coordinate to get location name
     func reverseGeocode(_ coordinate: CLLocationCoordinate2D?) async -> String {
@@ -41,6 +45,11 @@ class LocationManager: NSObject, ObservableObject {
         // Use app language for geocoding results
         let appLanguage = AppSettings.shared.currentLanguage
         let locale = Locale(identifier: appLanguage)
+        lastGeocodeTime = Date()
+
+        if geocoder.isGeocoding {
+            geocoder.cancelGeocode()
+        }
         
         do {
             let placemarks = try await geocoder.reverseGeocodeLocation(location, preferredLocale: locale)
@@ -92,6 +101,11 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         locationManager.distanceFilter = 50 // 性能优化：从 10 米改为 50 米，减少更新频率
         authorizationStatus = locationManager.authorizationStatus
+    }
+
+    deinit {
+        geocodeTask?.cancel()
+        geocoder.cancelGeocode()
     }
     
     /// Request location permissions
@@ -152,8 +166,8 @@ extension LocationManager: CLLocationManagerDelegate {
             currentLocation = location
             error = nil
             
-            // Reverse geocode to get location name
-            _ = await reverseGeocode(location.coordinate)
+            // Reverse geocode with distance/time throttling.
+            requestReverseGeocodeIfNeeded(for: location.coordinate)
         }
     }
     
@@ -172,6 +186,32 @@ extension LocationManager: CLLocationManagerDelegate {
                 self.error = .unknown(error.localizedDescription)
             }
         }
+    }
+}
+
+private extension LocationManager {
+    func requestReverseGeocodeIfNeeded(for coordinate: CLLocationCoordinate2D) {
+        guard shouldReverseGeocode(for: coordinate) else { return }
+
+        geocodeTask?.cancel()
+        geocodeTask = Task { [weak self] in
+            guard let self else { return }
+            _ = await self.reverseGeocode(coordinate)
+        }
+    }
+
+    func shouldReverseGeocode(for coordinate: CLLocationCoordinate2D) -> Bool {
+        if currentLocationName.isEmpty && lastGeocodeTime == .distantPast {
+            return true
+        }
+
+        let elapsed = Date().timeIntervalSince(lastGeocodeTime)
+        if let lastCoordinate = lastGeocodedCoordinate {
+            let movedDistance = lastCoordinate.distance(to: coordinate)
+            return movedDistance >= geocodeMinDistance || elapsed >= geocodeMinInterval
+        }
+
+        return elapsed >= geocodeMinInterval
     }
 }
 

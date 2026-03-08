@@ -16,7 +16,7 @@ struct ExplorationMapView: View {
     @Binding var currentSpeed: Double
     
     @State private var cameraPosition: MapCameraPosition
-    @State private var revealedRouteProgress: Double = 0.0
+    @State private var revealedRouteCoordinates: [CLLocationCoordinate2D] = []
     @State private var traveledPath: [CLLocationCoordinate2D] = []
     @State private var animatedPosition: CLLocationCoordinate2D?
     @State private var hasInitialized = false
@@ -30,8 +30,8 @@ struct ExplorationMapView: View {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var settings = AppSettings.shared
 
-    private let cameraFollowDistanceThreshold: CLLocationDistance = 20
-    private let cameraFollowMinInterval: TimeInterval = PerformanceOptimizer.shared.isEnergySavingMode ? 3.0 : 1.5
+    private let traveledPathMaxPoints = 600
+    private let traveledPathTargetPoints = 400
 
     init(
         session: JourneySession,
@@ -101,6 +101,39 @@ struct ExplorationMapView: View {
             return 1200
         }
     }
+
+    private var cameraFollowDistanceThreshold: CLLocationDistance {
+        switch session.transportMode {
+        case .walking:
+            return 18
+        case .cycling, .skateboard:
+            return 26
+        case .driving:
+            return 40
+        }
+    }
+
+    private var cameraFollowMinInterval: TimeInterval {
+        let base: TimeInterval
+        switch session.transportMode {
+        case .walking:
+            base = 1.1
+        case .cycling, .skateboard:
+            base = 1.3
+        case .driving:
+            base = 1.6
+        }
+
+        return PerformanceOptimizer.shared.isEnergySavingMode ? base * 1.8 : base
+    }
+
+    private var positionAnimationDuration: TimeInterval {
+        max(0.35, PerformanceOptimizer.shared.journeyUpdateInterval * 0.85)
+    }
+
+    private var cameraAnimationDuration: TimeInterval {
+        max(0.45, PerformanceOptimizer.shared.journeyUpdateInterval * 0.95)
+    }
     
     var body: some View {
         ZStack {
@@ -129,20 +162,17 @@ struct ExplorationMapView: View {
             }
             
             // Revealed route (dimmed, shows where you can go)
-            if currentPosition != nil, revealedRouteProgress > 0 {
-                let revealedCoordinates = getRevealedRoute(progress: revealedRouteProgress)
-                if revealedCoordinates.count >= 2 {
-                    MapPolyline(coordinates: revealedCoordinates)
-                        .stroke(
-                            Color.gray.opacity(0.3),
-                            style: StrokeStyle(
-                                lineWidth: 4,
-                                lineCap: .round,
-                                lineJoin: .round,
-                                dash: [10, 5]
-                            )
+            if currentPosition != nil, revealedRouteCoordinates.count >= 2 {
+                MapPolyline(coordinates: revealedRouteCoordinates)
+                    .stroke(
+                        Color.gray.opacity(0.3),
+                        style: StrokeStyle(
+                            lineWidth: 4,
+                            lineCap: .round,
+                            lineJoin: .round,
+                            dash: [10, 5]
                         )
-                }
+                    )
             }
             
             // Current position (avatar) with smooth animation and pulsing effect (no label to avoid flickering)
@@ -198,6 +228,11 @@ struct ExplorationMapView: View {
                 
                 // Start speed update timer
                 startSpeedUpdateTimer()
+
+                if let position = currentPosition {
+                    updateRevealedRoute(progress: position.progress)
+                    updateTraveledPath(position.coordinate)
+                }
             }
         }
         .onDisappear {
@@ -329,7 +364,7 @@ struct ExplorationMapView: View {
     // MARK: - Helper Functions
     
     private func animateToPosition(_ newCoordinate: CLLocationCoordinate2D) {
-        withAnimation(.linear(duration: 1.0)) {
+        withAnimation(.linear(duration: positionAnimationDuration)) {
             animatedPosition = newCoordinate
         }
     }
@@ -342,7 +377,7 @@ struct ExplorationMapView: View {
         let zoom = zoomLevel(for: session.transportMode.speedMps)
 
         // Use linear animation for smooth continuous movement.
-        setCamera(center: coordinate, zoom: zoom, animation: .linear(duration: 1.0))
+        setCamera(center: coordinate, zoom: zoom, animation: .linear(duration: cameraAnimationDuration))
     }
     
     private func recenterCamera() {
@@ -413,29 +448,86 @@ struct ExplorationMapView: View {
         // Only add if the new coordinate is different enough (avoid duplicates)
         if let last = traveledPath.last {
             let distance = last.distance(to: newCoordinate)
-            if distance > 10 { // More than 10 meters
+            if distance > traveledPathMinDistance(for: session.transportMode) {
                 traveledPath.append(newCoordinate)
+                compactTraveledPathIfNeeded()
             }
         }
     }
-    
-    private func getRevealedRoute(progress: Double) -> [CLLocationCoordinate2D] {
-        guard !session.route.isEmpty else { return [] }
-        
-        // Calculate how many coordinates to reveal based on progress
-        let totalPoints = session.route.count
-        let revealedPoints = Int(Double(totalPoints) * progress)
-        
-        guard revealedPoints > 0 else { return [] }
-        
-        let endIndex = min(revealedPoints, totalPoints)
-        return Array(session.route[0..<endIndex])
-    }
-    
+
     private func updateRevealedRoute(progress: Double) {
-        withAnimation(.linear(duration: 0.5)) {
-            revealedRouteProgress = progress
+        guard !session.route.isEmpty else {
+            revealedRouteCoordinates = []
+            return
         }
+
+        let totalPoints = session.route.count
+        let targetCount = min(max(Int(Double(totalPoints) * progress), 0), totalPoints)
+
+        if targetCount <= 1 {
+            if targetCount == 1 && revealedRouteCoordinates.isEmpty {
+                revealedRouteCoordinates = [session.route[0]]
+            }
+            return
+        }
+
+        if targetCount > revealedRouteCoordinates.count {
+            let startIndex = revealedRouteCoordinates.count
+            withAnimation(.linear(duration: 0.25)) {
+                revealedRouteCoordinates.append(contentsOf: session.route[startIndex..<targetCount])
+            }
+            return
+        }
+
+        // Defensive fallback for rare non-monotonic progress updates.
+        if targetCount < revealedRouteCoordinates.count {
+            revealedRouteCoordinates = Array(session.route.prefix(targetCount))
+        }
+    }
+
+    private func traveledPathMinDistance(for mode: TransportMode) -> CLLocationDistance {
+        switch mode {
+        case .walking:
+            return 8
+        case .cycling, .skateboard:
+            return 12
+        case .driving:
+            return 20
+        }
+    }
+
+    private func compactTraveledPathIfNeeded() {
+        guard traveledPath.count > traveledPathMaxPoints else { return }
+        traveledPath = downsample(path: traveledPath, targetCount: traveledPathTargetPoints)
+    }
+
+    private func downsample(path: [CLLocationCoordinate2D], targetCount: Int) -> [CLLocationCoordinate2D] {
+        guard path.count > targetCount, targetCount > 2 else { return path }
+
+        var sampled: [CLLocationCoordinate2D] = []
+        sampled.reserveCapacity(targetCount)
+        sampled.append(path[0])
+
+        let interiorTargetCount = max(targetCount - 2, 0)
+        let interiorSourceCount = max(path.count - 2, 0)
+
+        if interiorTargetCount > 0, interiorSourceCount > 0 {
+            let step = Double(interiorSourceCount) / Double(interiorTargetCount)
+            for i in 0..<interiorTargetCount {
+                let rawIndex = 1 + Int(round(Double(i) * step))
+                let boundedIndex = min(max(rawIndex, 1), path.count - 2)
+                let point = path[boundedIndex]
+                if sampled.last != point {
+                    sampled.append(point)
+                }
+            }
+        }
+
+        if sampled.last != path[path.count - 1] {
+            sampled.append(path[path.count - 1])
+        }
+
+        return sampled
     }
 }
 

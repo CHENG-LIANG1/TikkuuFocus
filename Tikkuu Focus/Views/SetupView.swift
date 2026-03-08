@@ -38,6 +38,9 @@ struct SetupView: View {
     @State private var showWeatherDetail = false
     @State private var mapPreloadCoordinate: CLLocationCoordinate2D?
     @State private var journeyPreparationTask: Task<Void, Never>?
+    @State private var weatherUpdateTask: Task<Void, Never>?
+    @State private var lastWeatherFetchAt: Date = .distantPast
+    @State private var lastWeatherFetchCoordinate: CLLocationCoordinate2D?
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var allRecords: [JourneyRecord]
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     
@@ -54,6 +57,8 @@ struct SetupView: View {
     private var isEnergySavingMode: Bool {
         reduceMotion || ProcessInfo.processInfo.isLowPowerModeEnabled
     }
+
+    private let weatherFetchMinDistance: CLLocationDistance = 500
     
     private var baseTextColor: Color {
         isNeumorphism 
@@ -180,7 +185,7 @@ struct SetupView: View {
             updateButtonGlowAnimation()
         }
         .onChange(of: selectedLocation) { _, _ in
-            fetchWeatherForSelectedLocation()
+            fetchWeatherForSelectedLocation(force: true)
             prewarmMapIfPossible()
         }
         .onChange(of: selectedTransport) { _, _ in
@@ -192,15 +197,15 @@ struct SetupView: View {
         .onChange(of: locationManager.currentLocation) { _, newLocation in
             if case .currentLocation = selectedLocation, let location = newLocation {
                 // Throttle weather updates to avoid excessive API calls
-                Task {
-                    await weatherManager.fetchWeather(for: location.coordinate)
-                }
+                fetchWeatherIfNeeded(for: location.coordinate)
                 prewarmMapIfPossible()
             }
         }
         .onDisappear {
             journeyPreparationTask?.cancel()
             journeyPreparationTask = nil
+            weatherUpdateTask?.cancel()
+            weatherUpdateTask = nil
         }
         .onChange(of: locationManager.authorizationStatus) { _, newStatus in
             if newStatus == .denied || newStatus == .restricted {
@@ -368,22 +373,20 @@ struct SetupView: View {
         }
     }
     
-    private func fetchWeatherForSelectedLocation() {
-        Task {
-            let coordinate: CLLocationCoordinate2D
-            
-            switch selectedLocation {
-            case .currentLocation:
-                guard let location = locationManager.currentLocation?.coordinate else { return }
-                coordinate = location
-            case .preset(let location):
-                coordinate = location.coordinate
-            case .custom(let coord, _):
-                coordinate = coord
-            }
-            
-            await weatherManager.fetchWeather(for: coordinate)
+    private func fetchWeatherForSelectedLocation(force: Bool = false) {
+        let coordinate: CLLocationCoordinate2D
+
+        switch selectedLocation {
+        case .currentLocation:
+            guard let location = locationManager.currentLocation?.coordinate else { return }
+            coordinate = location
+        case .preset(let location):
+            coordinate = location.coordinate
+        case .custom(let coord, _):
+            coordinate = coord
         }
+
+        fetchWeatherIfNeeded(for: coordinate, force: force)
     }
 
     private func prewarmMapIfPossible() {
@@ -1136,6 +1139,34 @@ struct SetupView: View {
         } else {
             HapticManager.selection()
         }
+    }
+
+    private func fetchWeatherIfNeeded(for coordinate: CLLocationCoordinate2D, force: Bool = false) {
+        guard shouldFetchWeather(for: coordinate, force: force) else { return }
+
+        lastWeatherFetchAt = Date()
+        lastWeatherFetchCoordinate = coordinate
+
+        weatherUpdateTask?.cancel()
+        weatherUpdateTask = Task {
+            await weatherManager.fetchWeather(for: coordinate)
+        }
+    }
+
+    private func shouldFetchWeather(for coordinate: CLLocationCoordinate2D, force: Bool) -> Bool {
+        if force {
+            return true
+        }
+
+        let elapsed = Date().timeIntervalSince(lastWeatherFetchAt)
+        let minInterval = PerformanceConfig.weatherUpdateInterval
+
+        if let lastCoordinate = lastWeatherFetchCoordinate {
+            let movedDistance = lastCoordinate.distance(to: coordinate)
+            return movedDistance >= weatherFetchMinDistance || elapsed >= minInterval
+        }
+
+        return elapsed >= minInterval
     }
 }
 
