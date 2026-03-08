@@ -63,7 +63,7 @@ extension PresetLocation {
             nameZh: "中国北京",
             coordinate: CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074),
             country: "China",
-            emoji: "🏛️"
+            emoji: "🐼"
         ),
         PresetLocation(
             name: "Shanghai, China",

@@ -77,6 +77,18 @@ struct TextStyles {
             .font(.system(size: 13, weight: .medium))
             .foregroundColor(.secondary)
     }
+    
+    static func metric(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 20, weight: .bold, design: .rounded))
+            .foregroundColor(.primary)
+    }
+    
+    static func label(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(.secondary)
+    }
 }
 
 // MARK: - Spacing Constants

@@ -123,6 +123,7 @@
 "location.selected" = "Selected Location";
 "location.confirm" = "Confirm Location";
 "location.favorites" = "Favorites";
+"location.favorites.viewAll" = "View All";
 "location.favorites.empty" = "No Favorites Yet";
 "location.favorites.empty.message" = "Save your favorite locations for quick access.";
 "location.favorite.add" = "Add to Favorites";
@@ -154,6 +155,8 @@
 "settings.support" = "Support";
 "settings.contact" = "Contact & Support";
 "settings.privacy" = "Privacy Policy";
+"privacy.error.title" = "Failed to load page";
+"privacy.error.retry" = "Retry";
 "settings.about" = "About";
 "settings.onboarding" = "Onboarding";
 "settings.about.app" = "About Roam Focus";
@@ -254,6 +257,23 @@
 "onboarding.v2.page4.feature3.title" = "Localized by design";
 "onboarding.v2.page4.feature3.desc" = "Language and formatting follow your in-app settings.";
 
+// Onboarding New (Simplified)
+"onboarding.new.page1.title" = "Focus as a Journey";
+"onboarding.new.page1.subtitle" = "Transform your focus time into virtual adventures across real-world maps";
+"onboarding.new.page2.title" = "Stay in Flow";
+"onboarding.new.page2.subtitle" = "Explore freely, discover landmarks, and watch your progress in real-time";
+"onboarding.new.page3.title" = "Track & Achieve";
+"onboarding.new.page3.subtitle" = "Build streaks, unlock trophies, and celebrate every milestone";
+"onboarding.new.tag.realMap" = "Real Maps";
+"onboarding.new.tag.transport" = "Walk · Bike · Drive";
+"onboarding.new.tag.discover" = "Discover POIs";
+"onboarding.new.tag.liveProgress" = "Live Progress";
+"onboarding.new.tag.freeExplore" = "Free Explore";
+"onboarding.new.tag.pois" = "Landmarks";
+"onboarding.new.tag.stats" = "Session Stats";
+"onboarding.new.tag.history" = "History";
+"onboarding.new.tag.achievements" = "Achievements";
+
 // History
 "history.title" = "Roaming History";
 "history.journeys" = "%d roams";
@@ -317,6 +337,7 @@
 "history.stats.thursday" = "Thursday";
 "history.stats.friday" = "Friday";
 "history.stats.saturday" = "Saturday";
+"history.showMore" = "Show more";
 "history.stats.milestones" = "Milestones";
 "history.stats.totalDays" = "Active Days";
 "history.stats.totalSteps" = "Estimated Steps";
@@ -766,11 +787,12 @@
 // Trophy
 "trophy.loading" = "Loading Trophies...";
 "trophy.notFound" = "Trophy not found";
+"trophy.empty.category" = "No trophies in this category yet";
 "trophy.done" = "Done";
 
 // About
 "about.appName" = "Roam Focus";
-"about.copyright" = "© 2026 Roam Focus";
+"about.copyright" = "© 2026 Cheng Liang";
 
 // Common UI
 "common.bullet" = "•";

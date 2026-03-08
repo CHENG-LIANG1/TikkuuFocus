@@ -100,7 +100,8 @@ final class JourneyRecord {
                 category: poi.category,
                 latitude: poi.coordinate.latitude,
                 longitude: poi.coordinate.longitude,
-                discoveredAt: poi.discoveredAt
+                discoveredAt: poi.discoveredAt,
+                rarity: poi.rarity.rawValue // Store rarity
             )
         }
 
@@ -119,8 +120,16 @@ struct StoredDiscoveredPOI: Codable, Identifiable, Hashable {
     let latitude: Double
     let longitude: Double
     let discoveredAt: Date
+    var rarity: String? // Optional for backward compatibility
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+    
+    var rarityEnum: POIRarity {
+        if let rarity = rarity, let enumValue = POIRarity(rawValue: rarity) {
+            return enumValue
+        }
+        return .common
     }
 }

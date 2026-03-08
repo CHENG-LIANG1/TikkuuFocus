@@ -176,17 +176,45 @@ struct DiscoveredPOI: Identifiable, Equatable {
     let category: String
     let coordinate: CLLocationCoordinate2D
     let discoveredAt: Date
+    let rarity: POIRarity // New rarity field
     
-    init(id: UUID = UUID(), name: String, category: String, coordinate: CLLocationCoordinate2D, discoveredAt: Date = Date()) {
+    init(id: UUID = UUID(), name: String, category: String, coordinate: CLLocationCoordinate2D, discoveredAt: Date = Date(), rarity: POIRarity = .common) {
         self.id = id
         self.name = name
         self.category = category
         self.coordinate = coordinate
         self.discoveredAt = discoveredAt
+        self.rarity = rarity
     }
     
     static func == (lhs: DiscoveredPOI, rhs: DiscoveredPOI) -> Bool {
         lhs.id == rhs.id
+    }
+}
+
+/// Rarity level of a POI
+enum POIRarity: String, Codable, CaseIterable {
+    case common
+    case rare
+    case epic
+    case legendary
+    
+    var color: String {
+        switch self {
+        case .common: return "gray"
+        case .rare: return "blue"
+        case .epic: return "purple"
+        case .legendary: return "orange"
+        }
+    }
+    
+    var probability: Double {
+        switch self {
+        case .common: return 0.60
+        case .rare: return 0.25
+        case .epic: return 0.10
+        case .legendary: return 0.05
+        }
     }
 }
 

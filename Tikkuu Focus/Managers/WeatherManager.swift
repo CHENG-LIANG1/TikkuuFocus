@@ -335,51 +335,51 @@ class WeatherManager: ObservableObject {
         switch condition {
         case .clear:
             if isDaytime {
-                // Sunny day - bright blue to cyan
+                // Sunny day - rich blue tones
                 return [
-                    Color(red: 0.4, green: 0.7, blue: 1.0),
-                    Color(red: 0.5, green: 0.8, blue: 1.0),
-                    Color(red: 0.6, green: 0.9, blue: 1.0)
+                    Color(red: 0.22, green: 0.50, blue: 0.82),
+                    Color(red: 0.28, green: 0.58, blue: 0.88),
+                    Color(red: 0.35, green: 0.65, blue: 0.92)
                 ]
             } else {
                 // Clear night - deep blue to purple
                 return [
-                    Color(red: 0.1, green: 0.1, blue: 0.3),
-                    Color(red: 0.2, green: 0.1, blue: 0.4),
-                    Color(red: 0.3, green: 0.2, blue: 0.5)
+                    Color(red: 0.08, green: 0.08, blue: 0.25),
+                    Color(red: 0.14, green: 0.08, blue: 0.32),
+                    Color(red: 0.22, green: 0.14, blue: 0.40)
                 ]
             }
             
         case .cloudy, .mostlyCloudy:
-            // Cloudy - soft blue-gray with depth
+            // Cloudy - muted blue-gray with depth
             if isDaytime {
                 return [
-                    Color(red: 0.55, green: 0.62, blue: 0.72),
-                    Color(red: 0.62, green: 0.68, blue: 0.78),
-                    Color(red: 0.68, green: 0.74, blue: 0.84)
+                    Color(red: 0.35, green: 0.42, blue: 0.55),
+                    Color(red: 0.42, green: 0.48, blue: 0.60),
+                    Color(red: 0.48, green: 0.54, blue: 0.66)
                 ]
             } else {
                 return [
-                    Color(red: 0.25, green: 0.28, blue: 0.38),
-                    Color(red: 0.32, green: 0.35, blue: 0.45),
-                    Color(red: 0.38, green: 0.42, blue: 0.52)
+                    Color(red: 0.18, green: 0.20, blue: 0.30),
+                    Color(red: 0.24, green: 0.26, blue: 0.36),
+                    Color(red: 0.30, green: 0.32, blue: 0.42)
                 ]
             }
             
         case .partlyCloudy, .mostlyClear:
             if isDaytime {
-                // Partly cloudy day - bright soft blue with warmth
+                // Partly cloudy day - deeper blue with subtle warmth
                 return [
-                    Color(red: 0.52, green: 0.72, blue: 0.92),
-                    Color(red: 0.62, green: 0.78, blue: 0.96),
-                    Color(red: 0.72, green: 0.84, blue: 1.0)
+                    Color(red: 0.30, green: 0.50, blue: 0.74),
+                    Color(red: 0.38, green: 0.56, blue: 0.80),
+                    Color(red: 0.45, green: 0.62, blue: 0.85)
                 ]
             } else {
                 // Partly cloudy night - deep blue with purple hints
                 return [
+                    Color(red: 0.12, green: 0.16, blue: 0.34),
                     Color(red: 0.18, green: 0.22, blue: 0.42),
-                    Color(red: 0.24, green: 0.28, blue: 0.52),
-                    Color(red: 0.30, green: 0.34, blue: 0.62)
+                    Color(red: 0.24, green: 0.28, blue: 0.50)
                 ]
             }
             
@@ -387,47 +387,47 @@ class WeatherManager: ObservableObject {
             // Rainy - moody blue-gray with depth
             if isDaytime {
                 return [
-                    Color(red: 0.38, green: 0.45, blue: 0.58),
-                    Color(red: 0.45, green: 0.52, blue: 0.65),
-                    Color(red: 0.52, green: 0.58, blue: 0.72)
+                    Color(red: 0.25, green: 0.32, blue: 0.45),
+                    Color(red: 0.32, green: 0.38, blue: 0.52),
+                    Color(red: 0.38, green: 0.44, blue: 0.58)
                 ]
             } else {
                 return [
+                    Color(red: 0.12, green: 0.16, blue: 0.26),
                     Color(red: 0.18, green: 0.22, blue: 0.32),
-                    Color(red: 0.24, green: 0.28, blue: 0.38),
-                    Color(red: 0.30, green: 0.34, blue: 0.44)
+                    Color(red: 0.24, green: 0.28, blue: 0.38)
                 ]
             }
             
         case .thunderstorms:
             // Stormy - dramatic dark purple-gray
             return [
-                Color(red: 0.22, green: 0.24, blue: 0.35),
-                Color(red: 0.28, green: 0.26, blue: 0.42),
-                Color(red: 0.35, green: 0.32, blue: 0.50)
+                Color(red: 0.15, green: 0.16, blue: 0.28),
+                Color(red: 0.20, green: 0.18, blue: 0.34),
+                Color(red: 0.26, green: 0.24, blue: 0.40)
             ]
             
         case .snow, .blizzard, .flurries, .blowingSnow:
-            // Snowy - cool white-blue
+            // Snowy - cool muted blue-white
             return [
-                Color(red: 0.8, green: 0.85, blue: 0.95),
-                Color(red: 0.85, green: 0.9, blue: 0.98),
-                Color(red: 0.9, green: 0.95, blue: 1.0)
+                Color(red: 0.50, green: 0.56, blue: 0.68),
+                Color(red: 0.56, green: 0.62, blue: 0.74),
+                Color(red: 0.62, green: 0.68, blue: 0.80)
             ]
             
         case .foggy, .haze, .smoky:
-            // Foggy - soft misty gray with subtle warmth
+            // Foggy - muted gray with subtle warmth
             if isDaytime {
                 return [
-                    Color(red: 0.72, green: 0.74, blue: 0.78),
-                    Color(red: 0.78, green: 0.79, blue: 0.82),
-                    Color(red: 0.82, green: 0.83, blue: 0.86)
+                    Color(red: 0.48, green: 0.50, blue: 0.56),
+                    Color(red: 0.54, green: 0.56, blue: 0.62),
+                    Color(red: 0.58, green: 0.60, blue: 0.66)
                 ]
             } else {
                 return [
-                    Color(red: 0.28, green: 0.30, blue: 0.35),
-                    Color(red: 0.35, green: 0.37, blue: 0.42),
-                    Color(red: 0.42, green: 0.44, blue: 0.48)
+                    Color(red: 0.20, green: 0.22, blue: 0.28),
+                    Color(red: 0.26, green: 0.28, blue: 0.34),
+                    Color(red: 0.32, green: 0.34, blue: 0.40)
                 ]
             }
             

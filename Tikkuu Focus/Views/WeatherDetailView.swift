@@ -117,7 +117,7 @@ struct WeatherDetailView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
         .padding(.horizontal, 20)
-        .glassCard(cornerRadius: 24)
+        .glassCard(cornerRadius: 20)
     }
 
     private var metricsGridCard: some View {
@@ -377,9 +377,9 @@ struct WeatherMetricTile: View {
         .padding(.horizontal, 12)
         .background {
             if settings.selectedVisualStyle == .neumorphism {
-                NeumorphSurface(cornerRadius: 14, depth: .inset)
+                NeumorphSurface(cornerRadius: 12, depth: .inset)
             } else {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(Color.white.opacity(0.14))
             }
         }
@@ -441,12 +441,12 @@ struct HourlyTile: View {
         .background {
             if settings.selectedVisualStyle == .neumorphism {
                 NeumorphSurface(
-                    cornerRadius: 14,
+                    cornerRadius: 12,
                     depth: isCurrent ? .raised : .inset,
                     fill: isCurrent ? AnyShapeStyle(Color(red: 0.42, green: 0.56, blue: 0.92)) : nil
                 )
             } else {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.14)))
             }
         }

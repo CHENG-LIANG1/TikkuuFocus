@@ -18,7 +18,7 @@ struct LocationPickerView: View {
     @ObservedObject private var locationStore = LocationStore.shared
     
     @State private var showMapPicker = false
-    @State private var searchText = ""
+    @State private var showFavoritesSheet = false
     
     var body: some View {
         NavigationStack {
@@ -36,11 +36,6 @@ struct LocationPickerView: View {
                         // Favorite Locations
                         if !locationStore.favorites.isEmpty {
                             favoritesSection
-                        }
-                        
-                        // Location History
-                        if !locationStore.history.isEmpty {
-                            historySection
                         }
                         
                         // Preset Locations
@@ -68,6 +63,12 @@ struct LocationPickerView: View {
         }
         .sheet(isPresented: $showMapPicker) {
             MapPickerView(selectedLocation: $selectedLocation)
+        }
+        .sheet(isPresented: $showFavoritesSheet) {
+            FavoritesPickerSheet { location in
+                selectedLocation = .custom(location.coordinate, location.name)
+                showFavoritesSheet = false
+            }
         }
     }
     
@@ -126,7 +127,7 @@ struct LocationPickerView: View {
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(
                             settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85) : Color(red: 0.55, green: 0.65, blue: 1.0))
+                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue
                         )
                         .frame(width: 36, height: 36)
@@ -155,8 +156,17 @@ struct LocationPickerView: View {
                     .foregroundColor(.primary)
                 
                 Spacer()
+
+                Button {
+                    HapticManager.selection()
+                    showFavoritesSheet = true
+                } label: {
+                    Text(L("location.favorites.viewAll"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
                 
-                Text("\(locationStore.favorites.count)")
+                Text("\(locationStore.favorites.count)/20")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 8)
@@ -178,48 +188,6 @@ struct LocationPickerView: View {
                         isSelected: isFavoriteSelected(location),
                         action: {
                             selectedLocation = .custom(location.coordinate, location.name)
-                        }
-                    )
-                }
-            }
-        }
-    }
-    
-    // MARK: - History Section
-    
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(L("location.history"))
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Button {
-                    HapticManager.light()
-                    locationStore.clearHistory()
-                } label: {
-                    Text(L("location.history.clear"))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.red.opacity(0.8))
-                }
-            }
-            .padding(.horizontal, 4)
-            
-            LazyVStack(spacing: 8) {
-                ForEach(locationStore.history.prefix(5)) { location in
-                    HistoryLocationRow(
-                        location: location,
-                        isSelected: isHistorySelected(location),
-                        action: {
-                            selectedLocation = .custom(location.coordinate, location.name)
-                        },
-                        onFavorite: {
-                            locationStore.toggleFavorite(location)
-                        },
-                        onDelete: {
-                            locationStore.delete(location)
                         }
                     )
                 }
@@ -300,7 +268,7 @@ struct LocationPickerView: View {
                         .font(.system(size: 24))
                         .foregroundColor(
                             settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85) : Color(red: 0.55, green: 0.65, blue: 1.0))
+                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue
                         )
                 } else {
@@ -338,15 +306,6 @@ struct LocationPickerView: View {
         }
         return false
     }
-    
-    private func isHistorySelected(_ location: SavedLocation) -> Bool {
-        if case .custom(let coord, _) = selectedLocation {
-            let distance = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
-                .distance(from: CLLocation(latitude: location.latitude, longitude: location.longitude))
-            return distance < 100
-        }
-        return false
-    }
 }
 
 // MARK: - Favorite Location Card
@@ -377,7 +336,7 @@ struct FavoriteLocationCard: View {
                     Circle()
                         .fill(isSelected
                             ? (settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85) : Color(red: 0.55, green: 0.65, blue: 1.0))
+                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue)
                             : Color.secondary.opacity(0.3)
                         )
@@ -398,7 +357,7 @@ struct FavoriteLocationCard: View {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(isSelected
                         ? (settings.selectedVisualStyle == .neumorphism
-                            ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85).opacity(0.6) : Color(red: 0.55, green: 0.65, blue: 1.0).opacity(0.6))
+                            ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight.opacity(0.6) : LiquidGlassStyle.accentBlueDark.opacity(0.6))
                             : Color.blue.opacity(0.5))
                         : Color.clear,
                         lineWidth: isSelected ? 2.5 : 0
@@ -408,112 +367,6 @@ struct FavoriteLocationCard: View {
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
         }
         .buttonStyle(ScaleButtonStyle())
-    }
-}
-
-// MARK: - History Location Row
-
-struct HistoryLocationRow: View {
-    let location: SavedLocation
-    let isSelected: Bool
-    let action: () -> Void
-    let onFavorite: () -> Void
-    let onDelete: () -> Void
-    @ObservedObject private var settings = AppSettings.shared
-    
-    var body: some View {
-        Button(action: {
-            HapticManager.selection()
-            action()
-        }) {
-            HStack(spacing: 12) {
-                // Selection indicator
-                ZStack {
-                    Circle()
-                        .fill(isSelected
-                            ? (settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85).opacity(0.15) : Color.blue.opacity(0.25))
-                                : Color.blue.opacity(0.2))
-                            : Color.clear
-                        )
-                        .frame(width: 32, height: 32)
-                    
-                    if isSelected {
-                        Image(systemName: "clock.badge.checkmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(
-                                settings.selectedVisualStyle == .neumorphism
-                                    ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85) : Color(red: 0.55, green: 0.65, blue: 1.0))
-                                    : Color.blue
-                            )
-                    } else {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(location.name)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-                    
-                    Text(formattedDate(location.timestamp))
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                // Favorite button
-                Button {
-                    HapticManager.light()
-                    onFavorite()
-                } label: {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.yellow.opacity(0.8))
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .glassCard(cornerRadius: 12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected
-                        ? (settings.selectedVisualStyle == .neumorphism
-                            ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85).opacity(0.6) : Color(red: 0.55, green: 0.65, blue: 1.0).opacity(0.6))
-                            : Color.blue.opacity(0.5))
-                        : Color.clear,
-                        lineWidth: isSelected ? 2.5 : 0
-                    )
-            )
-        }
-        .buttonStyle(ScaleButtonStyle())
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                HapticManager.light()
-                onDelete()
-            } label: {
-                Label(L("common.delete"), systemImage: "trash")
-            }
-            
-            Button {
-                HapticManager.light()
-                onFavorite()
-            } label: {
-                Label(L("location.favorite.add"), systemImage: "star.fill")
-            }
-            .tint(.yellow)
-        }
-    }
-    
-    private func formattedDate(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
@@ -545,7 +398,7 @@ struct PresetLocationCard: View {
                     Circle()
                         .fill(isSelected
                             ? (settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85) : Color(red: 0.55, green: 0.65, blue: 1.0))
+                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue)
                             : Color.secondary.opacity(0.3)
                         )
@@ -566,7 +419,7 @@ struct PresetLocationCard: View {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(isSelected
                         ? (settings.selectedVisualStyle == .neumorphism
-                            ? (settings.isNeumorphismLight ? Color(red: 0.35, green: 0.52, blue: 0.85).opacity(0.6) : Color(red: 0.55, green: 0.65, blue: 1.0).opacity(0.6))
+                            ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight.opacity(0.6) : LiquidGlassStyle.accentBlueDark.opacity(0.6))
                             : Color.blue.opacity(0.5))
                         : Color.clear,
                         lineWidth: isSelected ? 2.5 : 0
@@ -602,6 +455,7 @@ struct MapPickerView: View {
     @State private var showFavoritesSheet = false
     @State private var searchTask: Task<Void, Never>?
     @State private var hasCenteredOnCurrentLocation = false
+    @State private var isMapCenteredOnUser = true
     
     var body: some View {
         NavigationStack {
@@ -620,6 +474,9 @@ struct MapPickerView: View {
                         }
                     }
                     .mapStyle(settings.selectedMapMode.style)
+                    .onMapCameraChange { context in
+                        checkIfCenteredOnUser(mapCenter: context.region.center)
+                    }
                     .onTapGesture { screenCoordinate in
                         // Convert tap point to map coordinate
                         if let coordinate = proxy.convert(screenCoordinate, from: .local) {
@@ -756,20 +613,23 @@ struct MapPickerView: View {
             
             // Recenter and action buttons
             HStack(spacing: 12) {
-                // Recenter button
-                Button {
-                    recenterToCurrentLocation()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text(L("map.recenter"))
-                            .font(.system(size: 14, weight: .semibold))
+                // Recenter button (only show when map is not centered on user)
+                if !isMapCenteredOnUser && locationManager.currentLocation != nil {
+                    Button {
+                        recenterToCurrentLocation()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(L("map.recenter"))
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .glassCard(cornerRadius: 12)
                     }
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .glassCard(cornerRadius: 12)
+                    .transition(.scale.combined(with: .opacity))
                 }
                 
                 // Add to favorites button (only when location selected)
@@ -793,6 +653,7 @@ struct MapPickerView: View {
                 Spacer()
             }
             .padding(.horizontal, 20)
+            .animation(.easeInOut(duration: 0.25), value: isMapCenteredOnUser)
         }
         .padding(.bottom, 40)
     }
@@ -890,6 +751,22 @@ struct MapPickerView: View {
                 span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
             ))
         }
+        isMapCenteredOnUser = true
+    }
+    
+    private func checkIfCenteredOnUser(mapCenter: CLLocationCoordinate2D) {
+        guard let userLocation = locationManager.currentLocation?.coordinate else {
+            isMapCenteredOnUser = false
+            return
+        }
+        
+        // Calculate distance between map center and user location
+        let mapCenterLocation = CLLocation(latitude: mapCenter.latitude, longitude: mapCenter.longitude)
+        let userCLLocation = CLLocation(latitude: userLocation.latitude, longitude: userLocation.longitude)
+        let distance = mapCenterLocation.distance(from: userCLLocation)
+        
+        // Consider centered if within 200 meters
+        isMapCenteredOnUser = distance < 200
     }
     
     private func selectLocation(coordinate: CLLocationCoordinate2D) {
@@ -1033,10 +910,7 @@ struct MapPickerView: View {
         HapticManager.success()
         let name = locationName.isEmpty ? L("location.custom") : locationName
         selectedLocation = .custom(coordinate, name)
-        
-        // Add to history
-        locationStore.addToHistory(name: name, coordinate: coordinate)
-        
+
         // Close the map picker sheet
         dismiss()
     }

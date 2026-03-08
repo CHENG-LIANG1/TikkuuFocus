@@ -16,6 +16,8 @@ struct WeatherBackgroundView: View {
     let animationSpeed: Double
     let overlayIntensity: Double
     
+    @Environment(\.colorScheme) private var colorScheme
+    
     init(colors: [Color], weatherCondition: WeatherCondition? = nil, isDaytime: Bool = true, animationSpeed: Double = 12.0, overlayIntensity: Double = 0.3) {
         self.colors = colors
         self.weatherCondition = weatherCondition
@@ -42,7 +44,19 @@ struct WeatherBackgroundView: View {
             )
             .ignoresSafeArea()
             .blendMode(.overlay)
+            
+            Color.black
+                .opacity(backgroundDarkenOpacity)
+                .ignoresSafeArea()
+                .blendMode(.multiply)
         }
+    }
+    
+    private var backgroundDarkenOpacity: Double {
+        if colorScheme == .dark {
+            return isDaytime ? 0.12 : 0.06
+        }
+        return isDaytime ? 0.22 : 0.14
     }
 }
 

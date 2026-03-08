@@ -59,11 +59,6 @@ struct ActiveJourneyView: View {
         .sheet(isPresented: $showHistory) {
             HistoryView()
         }
-        .onAppear {
-            if !AppMapMode.focusSelectableModes.contains(settings.selectedMapMode) {
-                settings.selectedMapMode = .explore
-            }
-        }
         .task {
             // Fetch weather when view appears
             if let session = journeyManager.state.session {
@@ -95,28 +90,7 @@ struct ActiveJourneyView: View {
                     )
                     .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
             }
-            
-            // DEBUG: Test Complete Button (Remove before release)
-            #if DEBUG
-            Button {
-                HapticManager.success()
-                testCompleteJourney()
-            } label: {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(Color.green.opacity(0.8))
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-            }
-            #endif
+
             
             Spacer()
             
@@ -160,35 +134,6 @@ struct ActiveJourneyView: View {
             Spacer()
             
             HStack(spacing: 10) {
-                Menu {
-                    ForEach(AppMapMode.focusSelectableModes, id: \.self) { mode in
-                        Button {
-                            HapticManager.selection()
-                            settings.selectedMapMode = mode
-                        } label: {
-                            Label {
-                                Text(mode.title)
-                            } icon: {
-                                Image(systemName: settings.selectedMapMode == mode ? "checkmark.circle.fill" : mode.iconName)
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
-                        .background(
-                            Circle()
-                                .fill(Color.black.opacity(0.4))
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        )
-                        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-                }
-
                 // Pause/Resume button
                 if case .active = journeyManager.state {
                     Button {
@@ -342,7 +287,7 @@ struct ActiveJourneyView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(
-                                RoundedRectangle(cornerRadius: 14)
+                                RoundedRectangle(cornerRadius: 16)
                                     .fill(LiquidGlassStyle.primaryGradient)
                                     .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                             )
@@ -383,8 +328,7 @@ struct ActiveJourneyView: View {
     @ViewBuilder
     private var customStopDialog: some View {
         ZStack {
-            // Backdrop with blur
-            Color.black.opacity(0.6)
+            Color.black.opacity(settings.selectedVisualStyle == .neumorphism ? 0.46 : 0.6)
                 .ignoresSafeArea()
                 .onTapGesture {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -392,47 +336,8 @@ struct ActiveJourneyView: View {
                     }
                 }
             
-            VStack(spacing: 28) {
-                // Warning icon with glow
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.red.opacity(0.25),
-                                    Color.orange.opacity(0.2)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 90, height: 90)
-                        .blur(radius: 20)
-                    
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.red.opacity(0.15),
-                                    Color.orange.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 70, height: 70)
-                    
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 36, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.red, Color.orange],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .shadow(color: Color.red.opacity(0.4), radius: 25, x: 0, y: 12)
+            VStack(spacing: 24) {
+                stopDialogIcon
                 
                 // Title and message
                 VStack(spacing: 10) {
@@ -448,9 +353,7 @@ struct ActiveJourneyView: View {
                         .padding(.horizontal, 8)
                 }
                 
-                // Action buttons
                 VStack(spacing: 10) {
-                    // Stop button
                     Button {
                         HapticManager.warning()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -468,36 +371,11 @@ struct ActiveJourneyView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 15)
-                        .background(
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [Color.red, Color.orange],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0.2),
-                                                Color.clear
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .blendMode(.overlay)
-                            }
-                        )
+                        .background(stopConfirmButtonBackground)
                         .shadow(color: Color.red.opacity(0.4), radius: 12, x: 0, y: 6)
                     }
                     .buttonStyle(ScaleButtonStyle())
                     
-                    // Cancel button
                     Button {
                         HapticManager.light()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -509,28 +387,7 @@ struct ActiveJourneyView: View {
                             .foregroundColor(.primary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 15)
-                            .background(
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(.ultraThinMaterial)
-                                    
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color.white.opacity(0.15),
-                                                    Color.clear
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .blendMode(.overlay)
-                                    
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
-                                }
-                            )
+                            .background(stopCancelButtonBackground)
                             .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
                     }
                     .buttonStyle(ScaleButtonStyle())
@@ -539,92 +396,196 @@ struct ActiveJourneyView: View {
             }
             .padding(.vertical, 36)
             .padding(.horizontal, 28)
-            .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: 28)
-                        .fill(.ultraThinMaterial)
-                    
-                    RoundedRectangle(cornerRadius: 28)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.12),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .blendMode(.overlay)
-                    
-                    RoundedRectangle(cornerRadius: 28)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.4),
-                                    Color.white.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.5
-                        )
-                }
+            .background(stopDialogContainerBackground)
+            .shadow(
+                color: Color.black.opacity(settings.selectedVisualStyle == .neumorphism ? 0.24 : 0.35),
+                radius: settings.selectedVisualStyle == .neumorphism ? 24 : 35,
+                x: 0,
+                y: settings.selectedVisualStyle == .neumorphism ? 12 : 18
             )
-            .shadow(color: Color.black.opacity(0.35), radius: 35, x: 0, y: 18)
             .padding(.horizontal, 36)
         }
     }
     
-    // MARK: - Helper Functions
-    
-    // DEBUG: Test function to simulate journey completion (Remove before release)
-    #if DEBUG
-    private func testCompleteJourney() {
-        guard let session = journeyManager.state.session else { return }
-        
-        let actualDuration = Date().timeIntervalSince(session.startTime)
-        let destinationName = getNearestPOIName(to: session.destinationLocation) ?? L("label.destination")
-        
-        let record = JourneyRecord(
-            startTime: session.startTime,
-            endTime: Date(),
-            duration: actualDuration,
-            plannedDuration: session.duration,
-            transportMode: session.transportMode.rawValue,
-            startLocationName: getLocationName(for: session.startLocation),
-            startLatitude: session.startLocation.latitude,
-            startLongitude: session.startLocation.longitude,
-            destinationName: destinationName,
-            destinationLatitude: session.destinationLocation.latitude,
-            destinationLongitude: session.destinationLocation.longitude,
-            totalDistance: session.totalDistance,
-            distanceTraveled: session.totalDistance,
-            progress: 1.0,
-            discoveredPOICount: journeyManager.discoveredPOIs.count,
-            discoveredPOIsJSON: JourneyRecord.encodePOIs(journeyManager.discoveredPOIs),
-            isCompleted: true
-        )
-        
-        modelContext.insert(record)
-        
-        // Force update current position to 100%
-        journeyManager.currentPosition = VirtualPosition(
-            coordinate: session.destinationLocation,
-            progress: 1.0,
-            distanceTraveled: session.totalDistance,
-            remainingTime: 0
-        )
-
-        presentSummary(
-            session: session,
-            progress: 1.0,
-            isCompleted: true,
-            actualDuration: actualDuration,
-            discoveredPOIs: journeyManager.discoveredPOIs
-        )
+    @ViewBuilder
+    private var stopDialogIcon: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: settings.isNeumorphismLight
+                                ? [Color.red.opacity(0.72), Color.orange.opacity(0.62)]
+                                : [Color.red.opacity(0.52), Color.orange.opacity(0.42)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 74, height: 74)
+                    .shadow(color: Color.black.opacity(0.24), radius: 10, x: 0, y: 6)
+                
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+        } else {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.red.opacity(0.25),
+                                Color.orange.opacity(0.2)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 90, height: 90)
+                    .blur(radius: 20)
+                
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.red.opacity(0.15),
+                                Color.orange.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 70, height: 70)
+                
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 36, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.red, Color.orange],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            .shadow(color: Color.red.opacity(0.4), radius: 25, x: 0, y: 12)
+        }
     }
-    #endif
+    
+    @ViewBuilder
+    private var stopConfirmButtonBackground: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            NeumorphSurface(
+                cornerRadius: 16,
+                depth: .raised,
+                fill: AnyShapeStyle(
+                    LinearGradient(
+                        colors: settings.isNeumorphismLight
+                            ? [Color(red: 0.95, green: 0.43, blue: 0.42), Color(red: 0.91, green: 0.33, blue: 0.37)]
+                            : [Color(red: 0.73, green: 0.26, blue: 0.29), Color(red: 0.64, green: 0.24, blue: 0.26)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.white.opacity(settings.isNeumorphismLight ? 0.28 : 0.12), lineWidth: 0.8)
+            )
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.red, Color.orange],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.2),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .blendMode(.overlay)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var stopCancelButtonBackground: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            NeumorphSurface(cornerRadius: 16, depth: .raised)
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.15),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .blendMode(.overlay)
+                
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var stopDialogContainerBackground: some View {
+        if settings.selectedVisualStyle == .neumorphism {
+            NeumorphSurface(cornerRadius: 20, depth: .raised)
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.ultraThinMaterial)
+                
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.12),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .blendMode(.overlay)
+                
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.4),
+                                Color.white.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
+            }
+        }
+    }
+    
+    // MARK: - Helper Functions
+
     
     private func stopAndSaveJourney() {
         guard let session = journeyManager.state.session,
@@ -861,15 +822,15 @@ struct CompactStatCard: View {
     private var backgroundView: some View {
         if settings.selectedVisualStyle == .neumorphism {
             NeumorphSurface(
-                cornerRadius: 10,
+                cornerRadius: 12,
                 depth: .raised
             )
         } else {
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(.thinMaterial)
-                .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.white.opacity(0.3), lineWidth: 1)
                 )
         }

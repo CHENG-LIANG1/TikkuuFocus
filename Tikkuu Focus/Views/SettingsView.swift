@@ -148,7 +148,7 @@ struct SettingsView: View {
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView(canDismiss: false)
         }
-        .sheet(isPresented: $showPrivacyPolicy) {
+        .fullScreenCover(isPresented: $showPrivacyPolicy) {
             PrivacyPolicyView()
         }
         .alert(L("settings.data.clear.confirm1.title"), isPresented: $showClearDataStep1) {
@@ -396,12 +396,14 @@ struct SettingsView: View {
 
     private var dataManagementOptions: some View {
         VStack(spacing: 12) {
-            ModernActionRow(
-                title: L("settings.data.icloud"),
-                subtitle: L("settings.data.icloud.subtitle"),
-                icon: "icloud"
-            ) {
-                // Reserved for future iCloud sync settings.
+            if AppConfig.isICloudSyncEntryEnabled {
+                ModernActionRow(
+                    title: L("settings.data.icloud"),
+                    subtitle: L("settings.data.icloud.subtitle"),
+                    icon: "icloud"
+                ) {
+                    // Reserved for future iCloud sync settings.
+                }
             }
 
             ModernActionRow(
@@ -483,7 +485,7 @@ struct ModernOptionRow: View {
             .padding(.vertical, 14)
             .background(optionRowBackground)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(CardButtonStyle())
     }
 
     @ViewBuilder
@@ -546,7 +548,7 @@ struct ModernActionRow: View {
             .padding(.vertical, 14)
             .background(actionRowBackground)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(CardButtonStyle())
     }
 
     @ViewBuilder

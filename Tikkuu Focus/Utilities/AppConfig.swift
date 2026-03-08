@@ -27,4 +27,9 @@ struct AppConfig {
     
     /// Website URL (for future use)
     static let websiteURL = "https://roamfocus.app"
+    
+    // MARK: - Feature Flags
+    
+    /// Temporarily hide iCloud sync entry in Settings.
+    static let isICloudSyncEntryEnabled = false
 }

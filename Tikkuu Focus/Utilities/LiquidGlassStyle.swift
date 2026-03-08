@@ -10,6 +10,10 @@ import SwiftUI
 /// Liquid glass visual style modifiers and components
 struct LiquidGlassStyle {
 
+    // MARK: - Accent Colors (Neumorphism light/dark)
+    static let accentBlueLight = Color(red: 0.35, green: 0.52, blue: 0.85)
+    static let accentBlueDark = Color(red: 0.55, green: 0.65, blue: 1.0)
+
     static let primaryGradient = LinearGradient(
         colors: [
             Color(red: 0.4, green: 0.6, blue: 1.0),
@@ -371,7 +375,7 @@ extension EnvironmentValues {
 struct GlassCardModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var settings = AppSettings.shared
-    var cornerRadius: CGFloat = 20
+    var cornerRadius: CGFloat = 16
 
     func body(content: Content) -> some View {
         content
@@ -401,14 +405,16 @@ struct GlassCardModifier: ViewModifier {
             ZStack {
                 shape
                     .fill(.ultraThinMaterial)
-                    .opacity(LiquidGlassStyle.glassMaterialOpacity(for: colorScheme))
+                    .opacity(LiquidGlassStyle.glassMaterialOpacity(for: colorScheme) * 0.62)
 
-                shape.fill(LiquidGlassStyle.glassLayerFill(for: colorScheme))
+                shape
+                    .fill(LiquidGlassStyle.glassLayerFill(for: colorScheme))
+                    .opacity(0.58)
 
                 shape
                     .fill(
                         LinearGradient(
-                            colors: [LiquidGlassStyle.innerGlow(for: colorScheme), Color.clear],
+                            colors: [LiquidGlassStyle.innerGlow(for: colorScheme).opacity(0.72), Color.clear],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -418,8 +424,8 @@ struct GlassCardModifier: ViewModifier {
                 shape
                     .strokeBorder(LiquidGlassStyle.glassEdgeStroke(for: colorScheme), lineWidth: 0.8)
             }
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.26 : 0.12), radius: 14, x: 0, y: 8)
-            .shadow(color: Color.white.opacity(colorScheme == .dark ? 0.04 : 0.20), radius: 8, x: 0, y: -1)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.19 : 0.08), radius: 12, x: 0, y: 6)
+            .shadow(color: Color.white.opacity(colorScheme == .dark ? 0.03 : 0.14), radius: 6, x: 0, y: -1)
         }
     }
 }
@@ -574,7 +580,7 @@ struct ThemedRoundedBackgroundModifier: ViewModifier {
 // MARK: - View Extensions
 
 extension View {
-    func glassCard(cornerRadius: CGFloat = 20) -> some View {
+    func glassCard(cornerRadius: CGFloat = 16) -> some View {
         modifier(GlassCardModifier(cornerRadius: cornerRadius))
     }
 
@@ -663,6 +669,7 @@ struct AnimatedGradientBackground: View {
         }
         .ignoresSafeArea()
         .onAppear {
+            guard !PerformanceOptimizer.shared.isEnergySavingMode else { return }
             withAnimation(.easeInOut(duration: 8.0).repeatForever(autoreverses: true)) {
                 animateGradient = true
             }

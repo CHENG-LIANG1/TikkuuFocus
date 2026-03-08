@@ -305,7 +305,7 @@ struct PremiumShimmerModifier: ViewModifier {
         content
             .overlay(
                 GeometryReader { geometry in
-                    if isActive {
+                    if isActive && PerformanceConfig.enableComplexAnimations {
                         LinearGradient(
                             colors: [
                                 Color.white.opacity(0),
@@ -347,7 +347,7 @@ struct PremiumPulseModifier: ViewModifier {
         content
             .scaleEffect(currentScale)
             .onAppear {
-                if isActive {
+                if isActive && PerformanceConfig.enableComplexAnimations {
                     withAnimation(
                         Animation.easeInOut(duration: duration)
                             .repeatForever(autoreverses: true)
@@ -448,13 +448,15 @@ struct GlowModifier: ViewModifier {
             .shadow(color: isActive ? color.opacity(0.6) : .clear, radius: radius * intensity, x: 0, y: 0)
             .shadow(color: isActive ? color.opacity(0.4) : .clear, radius: radius * intensity * 0.5, x: 0, y: 0)
             .onAppear {
-                if isActive {
+                if isActive && PerformanceConfig.enableComplexAnimations {
                     withAnimation(
                         Animation.easeInOut(duration: 1.5)
                             .repeatForever(autoreverses: true)
                     ) {
                         intensity = 1.0
                     }
+                } else if isActive {
+                    intensity = 0.7
                 }
             }
     }
@@ -480,7 +482,7 @@ struct FloatingModifier: ViewModifier {
         content
             .offset(y: offset)
             .onAppear {
-                if isActive {
+                if isActive && PerformanceConfig.enableComplexAnimations {
                     withAnimation(
                         Animation.easeInOut(duration: duration)
                             .repeatForever(autoreverses: true)
@@ -504,7 +506,7 @@ struct RotatingModifier: ViewModifier {
         content
             .rotationEffect(.degrees(rotation))
             .onAppear {
-                if isActive {
+                if isActive && PerformanceConfig.enableComplexAnimations {
                     withAnimation(
                         Animation.linear(duration: duration)
                             .repeatForever(autoreverses: false)
@@ -526,7 +528,7 @@ struct WiggleModifier: ViewModifier {
         content
             .rotationEffect(.degrees(rotation))
             .onAppear {
-                if isActive {
+                if isActive && PerformanceConfig.enableComplexAnimations {
                     withAnimation(
                         Animation.spring(response: 0.3, dampingFraction: 0.3)
                             .repeatForever(autoreverses: true)

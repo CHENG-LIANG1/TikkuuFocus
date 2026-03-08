@@ -59,6 +59,7 @@ struct PrimaryButton: View {
             .shadow(color: Color.blue.opacity(settings.selectedVisualStyle == .neumorphism ? 0.2 : 0.3), radius: 10, x: 0, y: 5)
         }
         .disabled(isLoading)
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
@@ -91,6 +92,7 @@ struct SecondaryButton: View {
             .padding(.vertical, 12)
             .insetSurface(cornerRadius: 12, isActive: false)
         }
+        .buttonStyle(CardButtonStyle())
     }
 }
 
@@ -115,6 +117,7 @@ struct IconButton: View {
                 .frame(width: size, height: size)
                 .glassCard(cornerRadius: size / 2)
         }
+        .buttonStyle(PressableButtonStyle())
     }
 }
 
@@ -166,5 +169,6 @@ struct GradientButton: View {
             }
             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
         }
+        .buttonStyle(CardButtonStyle())
     }
 }

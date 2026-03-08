@@ -48,7 +48,37 @@ extension View {
     }
 }
 
-// MARK: - Neumorphic Button
+// MARK: - Scale Button Style
+
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(AnimationConfig.snappy, value: configuration.isPressed)
+    }
+}
+
+// MARK: - Pressable Button Style
+
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .animation(AnimationConfig.quickSpring, value: configuration.isPressed)
+    }
+}
+
+// MARK: - Card Button Style
+
+struct CardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .opacity(configuration.isPressed ? 0.92 : 1.0)
+            .animation(AnimationConfig.snappy, value: configuration.isPressed)
+    }
+}
 
 struct NeumorphicButton<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme

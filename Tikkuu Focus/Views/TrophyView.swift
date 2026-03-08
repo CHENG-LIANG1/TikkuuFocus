@@ -20,6 +20,11 @@ struct TrophyView: View {
     @State private var isLoading = true
     @State private var previousCategory: TrophyCategory? = nil
     @State private var scrollToTopTrigger = UUID()
+    @State private var isProgressCollapsed = false
+    @State private var lastScrollOffset: CGFloat = 0
+    @State private var hasCapturedInitialOffset = false
+    @State private var cachedFilteredTrophies: [Trophy] = []
+    @State private var gridRenderID = UUID()
     
     var body: some View {
         NavigationStack {
@@ -43,7 +48,7 @@ struct TrophyView: View {
                         progressOverview
                             .padding(.horizontal, 24)
                             .padding(.top, 16)
-                            .padding(.bottom, 16)
+                            .padding(.bottom, 12)
                         
                         // Category filter
                         categoryFilter
@@ -53,30 +58,64 @@ struct TrophyView: View {
                         // Trophy grid
                         ScrollViewReader { proxy in
                             ScrollView(showsIndicators: false) {
+                                GeometryReader { geometry in
+                                    Color.clear
+                                        .preference(
+                                            key: TrophyScrollOffsetPreferenceKey.self,
+                                            value: geometry.frame(in: .named("trophyGridScroll")).minY
+                                        )
+                                }
+                                .frame(height: 0)
+
                                 LazyVGrid(columns: [
                                     GridItem(.flexible(), spacing: 12),
                                     GridItem(.flexible(), spacing: 12)
                                 ], spacing: 12) {
-                                    ForEach(filteredTrophies) { trophy in
-                                        TrophyCard(trophy: trophy)
-                                            .id(trophy.id)
-                                            .onTapGesture {
+                                    if cachedFilteredTrophies.isEmpty {
+                                        VStack(spacing: 16) {
+                                            Image(systemName: "trophy")
+                                                .font(.system(size: 40))
+                                                .foregroundColor(.secondary.opacity(0.5))
+                                            Text(L("trophy.empty.category"))
+                                                .font(.system(size: 15, weight: .medium))
+                                                .foregroundColor(.secondary)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 60)
+                                    } else {
+                                        ForEach(Array(cachedFilteredTrophies.enumerated()), id: \.element.id) { index, trophy in
+                                            Button {
                                                 HapticManager.light()
                                                 // Ensure trophy data is valid before showing detail
                                                 if !trophy.localizedTitle.isEmpty && !trophy.localizedDescription.isEmpty {
                                                     selectedTrophy = trophy
                                                     showTrophyDetail = true
                                                 }
+                                            } label: {
+                                                TrophyCard(trophy: trophy)
                                             }
+                                            .buttonStyle(CardButtonStyle())
+                                            .id(trophy.id)
+                                            .modifier(ConditionalStaggerModifier(index: min(index, 11)))
+                                        }
                                     }
                                 }
                                 .padding(.horizontal, 24)
                                 .padding(.bottom, 40)
-                                .id("trophyGridTop")
+                                .id(gridRenderID)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: slideDirection).combined(with: .opacity),
+                                    removal: .move(edge: slideDirection == .trailing ? .leading : .trailing).combined(with: .opacity)
+                                ))
+                            }
+                            .coordinateSpace(name: "trophyGridScroll")
+                            .onPreferenceChange(TrophyScrollOffsetPreferenceKey.self) { offset in
+                                handleGridScrollOffset(offset)
                             }
                             .onChange(of: scrollToTopTrigger) { _, _ in
                                 withAnimation(.easeOut(duration: 0.3)) {
-                                    proxy.scrollTo("trophyGridTop", anchor: .top)
+                                    proxy.scrollTo(gridRenderID, anchor: .top)
                                 }
                             }
                         }
@@ -103,7 +142,17 @@ struct TrophyView: View {
         .onChange(of: records.count) { _, _ in
             Task {
                 await updateTrophiesAsync()
+                refreshFilteredTrophies()
             }
+        }
+        .onChange(of: selectedCategory) { _, _ in
+            refreshFilteredTrophies()
+            withAnimation(AnimationConfig.tabSwitch) {
+                gridRenderID = UUID()
+            }
+        }
+        .onChange(of: trophyManager.trophies.count) { _, _ in
+            refreshFilteredTrophies()
         }
         .sheet(isPresented: $showTrophyDetail) {
             if let trophy = selectedTrophy {
@@ -164,21 +213,10 @@ struct TrophyView: View {
     // MARK: - Loading
     
     private func loadTrophies() {
-        Task {
-            // Ensure we're on main thread
-            await MainActor.run {
-                // Update trophies synchronously first
-                trophyManager.updateProgress(with: records)
-            }
-            
-            // Small delay to ensure UI is ready
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-            
-            await MainActor.run {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    isLoading = false
-                }
-            }
+        trophyManager.updateProgress(with: records)
+        refreshFilteredTrophies()
+        withAnimation(AnimationConfig.standardEase) {
+            isLoading = false
         }
     }
     
@@ -210,31 +248,35 @@ struct TrophyView: View {
             .frame(height: 12)
             
             // Stats
-            HStack(spacing: 16) {
-                StatBadge(
-                    icon: "trophy.fill",
-                    value: "\(trophyManager.unlockedCount)",
-                    label: L("trophy.unlocked.short"),
-                    color: .yellow
-                )
-                
-                StatBadge(
-                    icon: "lock.fill",
-                    value: "\(trophyManager.totalCount - trophyManager.unlockedCount)",
-                    label: L("trophy.locked"),
-                    color: .gray
-                )
-                
-                StatBadge(
-                    icon: "percent",
-                    value: "\(Int(trophyManager.unlockedPercentage * 100))%",
-                    label: L("trophy.completion"),
-                    color: .blue
-                )
+            if !isProgressCollapsed {
+                HStack(spacing: 16) {
+                    StatBadge(
+                        icon: "trophy.fill",
+                        value: "\(trophyManager.unlockedCount)",
+                        label: L("trophy.unlocked.short"),
+                        color: .yellow
+                    )
+                    
+                    StatBadge(
+                        icon: "lock.fill",
+                        value: "\(trophyManager.totalCount - trophyManager.unlockedCount)",
+                        label: L("trophy.locked"),
+                        color: .gray
+                    )
+                    
+                    StatBadge(
+                        icon: "percent",
+                        value: "\(Int(trophyManager.unlockedPercentage * 100))%",
+                        label: L("trophy.completion"),
+                        color: .blue
+                    )
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(16)
+        .padding(isProgressCollapsed ? 12 : 16)
         .glassCard(cornerRadius: 16)
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: isProgressCollapsed)
     }
     
     // MARK: - Category Filter
@@ -282,24 +324,59 @@ struct TrophyView: View {
             .padding(.horizontal, 4)
             .padding(.vertical, 4)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
-        .background {
-            if settings.selectedVisualStyle == .neumorphism {
-                NeumorphSurface(cornerRadius: 18, depth: .inset)
-            } else {
-                Color.clear
+    }
+
+    private func handleGridScrollOffset(_ offset: CGFloat) {
+        if !hasCapturedInitialOffset {
+            hasCapturedInitialOffset = true
+            lastScrollOffset = offset
+            return
+        }
+
+        let delta = offset - lastScrollOffset
+        lastScrollOffset = offset
+
+        if delta < -2, !isProgressCollapsed {
+            withAnimation(.easeOut(duration: 0.2)) {
+                isProgressCollapsed = true
+            }
+        } else if delta > 2, isProgressCollapsed {
+            withAnimation(.easeOut(duration: 0.2)) {
+                isProgressCollapsed = false
             }
         }
     }
     
     // MARK: - Filtered Trophies
     
-    private var filteredTrophies: [Trophy] {
+    private func refreshFilteredTrophies() {
         if let category = selectedCategory {
-            return trophyManager.trophies.filter { $0.category == category }
+            cachedFilteredTrophies = trophyManager.trophies.filter { $0.category == category }
+        } else {
+            cachedFilteredTrophies = trophyManager.trophies
         }
-        return trophyManager.trophies
+    }
+}
+
+// MARK: - Conditional Stagger Modifier
+
+private struct ConditionalStaggerModifier: ViewModifier {
+    let index: Int
+    
+    func body(content: Content) -> some View {
+        if PerformanceConfig.enableComplexAnimations {
+            content.staggeredAppearance(index: index)
+        } else {
+            content
+        }
+    }
+}
+
+private struct TrophyScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
@@ -307,6 +384,7 @@ struct TrophyView: View {
 
 struct TrophyCard: View {
     let trophy: Trophy
+    @State private var animatedProgress: CGFloat = 0
     
     var body: some View {
         VStack(spacing: 12) {
@@ -364,7 +442,7 @@ struct TrophyCard: View {
                                 
                                 RoundedRectangle(cornerRadius: 4)
                                     .fill(trophy.color)
-                                    .frame(width: geometry.size.width * trophy.progressPercentage)
+                                    .frame(width: geometry.size.width * animatedProgress)
                             }
                         }
                     } else {
@@ -389,6 +467,15 @@ struct TrophyCard: View {
         .padding(16)
         .glassCard(cornerRadius: 16)
         .opacity(trophy.isUnlocked ? 1.0 : 0.7)
+        .onAppear {
+            if PerformanceConfig.enableComplexAnimations {
+                withAnimation(AnimationConfig.smoothSpring.delay(0.15)) {
+                    animatedProgress = trophy.progressPercentage
+                }
+            } else {
+                animatedProgress = trophy.progressPercentage
+            }
+        }
     }
     
     private var progressText: String {
@@ -446,7 +533,7 @@ struct CategoryButton: View {
     }
 
     private var unselectedTextColor: Color {
-        isLightTone ? Color(red: 0.42, green: 0.46, blue: 0.54) : .white.opacity(0.72)
+        isLightTone ? Color(red: 0.42, green: 0.46, blue: 0.54) : .white.opacity(0.7)
     }
 
     private var selectedFill: AnyShapeStyle {
@@ -552,11 +639,11 @@ struct TrophyDetailView: View {
         }
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
-            // Small delay to ensure smooth presentation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    isLoaded = true
-                }
+            if trophy.isUnlocked {
+                HapticManager.success()
+            }
+            withAnimation(AnimationConfig.smoothSpring) {
+                isLoaded = true
             }
         }
     }

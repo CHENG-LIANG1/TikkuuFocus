@@ -43,40 +43,16 @@ struct AboutView: View {
                                     .frame(width: 160, height: 160)
                                     .blur(radius: 20)
                                 
-                                // Icon background
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                                    .frame(width: 120, height: 120)
+                                Image("AppLogo")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 112, height: 112)
+                                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                                     .overlay(
-                                        Circle()
-                                            .stroke(
-                                                LinearGradient(
-                                                    colors: [
-                                                        Color.cyan.opacity(0.6),
-                                                        Color.blue.opacity(0.6),
-                                                        Color.purple.opacity(0.6)
-                                                    ],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                ),
-                                                lineWidth: 2
-                                            )
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .stroke(Color.white.opacity(0.24), lineWidth: 1)
                                     )
-                                
-                                // Icon
-                                Image(systemName: "location.north.circle.fill")
-                                    .font(.system(size: 56, weight: .medium))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.cyan,
-                                                Color.blue,
-                                                Color.purple
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
+                                    .shadow(color: Color.black.opacity(0.32), radius: 16, x: 0, y: 10)
                             }
                             .scaleEffect(showContent ? 1 : 0.5)
                             .opacity(showContent ? 1 : 0)
@@ -271,7 +247,7 @@ struct AboutView: View {
     
     @ViewBuilder
     private var cardBackground: some View {
-        let shape = RoundedRectangle(cornerRadius: 24)
+        let shape = RoundedRectangle(cornerRadius: 20)
         
         if isNeumorphism {
             // Neumorphism: raised surface with soft subtle shadows
@@ -291,7 +267,7 @@ struct AboutView: View {
                 )
         } else {
             Color.clear
-                .glassCard(cornerRadius: 24)
+                .glassCard(cornerRadius: 20)
         }
     }
 }

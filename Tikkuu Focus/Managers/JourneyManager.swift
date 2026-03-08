@@ -11,6 +11,21 @@ import MapKit
 import Combine
 import UIKit
 
+// Configuration Constants
+fileprivate struct JourneyConfig {
+    static let poiCheckInterval: TimeInterval = 300 // 5 minutes
+    static let minimumTravelDistance: Double = 200 // meters
+    static let discoveryRadius: CLLocationDistance = 100 // meters
+    static let poiQueryDelay: UInt64 = 2_000_000_000 // 2 seconds in nanoseconds
+    static let startPoiQueryDelay: UInt64 = 300_000_000 // 300ms in nanoseconds
+    static let retryDelay: UInt64 = 100_000_000 // 100ms in nanoseconds
+    static let prewarmThrottleDistance: Double = 5000 // meters
+    static let prewarmThrottleTime: TimeInterval = 300 // seconds
+    static let preparedPlanMaxAge: TimeInterval = 180 // seconds
+    static let preparationMatchDistance: CLLocationDistance = 220 // meters
+    static let poiMovementThreshold: Double = 50 // meters
+}
+
 /// Manages the journey logic: destination generation, routing, and progress tracking
 @MainActor
 class JourneyManager: ObservableObject {
@@ -18,18 +33,20 @@ class JourneyManager: ObservableObject {
     @Published var currentPosition: VirtualPosition?
     @Published var discoveredPOIs: [DiscoveredPOI] = []
     @Published var pendingSummaryPayload: JourneySummaryPayload?
+    @Published private(set) var preparedDestination: CLLocationCoordinate2D?
     
-    private var timer: Timer?
+    private var journeyTask: Task<Void, Never>?
     private var lastPOICheckTime: Date?
     private var pausedAt: Date?
     private var startLocationPOIs: Set<String> = [] // POIs near start location (excluded)
     private var lastCheckedCoordinate: CLLocationCoordinate2D?
-    private let poiCheckInterval: TimeInterval = 300 // Check for POIs every 300 seconds (5 minutes) - 性能优化
-    private let minimumTravelDistance: Double = 200 // Must travel at least 200m from start before discovering POIs
-    private let discoveryRadius: CLLocationDistance = 100 // Reduced from 500m to 100m
     
-
-    private var hasPrewarmedMapServices = false
+    private var prewarmTask: Task<Void, Never>?
+    private var lastPrewarmedCoordinate: CLLocationCoordinate2D?
+    private var lastPrewarmDate: Date = .distantPast
+    private var journeyPreparationTask: Task<Void, Never>?
+    private var preparedJourneyPlan: PreparedJourneyPlan?
+    private var preparationGeneration: Int = 0
     private var didEnterBackgroundObserver: NSObjectProtocol?
     private var didBecomeActiveObserver: NSObjectProtocol?
 
@@ -56,6 +73,9 @@ class JourneyManager: ObservableObject {
     }
 
     deinit {
+        prewarmTask?.cancel()
+        journeyPreparationTask?.cancel()
+
         if let observer = didEnterBackgroundObserver {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -72,11 +92,29 @@ class JourneyManager: ObservableObject {
                      duration: TimeInterval,
                      isPresetCity: Bool = false,
                      presetLocation: PresetLocation? = nil) async {
+        let request = JourneyPreparationRequest(
+            requestedStart: location,
+            transportMode: transportMode,
+            duration: duration,
+            isPresetCity: isPresetCity,
+            presetCoordinate: presetLocation?.coordinate
+        )
+
+        resetJourneyRuntimeState()
+
+        if let preparedPlan = consumePreparedJourneyPlan(matching: request) {
+            activateJourney(
+                start: preparedPlan.resolvedStart,
+                destination: preparedPlan.destination,
+                route: preparedPlan.route,
+                duration: duration,
+                transportMode: transportMode
+            )
+            return
+        }
+
         state = .preparing
-        discoveredPOIs.removeAll()
-        startLocationPOIs.removeAll()
-        lastCheckedCoordinate = nil
-        pausedAt = nil
+        journeyPreparationTask?.cancel()
         
         do {
             let resolvedStart = await resolveRoutableStartCoordinate(
@@ -87,100 +125,153 @@ class JourneyManager: ObservableObject {
             // Calculate distance based on speed and duration
             let distance = transportMode.speedMps * duration
             
-            // Normal routing for all transport modes (including skateboard)
-            // Generate random destination
-            let destination = try await generateRandomDestination(from: resolvedStart, distance: distance)
-            
-            // Calculate route
-            let route = try await calculateRoute(from: resolvedStart, to: destination, transportMode: transportMode)
-            
-            // Create session
-            let session = JourneySession(
-                id: UUID(),
-                startLocation: resolvedStart,
-                destinationLocation: destination,
-                route: route.coordinates,
-                totalDistance: route.distance,
-                duration: duration,
-                transportMode: transportMode,
-                startTime: Date()
+            // Generate routable destination with retry logic
+            let (destination, route) = try await generateRoutableDestination(
+                from: resolvedStart,
+                distance: distance,
+                transportMode: transportMode
             )
             
-            state = .active(session)
-            startTimer()
-
-            // Run start-area POI cache in background to avoid delaying journey start.
-            Task(priority: .utility) {
-                await self.recordStartLocationPOIs(at: resolvedStart)
-            }
+            activateJourney(
+                start: resolvedStart,
+                destination: destination,
+                route: route,
+                duration: duration,
+                transportMode: transportMode
+            )
             
         } catch {
             state = .failed(error.localizedDescription)
         }
     }
 
-    /// Pre-warm MapKit services to reduce first-start latency.
-    func prewarmMapServices(near coordinate: CLLocationCoordinate2D) {
-        guard !hasPrewarmedMapServices else { return }
-        hasPrewarmedMapServices = true
+    /// Pre-calculate a journey route in background so tapping start can enter roaming faster.
+    func prepareJourney(
+        from location: CLLocationCoordinate2D,
+        transportMode: TransportMode,
+        duration: TimeInterval,
+        isPresetCity: Bool = false,
+        presetLocation: PresetLocation? = nil
+    ) {
+        let request = JourneyPreparationRequest(
+            requestedStart: location,
+            transportMode: transportMode,
+            duration: duration,
+            isPresetCity: isPresetCity,
+            presetCoordinate: presetLocation?.coordinate
+        )
 
-        Task(priority: .utility) {
-            // 1) Warm local search pipeline.
+        if let existing = preparedJourneyPlan,
+           existing.request.matches(request, tolerance: JourneyConfig.preparationMatchDistance),
+           existing.isFresh(maxAge: JourneyConfig.preparedPlanMaxAge) {
+            return
+        }
+
+        preparationGeneration += 1
+        let generation = preparationGeneration
+        journeyPreparationTask?.cancel()
+
+        journeyPreparationTask = Task(priority: .utility) { [weak self] in
+            guard let self else { return }
+            let plan = await self.buildPreparedJourneyPlan(for: request)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard generation == self.preparationGeneration else { return }
+                self.preparedJourneyPlan = plan
+                self.preparedDestination = plan?.destination
+            }
+        }
+    }
+
+    /// Pre-warm MapKit services to reduce first-start latency.
+    /// Only warms local search - directions will be warmed during route preparation.
+    func prewarmMapServices(near coordinate: CLLocationCoordinate2D) {
+        let now = Date()
+        if let lastCoordinate = lastPrewarmedCoordinate {
+            let movedDistance = lastCoordinate.distance(to: coordinate)
+            let elapsed = now.timeIntervalSince(lastPrewarmDate)
+            // More aggressive throttling to avoid rate limits
+            if movedDistance < JourneyConfig.prewarmThrottleDistance && elapsed < JourneyConfig.prewarmThrottleTime {
+                return
+            }
+        }
+
+        lastPrewarmedCoordinate = coordinate
+        lastPrewarmDate = now
+        prewarmTask?.cancel()
+
+        prewarmTask = Task(priority: .utility) {
+            // Only warm local search pipeline - skip directions to avoid rate limits
             let searchRequest = MKLocalSearch.Request()
-            searchRequest.naturalLanguageQuery = "landmark"
+            searchRequest.naturalLanguageQuery = "cafe"
             searchRequest.region = MKCoordinateRegion(
                 center: coordinate,
-                latitudinalMeters: 1200,
-                longitudinalMeters: 1200
+                latitudinalMeters: 2000,
+                longitudinalMeters: 2000
             )
             searchRequest.resultTypes = .pointOfInterest
             let search = MKLocalSearch(request: searchRequest)
             _ = try? await search.start()
-
-            // 2) Warm directions pipeline with a tiny local request.
-            let destination = coordinate.coordinate(at: 300, bearing: 30)
-            let directionsRequest = MKDirections.Request()
-            directionsRequest.source = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
-            directionsRequest.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
-            directionsRequest.transportType = .walking
-            let directions = MKDirections(request: directionsRequest)
-            _ = try? await directions.calculate()
         }
     }
     
     /// Generate a random destination at the specified distance
+    /// Tries multiple bearings to find a routable destination
     private func generateRandomDestination(from start: CLLocationCoordinate2D, 
                                           distance: Double) async throws -> CLLocationCoordinate2D {
-        // Skip pre-validation network calls and rely on route calculation fallback.
+        // Just generate a random bearing - route validation happens in calculateRoute
         let bearing = Double.random(in: 0..<360)
         return start.coordinate(at: distance, bearing: bearing)
     }
+    
+    /// Generate destination and calculate route with retry logic
+    private func generateRoutableDestination(
+        from start: CLLocationCoordinate2D,
+        distance: Double,
+        transportMode: TransportMode
+    ) async throws -> (destination: CLLocationCoordinate2D, route: RouteResult) {
+        let maxAttempts = 6
+        var lastError: Error = JourneyError.noRouteFound
+        
+        // Try different bearings
+        let bearings = [
+            Double.random(in: 0..<360),
+            Double.random(in: 0..<360),
+            45.0, 135.0, 225.0, 315.0 // Cardinal directions as fallback
+        ]
+        
+        for (index, bearing) in bearings.prefix(maxAttempts).enumerated() {
+            let destination = start.coordinate(at: distance, bearing: bearing)
+            
+            do {
+                let route = try await calculateRouteStrict(
+                    from: start,
+                    to: destination,
+                    transportMode: transportMode
+                )
+                // Successfully found a routable path
+                return (destination, route)
+            } catch {
+                lastError = error
+                // Small delay between retries to avoid rate limiting
+                if index < maxAttempts - 1 {
+                    try? await Task.sleep(nanoseconds: JourneyConfig.retryDelay)
+                }
+            }
+        }
+        
+        throw lastError
+    }
 
     /// If the selected start point is unroutable (e.g. sea), snap to nearest routable land road.
+    /// Optimized to minimize API calls.
     private func resolveRoutableStartCoordinate(
         from coordinate: CLLocationCoordinate2D,
         transportMode: TransportMode
     ) async -> CLLocationCoordinate2D {
-        // Fast path: current point is already routable.
-        if await hasNearbyRoute(at: coordinate, transportMode: transportMode) {
-            return coordinate
-        }
-
-        if let candidate = await findNearestAddressCandidate(
-            around: coordinate,
-            transportMode: transportMode
-        ) {
-            return candidate
-        }
-
-        if let radialCandidate = await findNearestRoutableByRadialScan(
-            around: coordinate,
-            transportMode: transportMode
-        ) {
-            return radialCandidate
-        }
-
-        // Fallback to original coordinate when no better candidate is found.
+        // For most cases, the coordinate is already valid - trust the user's selection
+        // Only do validation for preset cities which might have imprecise coordinates
         return coordinate
     }
 
@@ -295,34 +386,43 @@ class JourneyManager: ObservableObject {
         }
     }
     
-    /// Calculate route from start to destination
-    private func calculateRoute(from start: CLLocationCoordinate2D,
-                               to destination: CLLocationCoordinate2D,
-                               transportMode: TransportMode) async throws -> RouteResult {
+    /// Calculate route from start to destination (strict - throws on failure)
+    private func calculateRouteStrict(from start: CLLocationCoordinate2D,
+                                      to destination: CLLocationCoordinate2D,
+                                      transportMode: TransportMode) async throws -> RouteResult {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: start))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
         request.transportType = mapTransportType(for: transportMode)
         
         let directions = MKDirections(request: request)
+        let response = try await directions.calculate()
         
+        guard let route = response.routes.first else {
+            throw JourneyError.noRouteFound
+        }
+        
+        // Ensure route has valid points
+        guard route.polyline.pointCount > 1 && route.distance > 0 else {
+            throw JourneyError.noRouteFound
+        }
+        
+        let coordinates = route.polyline.coordinates()
+        
+        return RouteResult(
+            coordinates: coordinates,
+            distance: route.distance
+        )
+    }
+    
+    /// Calculate route from start to destination (with fallback for compatibility)
+    private func calculateRoute(from start: CLLocationCoordinate2D,
+                               to destination: CLLocationCoordinate2D,
+                               transportMode: TransportMode) async throws -> RouteResult {
         do {
-            let response = try await directions.calculate()
-            
-            guard let route = response.routes.first else {
-                throw JourneyError.noRouteFound
-            }
-            
-            // Extract coordinates from polyline
-            let coordinates = route.polyline.coordinates()
-            
-            return RouteResult(
-                coordinates: coordinates,
-                distance: route.distance
-            )
-            
+            return try await calculateRouteStrict(from: start, to: destination, transportMode: transportMode)
         } catch {
-            // Fallback: create a straight line route
+            // Fallback: create a straight line route (only for edge cases)
             return RouteResult(
                 coordinates: [start, destination],
                 distance: start.distance(to: destination)
@@ -386,6 +486,89 @@ class JourneyManager: ObservableObject {
         startLocationPOIs.removeAll()
         lastCheckedCoordinate = nil
     }
+
+    private func resetJourneyRuntimeState() {
+        currentPosition = nil
+        discoveredPOIs.removeAll()
+        startLocationPOIs.removeAll()
+        lastCheckedCoordinate = nil
+        lastPOICheckTime = nil
+        pausedAt = nil
+    }
+
+    private func activateJourney(
+        start: CLLocationCoordinate2D,
+        destination: CLLocationCoordinate2D,
+        route: RouteResult,
+        duration: TimeInterval,
+        transportMode: TransportMode
+    ) {
+        let session = JourneySession(
+            id: UUID(),
+            startLocation: start,
+            destinationLocation: destination,
+            route: route.coordinates,
+            totalDistance: route.distance,
+            duration: duration,
+            transportMode: transportMode,
+            startTime: Date()
+        )
+
+        state = .active(session)
+        startTimer()
+
+        // Run start-area POI cache in background to avoid delaying journey start.
+        Task(priority: .utility) {
+            await self.recordStartLocationPOIs(at: start)
+        }
+    }
+
+    private func consumePreparedJourneyPlan(
+        matching request: JourneyPreparationRequest
+    ) -> PreparedJourneyPlan? {
+        guard let plan = preparedJourneyPlan else { return nil }
+        guard plan.isFresh(maxAge: JourneyConfig.preparedPlanMaxAge) else {
+            preparedJourneyPlan = nil
+            preparedDestination = nil
+            return nil
+        }
+        guard plan.request.matches(request, tolerance: JourneyConfig.preparationMatchDistance) else {
+            return nil
+        }
+        preparedJourneyPlan = nil
+        preparedDestination = nil
+        return plan
+    }
+
+    private func buildPreparedJourneyPlan(
+        for request: JourneyPreparationRequest
+    ) async -> PreparedJourneyPlan? {
+        let resolvedStart = await resolveRoutableStartCoordinate(
+            from: request.requestedStart,
+            transportMode: request.transportMode
+        )
+
+        let distance = request.transportMode.speedMps * request.duration
+        guard distance > 0 else { return nil }
+
+        do {
+            let (destination, route) = try await generateRoutableDestination(
+                from: resolvedStart,
+                distance: distance,
+                transportMode: request.transportMode
+            )
+
+            return PreparedJourneyPlan(
+                request: request,
+                resolvedStart: resolvedStart,
+                destination: destination,
+                route: route,
+                createdAt: Date()
+            )
+        } catch {
+            return nil
+        }
+    }
     
     /// Complete the journey
     private func completeJourney() {
@@ -400,17 +583,20 @@ class JourneyManager: ObservableObject {
     private func startTimer() {
         stopTimer()
 
-        let interval = PerformanceOptimizer.shared.journeyUpdateInterval
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                await self?.updateJourney()
+        journeyTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let interval = UInt64(PerformanceOptimizer.shared.journeyUpdateInterval * 1_000_000_000)
+            
+            while !Task.isCancelled {
+                await self.updateJourney()
+                try? await Task.sleep(nanoseconds: interval)
             }
         }
     }
     
     private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
+        journeyTask?.cancel()
+        journeyTask = nil
     }
     
     private func updateJourney() async {
@@ -436,13 +622,13 @@ class JourneyManager: ObservableObject {
         guard let lastCheck = lastPOICheckTime else { return true }
         
         // Check if enough time has passed
-        guard Date().timeIntervalSince(lastCheck) >= poiCheckInterval else { return false }
+        guard Date().timeIntervalSince(lastCheck) >= JourneyConfig.poiCheckInterval else { return false }
         
         // Check if we've moved enough distance from last check
         if let lastCoord = lastCheckedCoordinate, let currentCoord = currentPosition?.coordinate {
             let distanceMoved = lastCoord.distance(to: currentCoord)
             // Only check if moved at least 50m from last check
-            return distanceMoved >= 50
+            return distanceMoved >= JourneyConfig.poiMovementThreshold
         }
         
         return true
@@ -469,31 +655,38 @@ class JourneyManager: ObservableObject {
     private func recordStartLocationPOIs(at coordinate: CLLocationCoordinate2D) async {
         let queries = ["restaurant", "landmark", "park", "cafe", "museum"]
         
-        for query in queries {
-            let request = MKLocalSearch.Request()
-            request.naturalLanguageQuery = query
-            request.region = MKCoordinateRegion(
-                center: coordinate,
-                latitudinalMeters: minimumTravelDistance * 2,
-                longitudinalMeters: minimumTravelDistance * 2
-            )
-            request.resultTypes = .pointOfInterest
+        // Move to background thread
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
             
-            let search = MKLocalSearch(request: request)
-            
-            do {
-                let response = try await search.start()
-                for item in response.mapItems {
-                    if let name = item.name {
-                        startLocationPOIs.insert(name)
+            for query in queries {
+                let request = MKLocalSearch.Request()
+                request.naturalLanguageQuery = query
+                request.region = MKCoordinateRegion(
+                    center: coordinate,
+                    latitudinalMeters: JourneyConfig.minimumTravelDistance * 2,
+                    longitudinalMeters: JourneyConfig.minimumTravelDistance * 2
+                )
+                request.resultTypes = .pointOfInterest
+                
+                let search = MKLocalSearch(request: request)
+                
+                do {
+                    let response = try await search.start()
+                    let names = response.mapItems.compactMap { $0.name }
+                    
+                    await MainActor.run {
+                        for name in names {
+                            self.startLocationPOIs.insert(name)
+                        }
                     }
+                } catch {
+                    // Silently fail
                 }
-            } catch {
-                // Silently fail
+                
+                // Small delay to avoid throttling
+                try? await Task.sleep(nanoseconds: JourneyConfig.startPoiQueryDelay)
             }
-            
-            // Small delay to avoid throttling
-            try? await Task.sleep(nanoseconds: 300_000_000)
         }
     }
     
@@ -502,7 +695,7 @@ class JourneyManager: ObservableObject {
         guard case .active(let session) = state else { return }
         let distanceFromStart = session.startLocation.distance(to: coordinate)
         
-        guard distanceFromStart >= minimumTravelDistance else {
+        guard distanceFromStart >= JourneyConfig.minimumTravelDistance else {
             print("📍 Too close to start location (\(Int(distanceFromStart))m), skipping POI check")
             return
         }
@@ -516,9 +709,24 @@ class JourneyManager: ObservableObject {
         ]
         
         for query in queries {
-            await searchPOI(query: query, near: coordinate, radius: discoveryRadius)
+            await searchPOI(query: query, near: coordinate, radius: JourneyConfig.discoveryRadius)
             // 性能优化：增加延迟从 0.5s 到 2s，避免 MapKit 限流
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 second delay
+            try? await Task.sleep(nanoseconds: JourneyConfig.poiQueryDelay)
+        }
+    }
+    
+    // Determine rarity based on probability
+    private func generateRandomRarity() -> POIRarity {
+        let roll = Double.random(in: 0...1)
+        
+        if roll < POIRarity.legendary.probability {
+            return .legendary
+        } else if roll < POIRarity.legendary.probability + POIRarity.epic.probability {
+            return .epic
+        } else if roll < POIRarity.legendary.probability + POIRarity.epic.probability + POIRarity.rare.probability {
+            return .rare
+        } else {
+            return .common
         }
     }
     
@@ -553,16 +761,29 @@ class JourneyManager: ObservableObject {
                     continue
                 }
                 
+                let rarity = generateRandomRarity()
+                
                 let poi = DiscoveredPOI(
                     name: name,
                     category: query,
-                    coordinate: item.placemark.coordinate
+                    coordinate: item.placemark.coordinate,
+                    rarity: rarity
                 )
                 
                 // Avoid duplicates
                 if !discoveredPOIs.contains(where: { $0.name == poi.name }) {
-                    print("✨ Discovered POI: \(name) at \(Int(poiDistance))m")
+                    print("✨ Discovered \(rarity) POI: \(name) at \(Int(poiDistance))m")
                     discoveredPOIs.append(poi)
+                    
+                    // Haptic feedback for discovery (stronger for rarer items)
+                    Task { @MainActor in
+                        switch rarity {
+                        case .legendary: HapticManager.success()
+                        case .epic: HapticManager.heavy()
+                        case .rare: HapticManager.medium()
+                        case .common: HapticManager.light()
+                        }
+                    }
                 }
             }
         } catch let error as NSError {
@@ -580,6 +801,40 @@ class JourneyManager: ObservableObject {
 struct RouteResult {
     let coordinates: [CLLocationCoordinate2D]
     let distance: Double
+}
+
+private struct JourneyPreparationRequest {
+    let requestedStart: CLLocationCoordinate2D
+    let transportMode: TransportMode
+    let duration: TimeInterval
+    let isPresetCity: Bool
+    let presetCoordinate: CLLocationCoordinate2D?
+
+    func matches(_ other: JourneyPreparationRequest, tolerance: CLLocationDistance) -> Bool {
+        guard transportMode == other.transportMode else { return false }
+        guard abs(duration - other.duration) <= 1 else { return false }
+        guard isPresetCity == other.isPresetCity else { return false }
+
+        if let lhsPreset = presetCoordinate, let rhsPreset = other.presetCoordinate {
+            guard lhsPreset.distance(to: rhsPreset) <= tolerance else { return false }
+        } else if (presetCoordinate != nil) != (other.presetCoordinate != nil) {
+            return false
+        }
+
+        return requestedStart.distance(to: other.requestedStart) <= tolerance
+    }
+}
+
+private struct PreparedJourneyPlan {
+    let request: JourneyPreparationRequest
+    let resolvedStart: CLLocationCoordinate2D
+    let destination: CLLocationCoordinate2D
+    let route: RouteResult
+    let createdAt: Date
+
+    func isFresh(maxAge: TimeInterval) -> Bool {
+        Date().timeIntervalSince(createdAt) <= maxAge
+    }
 }
 
 enum JourneyError: LocalizedError {

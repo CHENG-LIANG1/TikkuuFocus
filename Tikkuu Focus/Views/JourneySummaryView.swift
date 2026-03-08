@@ -43,7 +43,7 @@ struct JourneySummaryView: View {
         static let horizontalPadding: CGFloat = 20
         static let cardSpacing: CGFloat = 16
         static let innerSpacing: CGFloat = 12
-        static let cornerRadius: CGFloat = 24
+        static let cornerRadius: CGFloat = 20
         static let cardCornerRadius: CGFloat = 16
     }
 
@@ -271,7 +271,7 @@ struct JourneySummaryView: View {
 
             Text(title)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(textColor.opacity(0.55))
+                .foregroundColor(textColor.opacity(0.5))
                 .lineLimit(1)
         }
         .padding(16)
@@ -290,7 +290,7 @@ struct JourneySummaryView: View {
                 Text(L("journey.summary.pois"))
                     .font(.system(size: 12, weight: .semibold))
             }
-            .foregroundColor(textColor.opacity(0.75))
+            .foregroundColor(textColor.opacity(0.7))
 
             // POI List
             VStack(alignment: .leading, spacing: 8) {
@@ -303,7 +303,7 @@ struct JourneySummaryView: View {
 
                         Text(poi.name)
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(textColor.opacity(0.9))
+                            .foregroundColor(textColor.opacity(1.0))
                             .lineLimit(1)
 
                         Spacer(minLength: 0)
@@ -349,7 +349,7 @@ struct JourneySummaryView: View {
                 Text(L("journey.summary.route"))
                     .font(.system(size: 11, weight: .semibold))
             }
-            .foregroundColor(textColor.opacity(0.88))
+            .foregroundColor(textColor.opacity(1.0))
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
@@ -371,7 +371,7 @@ struct JourneySummaryView: View {
             // Brand Header
             Text("Roam Focus App")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(.white)
                 .tracking(0.5)
 
             // Status Badge
@@ -502,7 +502,7 @@ struct JourneySummaryView: View {
                 Text(L("journey.summary.pois"))
                     .font(.system(size: 12, weight: .semibold))
             }
-            .foregroundColor(.white.opacity(0.9))
+            .foregroundColor(.white.opacity(0.7))
 
             // POI List
             VStack(alignment: .leading, spacing: 8) {
@@ -514,7 +514,7 @@ struct JourneySummaryView: View {
 
                         Text(poi.name)
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.white.opacity(0.95))
+                            .foregroundColor(.white)
                             .lineLimit(1)
 
                         Spacer(minLength: 0)
@@ -817,6 +817,7 @@ struct JourneySummaryView: View {
     // MARK: - Actions
 
     private func saveAsImage() {
+        HapticManager.medium()
         Task { @MainActor in
             guard let image = await renderAsImage() else { return }
 
@@ -869,6 +870,7 @@ struct JourneySummaryView: View {
     }
 
     private func shareImage() {
+        HapticManager.medium()
         Task { @MainActor in
             guard let image = await renderAsImage() else { return }
             // Use high quality for sharing, only compress if image is extremely large
@@ -1110,7 +1112,7 @@ private struct MetricCell: View {
 
             Text(title)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.72))
+                .foregroundColor(.white.opacity(0.7))
                 .lineLimit(1)
         }
         .padding(16)
@@ -1175,10 +1177,10 @@ private struct ActionButton: View {
             .frame(maxWidth: .infinity)
             .frame(height: 72)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(style.gradient)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
                     )
             )

@@ -50,6 +50,7 @@ final class LocationStore: ObservableObject, @unchecked Sendable {
     static let shared = LocationStore()
     
     private var modelContext: ModelContext?
+    private let maxFavoritesCount = 20
     
     @Published var favorites: [SavedLocation] = []
     @Published var history: [SavedLocation] = []
@@ -148,6 +149,7 @@ final class LocationStore: ObservableObject, @unchecked Sendable {
         context.insert(newFavorite)
         try? context.save()
         fetchLocations()
+        trimFavoritesIfNeeded()
     }
     
     func toggleFavorite(_ location: SavedLocation) {
@@ -164,6 +166,10 @@ final class LocationStore: ObservableObject, @unchecked Sendable {
         }
         try? context.save()
         fetchLocations()
+        
+        if location.isFavorite {
+            trimFavoritesIfNeeded()
+        }
     }
     
     func removeFromFavorites(_ location: SavedLocation) {
@@ -189,6 +195,19 @@ final class LocationStore: ObservableObject, @unchecked Sendable {
         for location in history {
             context.delete(location)
         }
+        try? context.save()
+        fetchLocations()
+    }
+    
+    private func trimFavoritesIfNeeded() {
+        guard let context = modelContext else { return }
+        guard favorites.count > maxFavoritesCount else { return }
+        
+        let overflow = favorites.suffix(from: maxFavoritesCount)
+        for location in overflow {
+            context.delete(location)
+        }
+        
         try? context.save()
         fetchLocations()
     }

@@ -24,7 +24,7 @@ class PerformanceOptimizer {
 
     /// Preferred timer interval for journey position refresh.
     var journeyUpdateInterval: TimeInterval {
-        isEnergySavingMode ? 3.0 : 1.5
+        isEnergySavingMode ? 3.0 : 2.0
     }
 
     /// Preferred timer interval for non-critical UI telemetry updates.

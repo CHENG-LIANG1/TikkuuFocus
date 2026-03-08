@@ -31,7 +31,7 @@ struct ExplorationMapView: View {
     @ObservedObject private var settings = AppSettings.shared
 
     private let cameraFollowDistanceThreshold: CLLocationDistance = 20
-    private let cameraFollowMinInterval: TimeInterval = 1.0
+    private let cameraFollowMinInterval: TimeInterval = PerformanceOptimizer.shared.isEnergySavingMode ? 3.0 : 1.5
 
     init(
         session: JourneySession,
@@ -108,16 +108,7 @@ struct ExplorationMapView: View {
                 Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
             // Start marker (no label to avoid flickering)
             Marker(coordinate: session.startLocation) {
-                ZStack {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 16, height: 16)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white, lineWidth: 3)
-                        )
-                        .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
-                }
+                StartMarker()
             }
             .tint(.green)
             
@@ -157,63 +148,25 @@ struct ExplorationMapView: View {
             // Current position (avatar) with smooth animation and pulsing effect (no label to avoid flickering)
             if let position = animatedPosition ?? currentPosition?.coordinate {
                 Marker(coordinate: position) {
-                    ZStack {
-                        // Pulsing outer ring
-                        Circle()
-                            .fill(Color.blue.opacity(0.3))
-                            .frame(width: 50, height: 50)
-                            .scaleEffect(pulseScale)
-                        
-                        // Main avatar with glow
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 0.4, green: 0.7, blue: 0.9),
-                                        Color(red: 0.3, green: 0.5, blue: 0.8)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white, lineWidth: 3)
-                            )
-                            .shadow(color: Color.blue.opacity(0.5), radius: 8, x: 0, y: 4)
-                            .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
-                        
-                        Image(systemName: session.transportMode.iconName)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
-                    }
+                    AvatarMarker(
+                        transportMode: session.transportMode,
+                        pulseScale: pulseScale
+                    )
                 }
                 .tint(.blue)
             }
             
             // Discovered POI markers (icon only, no tooltip bubble)
-            ForEach(discoveredPOIs) { poi in
+            ForEach(discoveredPOIs.prefix(PerformanceConfig.maxPOIMarkers)) { poi in
                 Annotation(poi.name, coordinate: poi.coordinate) {
                     POIBubbleMarker(poi: poi)
                 }
             }
             
-
-            
             // Destination marker (only show when journey is complete or very close, no label to avoid flickering)
             if let position = currentPosition, position.progress > 0.95 {
                 Marker(coordinate: session.destinationLocation) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.red.opacity(0.2))
-                            .frame(width: 40, height: 40)
-                        
-                        Image(systemName: "flag.fill")
-                            .font(.system(size: 24))
-                            .foregroundStyle(Color.red, Color.white)
-                            .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
-                    }
+                    DestinationMarker()
                 }
                 .tint(.red)
             }
@@ -249,12 +202,15 @@ struct ExplorationMapView: View {
         }
         .onDisappear {
             stopSpeedUpdateTimer()
+            stopPulseAnimation()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 startSpeedUpdateTimer()
+                startPulseAnimation()
             } else {
                 stopSpeedUpdateTimer()
+                stopPulseAnimation()
             }
         }
         .onChange(of: currentPosition) { oldPosition, newPosition in
@@ -296,7 +252,7 @@ struct ExplorationMapView: View {
                     .background(
                         Capsule()
                             .fill(Color.blue)
-                            .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
+                            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     )
                 }
                 .padding(.bottom, 280) // 增加底部间距，避免被 statsPanel 挡住
@@ -311,8 +267,15 @@ struct ExplorationMapView: View {
     @State private var pulseScale: CGFloat = 1.0
     
     private func startPulseAnimation() {
+        guard !PerformanceOptimizer.shared.isEnergySavingMode else { return }
         withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
             pulseScale = 1.3
+        }
+    }
+    
+    private func stopPulseAnimation() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            pulseScale = 1.0
         }
     }
     
@@ -321,6 +284,7 @@ struct ExplorationMapView: View {
     // 性能优化：降低速度更新频率从 3s 到 5s
     private func startSpeedUpdateTimer() {
         guard speedTimer == nil else { return }
+        guard !PerformanceOptimizer.shared.isEnergySavingMode else { return }
         let interval = PerformanceOptimizer.shared.secondaryUpdateInterval
         speedTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             updateSpeed()
@@ -475,7 +439,76 @@ struct ExplorationMapView: View {
     }
 }
 
-// MARK: - POI Bubble Marker
+// MARK: - Marker Components
+
+struct StartMarker: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.green)
+                .frame(width: 16, height: 16)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 3)
+                )
+                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
+        }
+    }
+}
+
+struct AvatarMarker: View {
+    let transportMode: TransportMode
+    let pulseScale: CGFloat
+    
+    var body: some View {
+        ZStack {
+            // Pulsing outer ring
+            Circle()
+                .fill(Color.blue.opacity(0.3))
+                .frame(width: 50, height: 50)
+                .scaleEffect(pulseScale)
+            
+            // Main avatar with glow
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.4, green: 0.7, blue: 0.9),
+                            Color(red: 0.3, green: 0.5, blue: 0.8)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 3)
+                )
+                .shadow(color: Color.blue.opacity(0.5), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
+            
+            Image(systemName: transportMode.iconName)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+        }
+    }
+}
+
+struct DestinationMarker: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.red.opacity(0.2))
+                .frame(width: 40, height: 40)
+            
+            Image(systemName: "flag.fill")
+                .font(.system(size: 24))
+                .foregroundStyle(Color.red, Color.white)
+                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
+        }
+    }
+}
 
 struct POIBubbleMarker: View {
     let poi: DiscoveredPOI

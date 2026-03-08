@@ -12,6 +12,7 @@ struct OnboardingView: View {
     @State private var currentPage = 0
     @State private var refreshID = UUID()
     @State private var animationPhase: CGFloat = 0
+    @State private var floatOffset: CGFloat = 0
     let canDismiss: Bool
     @Environment(\.dismiss) private var dismiss
     
@@ -20,224 +21,187 @@ struct OnboardingView: View {
     }
     
     var body: some View {
-        ZStack {
-            onboardingBackground
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                topBar
-
-                TabView(selection: $currentPage) {
-                    ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                        pageContent(for: page, index: index)
-                            .tag(index)
+        GeometryReader { geometry in
+            let isCompact = geometry.size.height < 700
+            
+            ZStack {
+                // Animated background
+                backgroundView
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    // Skip button
+                    HStack {
+                        Spacer()
+                        if canDismiss {
+                            skipButton(title: L("common.done"), action: dismissAction)
+                        } else if currentPage < pages.count - 1 {
+                            skipButton(title: L("onboarding.skip"), action: completeOnboarding)
+                        }
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.top, isCompact ? 12 : 20)
+                    
+                    // Main content
+                    TabView(selection: $currentPage) {
+                        ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
+                            PageContentView(
+                                page: page,
+                                floatOffset: floatOffset,
+                                isCompact: isCompact
+                            )
+                            .tag(index)
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .onChange(of: currentPage) { _, _ in
+                        HapticManager.selection()
+                    }
+                    
+                    // Bottom section
+                    bottomSection(isCompact: isCompact)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .onChange(of: currentPage) { _, _ in
-                    triggerPageAnimation()
-                }
-
-                bottomControls
             }
         }
         .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
-            triggerPageAnimation()
+            startFloatingAnimation()
         }
         .onChange(of: settings.selectedLanguage) { _, _ in
             refreshID = UUID()
         }
     }
-
-    private var activePage: OnboardingPageModel {
-        let boundedIndex = min(max(currentPage, 0), pages.count - 1)
-        return pages[boundedIndex]
+    
+    // MARK: - Data
+    
+    private var activePage: OnboardingPage {
+        pages[min(max(currentPage, 0), pages.count - 1)]
     }
-
-    private var pages: [OnboardingPageModel] {
+    
+    private var pages: [OnboardingPage] {
         [
-            OnboardingPageModel(
-                heroIcon: "globe.europe.africa.fill",
-                badgeIcon: "location.fill",
-                badgeTextKey: "onboarding.v2.page1.badge",
-                titleKey: "onboarding.v2.page1.title",
-                subtitleKey: "onboarding.v2.page1.subtitle",
-                gradient: [Color(red: 0.13, green: 0.52, blue: 0.98), Color(red: 0.37, green: 0.28, blue: 0.91)],
-                bullets: [
-                    .init(icon: "paperplane.fill", titleKey: "onboarding.v2.page1.feature1.title", descriptionKey: "onboarding.v2.page1.feature1.desc", tint: .blue),
-                    .init(icon: "bicycle", titleKey: "onboarding.v2.page1.feature2.title", descriptionKey: "onboarding.v2.page1.feature2.desc", tint: .cyan),
-                    .init(icon: "sparkles", titleKey: "onboarding.v2.page1.feature3.title", descriptionKey: "onboarding.v2.page1.feature3.desc", tint: .mint)
-                ]
+            OnboardingPage(
+                illustration: .journey,
+                titleKey: "onboarding.new.page1.title",
+                subtitleKey: "onboarding.new.page1.subtitle",
+                gradient: [Color(red: 0.29, green: 0.56, blue: 1.0), Color(red: 0.58, green: 0.40, blue: 0.98)]
             ),
-            OnboardingPageModel(
-                heroIcon: "map.fill",
-                badgeIcon: "bolt.fill",
-                badgeTextKey: "onboarding.v2.page2.badge",
-                titleKey: "onboarding.v2.page2.title",
-                subtitleKey: "onboarding.v2.page2.subtitle",
-                gradient: [Color(red: 0.99, green: 0.56, blue: 0.24), Color(red: 0.94, green: 0.35, blue: 0.52)],
-                bullets: [
-                    .init(icon: "timer", titleKey: "onboarding.v2.page2.feature1.title", descriptionKey: "onboarding.v2.page2.feature1.desc", tint: .orange),
-                    .init(icon: "point.topleft.down.curvedto.point.bottomright.up", titleKey: "onboarding.v2.page2.feature2.title", descriptionKey: "onboarding.v2.page2.feature2.desc", tint: .pink),
-                    .init(icon: "scope", titleKey: "onboarding.v2.page2.feature3.title", descriptionKey: "onboarding.v2.page2.feature3.desc", tint: .red)
-                ]
+            OnboardingPage(
+                illustration: .explore,
+                titleKey: "onboarding.new.page2.title",
+                subtitleKey: "onboarding.new.page2.subtitle",
+                gradient: [Color(red: 1.0, green: 0.62, blue: 0.35), Color(red: 0.98, green: 0.42, blue: 0.56)]
             ),
-            OnboardingPageModel(
-                heroIcon: "chart.bar.fill",
-                badgeIcon: "star.fill",
-                badgeTextKey: "onboarding.v2.page3.badge",
-                titleKey: "onboarding.v2.page3.title",
-                subtitleKey: "onboarding.v2.page3.subtitle",
-                gradient: [Color(red: 0.16, green: 0.73, blue: 0.49), Color(red: 0.11, green: 0.61, blue: 0.82)],
-                bullets: [
-                    .init(icon: "clock.fill", titleKey: "onboarding.v2.page3.feature1.title", descriptionKey: "onboarding.v2.page3.feature1.desc", tint: .green),
-                    .init(icon: "flag.pattern.checkered", titleKey: "onboarding.v2.page3.feature2.title", descriptionKey: "onboarding.v2.page3.feature2.desc", tint: .teal),
-                    .init(icon: "trophy.fill", titleKey: "onboarding.v2.page3.feature3.title", descriptionKey: "onboarding.v2.page3.feature3.desc", tint: .yellow)
-                ]
-            ),
-            OnboardingPageModel(
-                heroIcon: "checkmark.seal.fill",
-                badgeIcon: "figure.run",
-                badgeTextKey: "onboarding.v2.page4.badge",
-                titleKey: "onboarding.v2.page4.title",
-                subtitleKey: "onboarding.v2.page4.subtitle",
-                gradient: [Color(red: 0.40, green: 0.36, blue: 0.95), Color(red: 0.24, green: 0.66, blue: 0.98)],
-                bullets: [
-                    .init(icon: "play.fill", titleKey: "onboarding.v2.page4.feature1.title", descriptionKey: "onboarding.v2.page4.feature1.desc", tint: .indigo),
-                    .init(icon: "leaf.fill", titleKey: "onboarding.v2.page4.feature2.title", descriptionKey: "onboarding.v2.page4.feature2.desc", tint: .blue),
-                    .init(icon: "lock.shield.fill", titleKey: "onboarding.v2.page4.feature3.title", descriptionKey: "onboarding.v2.page4.feature3.desc", tint: .mint)
-                ]
+            OnboardingPage(
+                illustration: .achieve,
+                titleKey: "onboarding.new.page3.title",
+                subtitleKey: "onboarding.new.page3.subtitle",
+                gradient: [Color(red: 0.30, green: 0.85, blue: 0.65), Color(red: 0.25, green: 0.72, blue: 0.95)]
             )
         ]
     }
-
-    private var onboardingBackground: some View {
+    
+    // MARK: - Background
+    
+    private var backgroundView: some View {
         ZStack {
+            // Base gradient
             LinearGradient(
                 colors: [
-                    Color(red: 0.03, green: 0.06, blue: 0.16),
-                    activePage.gradient[0].opacity(0.5),
-                    activePage.gradient[1].opacity(0.42)
+                    Color(red: 0.06, green: 0.08, blue: 0.14),
+                    activePage.gradient[0].opacity(0.35),
+                    activePage.gradient[1].opacity(0.25)
                 ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                startPoint: .top,
+                endPoint: .bottom
             )
-
+            
+            // Floating orbs
             Circle()
-                .fill(activePage.gradient[0].opacity(0.4))
-                .frame(width: 360, height: 360)
-                .blur(radius: 56)
-                .offset(x: -120 + (animationPhase * 24), y: -270)
-
+                .fill(activePage.gradient[0].opacity(0.3))
+                .frame(width: 300, height: 300)
+                .blur(radius: 80)
+                .offset(x: -80, y: -200 + floatOffset * 15)
+            
             Circle()
-                .fill(activePage.gradient[1].opacity(0.34))
-                .frame(width: 310, height: 310)
+                .fill(activePage.gradient[1].opacity(0.25))
+                .frame(width: 250, height: 250)
+                .blur(radius: 70)
+                .offset(x: 100, y: 100 - floatOffset * 12)
+            
+            Circle()
+                .fill(Color.white.opacity(0.05))
+                .frame(width: 200, height: 200)
                 .blur(radius: 60)
-                .offset(x: 150 - (animationPhase * 20), y: -160)
-
-            RoundedRectangle(cornerRadius: 180, style: .continuous)
-                .fill(Color.white.opacity(0.08))
-                .frame(width: 340, height: 340)
-                .blur(radius: 72)
-                .offset(x: 120, y: 280 - (animationPhase * 18))
+                .offset(x: 50, y: 300 + floatOffset * 10)
         }
-        .animation(.easeInOut(duration: 0.7), value: currentPage)
+        .animation(.easeInOut(duration: 0.8), value: currentPage)
     }
-
-    private var topBar: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L("onboarding.v2.header"))
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.95))
-
-                Text("\(currentPage + 1)/\(pages.count)")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.62))
-            }
-
-            Spacer()
-
-            if canDismiss {
-                topBarButton(title: L("common.done"), action: dismissAction)
-            } else if currentPage < pages.count - 1 {
-                topBarButton(title: L("onboarding.skip"), action: completeOnboarding)
-            } else {
-                Color.clear.frame(width: 72, height: 36)
-            }
+    
+    // MARK: - Skip Button
+    
+    private func skipButton(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 14)
-        .padding(.bottom, 8)
+        .buttonStyle(.plain)
     }
-
-    private var bottomControls: some View {
-        VStack(spacing: 18) {
-            HStack(spacing: 7) {
+    
+    // MARK: - Bottom Section
+    
+    private func bottomSection(isCompact: Bool) -> some View {
+        VStack(spacing: isCompact ? 20 : 28) {
+            // Page indicators
+            HStack(spacing: 8) {
                 ForEach(0..<pages.count, id: \.self) { index in
-                    Capsule()
+                    Circle()
                         .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
-                        .frame(width: currentPage == index ? 28 : 9, height: 8)
-                        .animation(.spring(response: 0.36, dampingFraction: 0.8), value: currentPage)
+                        .frame(width: currentPage == index ? 10 : 8, height: currentPage == index ? 10 : 8)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: currentPage)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.black.opacity(0.24))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
-                    )
-            )
-
+            
+            // Action button
             Button(action: handlePrimaryAction) {
-                HStack(spacing: 10) {
-                    Text(primaryButtonTitle)
-                        .font(.system(size: 18, weight: .semibold))
-
-                    Image(systemName: currentPage < pages.count - 1 ? "arrow.right" : "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 17)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    activePage.gradient[0].opacity(0.92),
-                                    activePage.gradient[1].opacity(0.92)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                Text(primaryButtonTitle)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: 280)
+                    .padding(.vertical, isCompact ? 15 : 18)
+                    .background(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: activePage.gradient,
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                        )
-                        .shadow(color: Color.black.opacity(0.25), radius: 16, x: 0, y: 8)
-                )
+                            .shadow(color: activePage.gradient[0].opacity(0.5), radius: 20, x: 0, y: 10)
+                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScaleButtonStyle())
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .padding(.bottom, 30)
+        .padding(.horizontal, 32)
+        .padding(.bottom, isCompact ? 30 : 50)
     }
-
+    
     private var primaryButtonTitle: String {
         if currentPage < pages.count - 1 {
             return L("onboarding.next")
         }
         return canDismiss ? L("common.done") : L("onboarding.getStarted")
     }
-
+    
+    // MARK: - Actions
+    
     private func handlePrimaryAction() {
         HapticManager.medium()
         if currentPage < pages.count - 1 {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                 currentPage += 1
             }
             return
@@ -248,216 +212,18 @@ struct OnboardingView: View {
             completeOnboarding()
         }
     }
-
-    private func topBarButton(title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(Color.black.opacity(0.28))
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.22), lineWidth: 0.8)
-                        )
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func pageContent(for page: OnboardingPageModel, index: Int) -> some View {
-        GeometryReader { proxy in
-            let heroHeight = min(max(proxy.size.height * 0.42, 220), 292)
-
-            VStack(spacing: 14) {
-                flowHeader(labelKey: page.badgeTextKey)
-
-                heroCard(for: page, index: index, height: heroHeight)
-
-                featurePanel(for: page)
-
-                Spacer(minLength: 6)
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 8)
-            .padding(.bottom, 6)
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+    
+    private func startFloatingAnimation() {
+        withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
+            floatOffset = 1
         }
     }
-
-    private func flowHeader(labelKey: String) -> some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 7) {
-                ForEach(0..<pages.count, id: \.self) { index in
-                    Capsule()
-                        .fill(index == currentPage ? Color.white : Color.white.opacity(0.32))
-                        .frame(width: index == currentPage ? 24 : 8, height: 6)
-                        .animation(.spring(response: 0.34, dampingFraction: 0.82), value: currentPage)
-                }
-            }
-
-            Spacer()
-
-            Label(L(labelKey), systemImage: "sparkle")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.white.opacity(0.88))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color.black.opacity(0.22))
-                        .overlay(
-                            Capsule(style: .continuous)
-                                .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
-                        )
-                )
-        }
-    }
-
-    private func heroCard(for page: OnboardingPageModel, index: Int, height: CGFloat) -> some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 10) {
-                Label(L(page.badgeTextKey), systemImage: page.badgeIcon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.black.opacity(0.24)))
-
-                Spacer()
-
-                Text("\(index + 1)")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white.opacity(0.9))
-                    .frame(width: 28, height: 28)
-                    .background(Circle().fill(Color.white.opacity(0.2)))
-            }
-
-            ZStack {
-                Circle()
-                    .fill(Color.white.opacity(0.16))
-                    .frame(width: 120, height: 120)
-
-                Circle()
-                    .fill(.ultraThinMaterial.opacity(0.92))
-                    .frame(width: 98, height: 98)
-
-                Image(systemName: page.heroIcon)
-                    .font(.system(size: 42, weight: .semibold))
-                    .foregroundColor(.white)
-                    .rotationEffect(.degrees(Double(animationPhase) * 6.0))
-            }
-            .shadow(color: page.gradient[0].opacity(0.5), radius: 16, x: 0, y: 10)
-
-            VStack(spacing: 10) {
-                Text(L(page.titleKey))
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.85)
-                    .lineLimit(2)
-
-                Text(L(page.subtitleKey))
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.white.opacity(0.82))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-            }
-            .padding(.horizontal, 6)
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity)
-        .frame(height: height, alignment: .top)
-        .background(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            page.gradient[0].opacity(0.82),
-                            page.gradient[1].opacity(0.6)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(Color.white.opacity(0.24), lineWidth: 0.9)
-                )
-        )
-    }
-
-    private func featurePanel(for page: OnboardingPageModel) -> some View {
-        VStack(spacing: 10) {
-            ForEach(Array(page.bullets.enumerated()), id: \.element.titleKey) { index, bullet in
-                featureRow(bullet: bullet, index: index + 1)
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.11))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 0.8)
-                )
-        )
-    }
-
-    private func featureRow(bullet: OnboardingBullet, index: Int) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(bullet.tint.opacity(0.28))
-                    .frame(width: 36, height: 36)
-
-                Image(systemName: bullet.icon)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L(bullet.titleKey))
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text(L(bullet.descriptionKey))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.72))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Text("\(index)")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.white.opacity(0.7))
-                .frame(width: 18)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.black.opacity(0.16))
-        )
-    }
-
-    private func triggerPageAnimation() {
-        HapticManager.selection()
-        animationPhase = 0
-        withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
-            animationPhase = 1
-        }
-    }
-
+    
     private func dismissAction() {
         HapticManager.light()
         dismiss()
     }
-
+    
     private func completeOnboarding() {
         HapticManager.success()
         withAnimation {
@@ -467,21 +233,251 @@ struct OnboardingView: View {
     }
 }
 
-private struct OnboardingPageModel {
-    let heroIcon: String
-    let badgeIcon: String
-    let badgeTextKey: String
+// MARK: - Page Content View
+
+private struct PageContentView: View {
+    let page: OnboardingPage
+    let floatOffset: CGFloat
+    let isCompact: Bool
+    
+    var body: some View {
+        VStack(spacing: isCompact ? 28 : 40) {
+            Spacer()
+            
+            // Illustration
+            IllustrationView(
+                type: page.illustration,
+                gradient: page.gradient,
+                floatOffset: floatOffset,
+                isCompact: isCompact
+            )
+            
+            // Text content
+            VStack(spacing: isCompact ? 12 : 16) {
+                Text(L(page.titleKey))
+                    .font(.system(size: isCompact ? 28 : 34, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                
+                Text(L(page.subtitleKey))
+                    .font(.system(size: isCompact ? 15 : 17, weight: .regular))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+            .padding(.horizontal, 32)
+            
+            Spacer()
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Illustration View
+
+private struct IllustrationView: View {
+    let type: IllustrationType
+    let gradient: [Color]
+    let floatOffset: CGFloat
+    let isCompact: Bool
+    
+    private var size: CGFloat { isCompact ? 200 : 260 }
+    
+    var body: some View {
+        ZStack {
+            // Background glow
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [gradient[0].opacity(0.4), gradient[1].opacity(0.1), Color.clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: size * 0.7
+                    )
+                )
+                .frame(width: size * 1.4, height: size * 1.4)
+            
+            // Main illustration container
+            ZStack {
+                // Glass card
+                RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
+                    .fill(.ultraThinMaterial.opacity(0.5))
+                    .frame(width: size, height: size)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.3), Color.white.opacity(0.05)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+                
+                // Illustration content
+                illustrationContent
+            }
+            .offset(y: floatOffset * -8)
+        }
+    }
+    
+    @ViewBuilder
+    private var illustrationContent: some View {
+        switch type {
+        case .journey:
+            journeyIllustration
+        case .explore:
+            exploreIllustration
+        case .achieve:
+            achieveIllustration
+        }
+    }
+    
+    private var journeyIllustration: some View {
+        ZStack {
+            // Route line
+            Path { path in
+                path.move(to: CGPoint(x: size * 0.25, y: size * 0.7))
+                path.addCurve(
+                    to: CGPoint(x: size * 0.75, y: size * 0.3),
+                    control1: CGPoint(x: size * 0.35, y: size * 0.4),
+                    control2: CGPoint(x: size * 0.65, y: size * 0.5)
+                )
+            }
+            .stroke(
+                LinearGradient(colors: gradient, startPoint: .leading, endPoint: .trailing),
+                style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6])
+            )
+            .frame(width: size, height: size)
+            
+            // Start point
+            Circle()
+                .fill(gradient[0])
+                .frame(width: 20, height: 20)
+                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                .offset(x: -size * 0.25, y: size * 0.2)
+            
+            // End point
+            Image(systemName: "mappin.circle.fill")
+                .font(.system(size: 32, weight: .medium))
+                .foregroundStyle(gradient[1], .white)
+                .offset(x: size * 0.25, y: -size * 0.2)
+            
+            // Globe icon
+            Image(systemName: "globe.asia.australia.fill")
+                .font(.system(size: isCompact ? 50 : 64, weight: .light))
+                .foregroundStyle(
+                    LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                )
+                .offset(y: floatOffset * 4)
+        }
+    }
+    
+    private var exploreIllustration: some View {
+        ZStack {
+            // Map grid
+            ForEach(0..<3) { row in
+                ForEach(0..<3) { col in
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: size * 0.22, height: size * 0.22)
+                        .offset(
+                            x: CGFloat(col - 1) * size * 0.26,
+                            y: CGFloat(row - 1) * size * 0.26
+                        )
+                }
+            }
+            
+            // POI markers
+            Image(systemName: "cup.and.saucer.fill")
+                .font(.system(size: 18))
+                .foregroundColor(gradient[0])
+                .offset(x: -size * 0.2, y: -size * 0.15)
+            
+            Image(systemName: "leaf.fill")
+                .font(.system(size: 18))
+                .foregroundColor(.green)
+                .offset(x: size * 0.22, y: size * 0.1)
+            
+            Image(systemName: "building.2.fill")
+                .font(.system(size: 18))
+                .foregroundColor(gradient[1])
+                .offset(x: size * 0.05, y: -size * 0.25)
+            
+            // Center icon
+            Image(systemName: "location.north.fill")
+                .font(.system(size: isCompact ? 44 : 56, weight: .medium))
+                .foregroundStyle(
+                    LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
+                )
+                .rotationEffect(.degrees(floatOffset * 15))
+        }
+    }
+    
+    private var achieveIllustration: some View {
+        ZStack {
+            // Stats bars
+            HStack(spacing: 12) {
+                ForEach(0..<4) { index in
+                    VStack {
+                        Spacer()
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [gradient[0].opacity(0.8), gradient[1].opacity(0.6)],
+                                    startPoint: .bottom,
+                                    endPoint: .top
+                                )
+                            )
+                            .frame(width: 20, height: CGFloat([50, 70, 45, 85][index]) + floatOffset * 5)
+                    }
+                    .frame(height: 100)
+                }
+            }
+            .offset(y: size * 0.15)
+            
+            // Trophy
+            Image(systemName: "trophy.fill")
+                .font(.system(size: isCompact ? 52 : 66, weight: .medium))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color(red: 1.0, green: 0.85, blue: 0.35), Color(red: 1.0, green: 0.65, blue: 0.2)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .shadow(color: Color.orange.opacity(0.4), radius: 15, x: 0, y: 8)
+                .offset(y: -size * 0.12 + floatOffset * 6)
+            
+            // Sparkles
+            Image(systemName: "sparkle")
+                .font(.system(size: 14))
+                .foregroundColor(.yellow)
+                .offset(x: -size * 0.28, y: -size * 0.25)
+            
+            Image(systemName: "sparkle")
+                .font(.system(size: 10))
+                .foregroundColor(.yellow.opacity(0.7))
+                .offset(x: size * 0.3, y: -size * 0.18)
+        }
+    }
+}
+
+// MARK: - Data Models
+
+private enum IllustrationType {
+    case journey
+    case explore
+    case achieve
+}
+
+private struct OnboardingPage {
+    let illustration: IllustrationType
     let titleKey: String
     let subtitleKey: String
     let gradient: [Color]
-    let bullets: [OnboardingBullet]
-}
-
-private struct OnboardingBullet {
-    let icon: String
-    let titleKey: String
-    let descriptionKey: String
-    let tint: Color
 }
 
 #Preview {

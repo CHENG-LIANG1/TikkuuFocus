@@ -94,13 +94,11 @@ struct WebView: UIViewRepresentable {
 /// Privacy Policy View with Immersive WebView
 struct PrivacyPolicyView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @State private var isLoading = true
     @State private var loadError: Error?
     @State private var retryTrigger = UUID()
     @State private var dragOffset: CGFloat = 0
-    @State private var showNavBar = true
-    @State private var scrollOffset: CGFloat = 0
+    @State private var contentVisible = false
     
     // URL will be configurable
     private var privacyPolicyURL: URL {
@@ -114,16 +112,19 @@ struct PrivacyPolicyView: View {
     
     var body: some View {
         ZStack {
-            // Background
-            colorScheme == .dark ? Color.black.ignoresSafeArea() : Color.white.ignoresSafeArea()
+            immersiveBackground
             
             // Full screen WebView
             WebView(url: privacyPolicyURL, isLoading: $isLoading, loadError: $loadError)
                 .id(retryTrigger)
                 .ignoresSafeArea()
                 .offset(y: dragOffset)
-                .scaleEffect(1 - abs(dragOffset) / UIScreen.main.bounds.height * 0.1)
-                .opacity(1 - abs(dragOffset) / dragThreshold * 0.5)
+                .scaleEffect(contentVisible ? 1.0 : 0.985)
+                .opacity(contentVisible ? 1.0 : 0.25)
+                .animation(.easeOut(duration: 0.28), value: contentVisible)
+                .overlay(alignment: .top) {
+                    topEdgeFade
+                }
             
             // Loading overlay
             if isLoading && loadError == nil {
@@ -137,16 +138,15 @@ struct PrivacyPolicyView: View {
                     .transition(.opacity.combined(with: .scale))
             }
             
-            // Custom navigation bar
-            customNavBar
-                .opacity(showNavBar ? 1 : 0)
-                .animation(.easeInOut(duration: 0.2), value: showNavBar)
+            floatingControls
+            bottomDismissHint
         }
+        .contentShape(Rectangle())
         .gesture(
             DragGesture()
                 .onChanged { value in
                     if value.translation.height > 0 {
-                        dragOffset = value.translation.height * 0.5
+                        dragOffset = value.translation.height * 0.45
                     }
                 }
                 .onEnded { value in
@@ -164,70 +164,94 @@ struct PrivacyPolicyView: View {
                     }
                 }
         )
-        .preferredColorScheme(.dark)
+        .onAppear {
+            withAnimation {
+                contentVisible = true
+            }
+        }
     }
     
-    // MARK: - Custom Navigation Bar
+    // MARK: - Background
     
-    private var customNavBar: some View {
-        VStack(spacing: 0) {
-            HStack {
-                // Close button
+    private var immersiveBackground: some View {
+        LinearGradient(
+            colors: [
+                Color.black,
+                Color(red: 0.03, green: 0.05, blue: 0.10),
+                Color.black
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+    
+    private var topEdgeFade: some View {
+        LinearGradient(
+            colors: [Color.black.opacity(0.22), Color.clear],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: 120)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+    }
+    
+    private var bottomDismissHint: some View {
+        VStack {
+            Spacer()
+            Capsule()
+                .fill(Color.white.opacity(0.45))
+                .frame(width: 38, height: 5)
+                .padding(.bottom, 10)
+        }
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
+    }
+    
+    // MARK: - Floating Controls
+    
+    private var floatingControls: some View {
+        VStack {
+            HStack(spacing: 10) {
                 Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        dismiss()
-                    }
+                    dismiss()
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .frame(width: 36, height: 36)
-                        .background(
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-                                )
-                        )
-                }
-                
-                Spacer()
-                
-                Text(L("settings.privacy"))
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                // Done button
-                Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        dismiss()
+                    HStack(spacing: 6) {
+                        Image(systemName: "stop.fill")
+                            .font(.system(size: 11, weight: .bold))
+                        Text(L("journey.stop.confirm"))
+                            .font(.system(size: 13, weight: .semibold))
                     }
-                } label: {
-                    Text(L("common.done"))
-                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
                         .background(
                             Capsule()
-                                .fill(Color.blue.opacity(0.8))
+                                .fill(Color.red.opacity(0.24))
                         )
                 }
+                
+                Text(L("settings.privacy"))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                
+                Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .background(
-                Rectangle()
+                Capsule()
                     .fill(.ultraThinMaterial)
                     .overlay(
-                        Rectangle()
-                            .fill(Color.white.opacity(0.08))
+                        Capsule()
+                            .stroke(Color.white.opacity(0.2), lineWidth: 0.6)
                     )
             )
+            .shadow(color: .black.opacity(0.35), radius: 16, x: 0, y: 8)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
             
             Spacer()
         }
@@ -237,52 +261,30 @@ struct PrivacyPolicyView: View {
     // MARK: - Loading Overlay
     
     private var loadingOverlay: some View {
-        ZStack {
-            // Blurred background
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                // Animated loader
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 4)
-                        .frame(width: 60, height: 60)
-                    
-                    Circle()
-                        .trim(from: 0, to: 0.7)
-                        .stroke(
-                            AngularGradient(
-                                colors: [.cyan, .blue, .purple, .cyan],
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .frame(width: 60, height: 60)
-                        .rotationEffect(.degrees(360))
-                        .animation(
-                            .linear(duration: 1)
-                            .repeatForever(autoreverses: false),
-                            value: isLoading
-                        )
-                }
+        VStack {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .tint(.white)
                 
                 Text(L("common.loading"))
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
             }
-            .padding(32)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
             .background(
-                RoundedRectangle(cornerRadius: 24)
+                Capsule()
                     .fill(.ultraThinMaterial)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 24)
-                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                        Capsule()
+                            .stroke(Color.white.opacity(0.22), lineWidth: 0.6)
                     )
             )
-            .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+            .padding(.top, 72)
+            
+            Spacer()
         }
+        .allowsHitTesting(false)
     }
     
     // MARK: - Error Overlay
@@ -290,88 +292,53 @@ struct PrivacyPolicyView: View {
     private func errorOverlay(error: Error) -> some View {
         ZStack {
             Rectangle()
-                .fill(.ultraThinMaterial)
+                .fill(Color.black.opacity(0.45))
                 .ignoresSafeArea()
             
-            VStack(spacing: 24) {
-                // Error icon with glow
-                ZStack {
-                    Circle()
-                        .fill(Color.red.opacity(0.2))
-                        .frame(width: 100, height: 100)
-                        .blur(radius: 20)
-                    
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.orange, .red],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
+            VStack(spacing: 16) {
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.system(size: 38, weight: .semibold))
+                    .foregroundColor(.white)
                 
-                VStack(spacing: 8) {
-                    Text("Failed to load page")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    Text(error.localizedDescription)
-                        .font(.system(size: 15))
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(3)
-                        .padding(.horizontal, 32)
-                }
+                Text(L("privacy.error.title"))
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text(error.localizedDescription)
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(4)
                 
                 Button {
-                    withAnimation(.spring()) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
                         loadError = nil
                         isLoading = true
                         retryTrigger = UUID()
                     }
                 } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 16, weight: .semibold))
-                        Text("Retry")
-                            .font(.system(size: 17, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.blue, Color.purple],
-                            startPoint: .leading,
-                            endPoint: .trailing
+                    Text(L("privacy.error.retry"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(Color.white.opacity(0.16))
                         )
-                    )
-                    .clipShape(Capsule())
-                    .shadow(color: Color.blue.opacity(0.4), radius: 12, x: 0, y: 6)
                 }
             }
-            .padding(36)
+            .padding(.horizontal, 26)
+            .padding(.vertical, 28)
             .background(
-                RoundedRectangle(cornerRadius: 28)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(.ultraThinMaterial)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 28)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.2),
-                                        Color.white.opacity(0.05)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 0.8)
                     )
             )
-            .shadow(color: .black.opacity(0.4), radius: 30, x: 0, y: 15)
+            .padding(.horizontal, 24)
         }
     }
 }

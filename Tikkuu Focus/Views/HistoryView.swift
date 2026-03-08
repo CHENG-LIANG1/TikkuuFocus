@@ -16,25 +16,47 @@ struct HistoryView: View {
     @ObservedObject private var settings = AppSettings.shared
     
     @State private var selectedTab: HistoryTab = .overview
-    @State private var showingRecordDetail: JourneyRecord?
-    @State private var showTimeDetail = false
-    @State private var showDistanceDetail = false
-    @State private var showCompletedDetail = false
-    @State private var showPOIsDetail = false
-    @State private var selectedLocation: String?
-    @State private var selectedTransportMode: String?
-    @State private var showLongestJourneyDetail = false
-    @State private var showFarthestDistanceDetail = false
-    @State private var showMostPOIsDetail = false
-    @State private var showFastestSpeedDetail = false
+    @State private var activeSheet: ActiveSheet?
     @State private var expandedRecordID: UUID?
     @State private var isEditMode = false
     @State private var selectedRecords: Set<UUID> = []
     @State private var showDeleteConfirmation = false
     @State private var recordToDelete: JourneyRecord?
     @State private var deletingRecordIDs: Set<UUID> = []
+    @State private var tabRenderID = UUID()
+    @State private var displayedRecordCount = PerformanceConfig.maxDisplayRecords
     
     // MARK: - Cached Computed Properties (Performance Optimization)
+    
+    private enum ActiveSheet: Identifiable {
+        case recordDetail(JourneyRecord)
+        case time
+        case distance
+        case completed
+        case pois
+        case location(String)
+        case transportMode(String)
+        case longestJourney
+        case farthestDistance
+        case mostPOIs
+        case fastestSpeed
+        
+        var id: String {
+            switch self {
+            case .recordDetail(let record): return "record_\(record.id)"
+            case .time: return "time"
+            case .distance: return "distance"
+            case .completed: return "completed"
+            case .pois: return "pois"
+            case .location(let loc): return "location_\(loc)"
+            case .transportMode(let mode): return "transport_\(mode)"
+            case .longestJourney: return "longestJourney"
+            case .farthestDistance: return "farthestDistance"
+            case .mostPOIs: return "mostPOIs"
+            case .fastestSpeed: return "fastestSpeed"
+            }
+        }
+    }
     
     @State private var cachedStats: CachedHistoryStats?
 
@@ -70,23 +92,36 @@ struct HistoryView: View {
         let estimatedCalories: Int
         let co2Saved: Double
         let recordsHash: Int
+        let morningJourneys: Int
+        let afternoonJourneys: Int
+        let eveningJourneys: Int
+        let nightJourneys: Int
+        let weeklyActivity: [(day: String, count: Int)]
     }
     
     private var recordsChangeToken: Int {
         var hasher = Hasher()
         hasher.combine(records.count)
-
-        for record in records {
-            hasher.combine(record.id)
-            hasher.combine(record.startTime.timeIntervalSinceReferenceDate)
-            hasher.combine(record.duration)
-            hasher.combine(record.distanceTraveled)
-            hasher.combine(record.discoveredPOICount)
-            hasher.combine(record.isCompleted)
-            hasher.combine(record.transportMode)
-            hasher.combine(record.startLocationName)
+        // Sample first, last, and middle records as sentinels
+        if let first = records.first {
+            hasher.combine(first.id)
+            hasher.combine(first.startTime.timeIntervalSinceReferenceDate)
         }
-
+        if let last = records.last {
+            hasher.combine(last.id)
+            hasher.combine(last.startTime.timeIntervalSinceReferenceDate)
+            hasher.combine(last.isCompleted)
+        }
+        if records.count > 2 {
+            let mid = records[records.count / 2]
+            hasher.combine(mid.id)
+            hasher.combine(mid.isCompleted)
+        }
+        if records.count > 4 {
+            let quarter = records[records.count / 4]
+            hasher.combine(quarter.id)
+            hasher.combine(quarter.isCompleted)
+        }
         return hasher.finalize()
     }
 
@@ -119,6 +154,11 @@ struct HistoryView: View {
         var walkingDistance: Double = 0
         var nonDrivingDistance: Double = 0
         var estimatedCalories = 0
+        var morningCount = 0
+        var afternoonCount = 0
+        var eveningCount = 0
+        var nightCount = 0
+        var weekdayCounts: [Int: Int] = [:]
         let calendar = Calendar.current
 
         for record in records {
@@ -167,6 +207,22 @@ struct HistoryView: View {
             heatmapData[day, default: 0] += 1
             activeDays.insert(day)
 
+            // Time-of-day bucketing
+            let hour = calendar.component(.hour, from: record.startTime)
+            if hour >= 6 && hour < 12 {
+                morningCount += 1
+            } else if hour >= 12 && hour < 18 {
+                afternoonCount += 1
+            } else if hour >= 18 && hour < 22 {
+                eveningCount += 1
+            } else {
+                nightCount += 1
+            }
+
+            // Weekday bucketing
+            let weekday = calendar.component(.weekday, from: record.startTime)
+            weekdayCounts[weekday, default: 0] += 1
+
             let modeLower = record.transportMode.lowercased()
             if modeLower == "walking" {
                 walkingDistance += record.distanceTraveled
@@ -205,6 +261,13 @@ struct HistoryView: View {
         let estimatedSteps = Int(walkingDistance * 1.3)
         let co2Saved = (nonDrivingDistance / 1000.0) * 0.12
 
+        // Build weekly activity from weekday counts
+        let weekdaySymbols = calendar.shortWeekdaySymbols
+        let weeklyActivity: [(day: String, count: Int)] = (1...7).map { weekday in
+            let label = weekdaySymbols[weekday - 1]
+            return (day: label, count: weekdayCounts[weekday, default: 0])
+        }
+
         cachedStats = CachedHistoryStats(
             totalTime: totalTime,
             totalDistance: totalDistance,
@@ -224,7 +287,12 @@ struct HistoryView: View {
             estimatedSteps: estimatedSteps,
             estimatedCalories: estimatedCalories,
             co2Saved: co2Saved,
-            recordsHash: hash
+            recordsHash: hash,
+            morningJourneys: morningCount,
+            afternoonJourneys: afternoonCount,
+            eveningJourneys: eveningCount,
+            nightJourneys: nightCount,
+            weeklyActivity: weeklyActivity
         )
     }
 
@@ -276,6 +344,15 @@ struct HistoryView: View {
                         }
                         .padding(.horizontal, 24)
                         .padding(.bottom, 40)
+                        .id(tabRenderID)
+                        .transition(
+                            PerformanceConfig.enableComplexAnimations
+                            ? .asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            )
+                            : .opacity
+                        )
                     }
                 }
             }
@@ -323,64 +400,54 @@ struct HistoryView: View {
         .onChange(of: recordsChangeToken) { _, newHash in
             updateCachedStats(usingHash: newHash)
         }
-        .sheet(item: $showingRecordDetail) { record in
-            RecordDetailView(record: record)
+        .onChange(of: records.count) { _, _ in
+            displayedRecordCount = PerformanceConfig.maxDisplayRecords
         }
-        .sheet(isPresented: $showTimeDetail) {
-            TimeDetailView(records: records)
-        }
-        .sheet(isPresented: $showDistanceDetail) {
-            DistanceDetailView(records: records)
-        }
-        .sheet(isPresented: $showCompletedDetail) {
-            CompletedDetailView(records: records.filter { $0.isCompleted })
-        }
-        .sheet(isPresented: $showPOIsDetail) {
-            POIsDetailView(records: records)
-        }
-        .sheet(item: Binding(
-            get: { selectedLocation.map { LocationDetailWrapper(location: $0) } },
-            set: { selectedLocation = $0?.location }
-        )) { wrapper in
-            LocationDetailView(location: wrapper.location, records: records)
-        }
-        .sheet(item: Binding(
-            get: { selectedTransportMode.map { TransportModeDetailWrapper(mode: $0) } },
-            set: { selectedTransportMode = $0?.mode }
-        )) { wrapper in
-            TransportModeDetailView(mode: wrapper.mode, records: records)
-        }
-        .sheet(isPresented: $showLongestJourneyDetail) {
-            AchievementDetailView(
-                title: L("history.longestJourney"),
-                icon: "flame.fill",
-                color: .orange,
-                records: [longestJourneyRecord].compactMap { $0 }
-            )
-        }
-        .sheet(isPresented: $showFarthestDistanceDetail) {
-            AchievementDetailView(
-                title: L("history.farthestDistance"),
-                icon: "arrow.up.right",
-                color: .blue,
-                records: [farthestDistanceRecord].compactMap { $0 }
-            )
-        }
-        .sheet(isPresented: $showMostPOIsDetail) {
-            AchievementDetailView(
-                title: L("history.mostPOIs"),
-                icon: "star.fill",
-                color: .yellow,
-                records: [mostPOIsRecord].compactMap { $0 }
-            )
-        }
-        .sheet(isPresented: $showFastestSpeedDetail) {
-            AchievementDetailView(
-                title: L("history.stats.fastestJourney"),
-                icon: "speedometer",
-                color: .purple,
-                records: [fastestSpeedRecord].compactMap { $0 }
-            )
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .recordDetail(let record):
+                RecordDetailView(record: record)
+            case .time:
+                TimeDetailView(records: records)
+            case .distance:
+                DistanceDetailView(records: records)
+            case .completed:
+                CompletedDetailView(records: records.filter { $0.isCompleted })
+            case .pois:
+                POIsDetailView(records: records)
+            case .location(let location):
+                LocationDetailView(location: location, records: records)
+            case .transportMode(let mode):
+                TransportModeDetailView(mode: mode, records: records)
+            case .longestJourney:
+                AchievementDetailView(
+                    title: L("history.longestJourney"),
+                    icon: "flame.fill",
+                    color: .orange,
+                    records: [longestJourneyRecord].compactMap { $0 }
+                )
+            case .farthestDistance:
+                AchievementDetailView(
+                    title: L("history.farthestDistance"),
+                    icon: "arrow.up.right",
+                    color: .blue,
+                    records: [farthestDistanceRecord].compactMap { $0 }
+                )
+            case .mostPOIs:
+                AchievementDetailView(
+                    title: L("history.mostPOIs"),
+                    icon: "star.fill",
+                    color: .yellow,
+                    records: [mostPOIsRecord].compactMap { $0 }
+                )
+            case .fastestSpeed:
+                AchievementDetailView(
+                    title: L("history.stats.fastestJourney"),
+                    icon: "speedometer",
+                    color: .purple,
+                    records: [fastestSpeedRecord].compactMap { $0 }
+                )
+            }
         }
         .alert(L("history.delete.confirmation"), isPresented: $showDeleteConfirmation) {
             Button(L("common.cancel"), role: .cancel) {}
@@ -463,8 +530,9 @@ struct HistoryView: View {
                     isSelected: selectedTab == tab
                 ) {
                     HapticManager.selection()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    withAnimation(AnimationConfig.tabSwitch) {
                         selectedTab = tab
+                        tabRenderID = UUID()
                     }
                 }
             }
@@ -481,7 +549,7 @@ struct HistoryView: View {
             HStack(spacing: 12) {
                 Button {
                     HapticManager.light()
-                    showTimeDetail = true
+                    activeSheet = .time
                 } label: {
                     SummaryCard(
                         icon: "clock.fill",
@@ -493,7 +561,7 @@ struct HistoryView: View {
                 
                 Button {
                     HapticManager.light()
-                    showDistanceDetail = true
+                    activeSheet = .distance
                 } label: {
                     SummaryCard(
                         icon: "location.fill",
@@ -507,7 +575,7 @@ struct HistoryView: View {
             HStack(spacing: 12) {
                 Button {
                     HapticManager.light()
-                    showCompletedDetail = true
+                    activeSheet = .completed
                 } label: {
                     SummaryCard(
                         icon: "flag.checkered",
@@ -523,7 +591,7 @@ struct HistoryView: View {
                 
                 Button {
                     HapticManager.light()
-                    showPOIsDetail = true
+                    activeSheet = .pois
                 } label: {
                     SummaryCard(
                         icon: "star.fill",
@@ -548,7 +616,7 @@ struct HistoryView: View {
                     ForEach(topLocations, id: \.location) { item in
                         Button {
                             HapticManager.light()
-                            selectedLocation = item.location
+                            activeSheet = .location(item.location)
                         } label: {
                             LocationFrequencyRow(
                                 location: item.location,
@@ -572,7 +640,7 @@ struct HistoryView: View {
                     ForEach(transportModeStats, id: \.mode) { stat in
                         Button {
                             HapticManager.light()
-                            selectedTransportMode = stat.mode
+                            activeSheet = .transportMode(stat.mode)
                         } label: {
                             TransportModeRow(
                                 mode: stat.mode,
@@ -597,7 +665,7 @@ struct HistoryView: View {
             } else {
                 // Use LazyVStack for better performance with large lists
                 LazyVStack(spacing: 12) {
-                    ForEach(records.prefix(PerformanceConfig.maxDisplayRecords)) { record in
+                    ForEach(Array(records.prefix(displayedRecordCount).enumerated()), id: \.element.id) { index, record in
                         let isDeleting = deletingRecordIDs.contains(record.id)
                         HStack(spacing: 0) {
                             // Selection checkbox in edit mode
@@ -637,6 +705,16 @@ struct HistoryView: View {
                                 recordToDelete = record
                             }
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if !isEditMode {
+                                Button(role: .destructive) {
+                                    HapticManager.light()
+                                    recordToDelete = record
+                                } label: {
+                                    Label(L("common.delete"), systemImage: "trash")
+                                }
+                            }
+                        }
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.95, anchor: .top).combined(with: .opacity),
                             removal: .recordStripPullOut
@@ -648,19 +726,34 @@ struct HistoryView: View {
                         .clipped()
                         .animation(.spring(response: 0.28, dampingFraction: 0.9), value: isDeleting)
                         .id(record.id) // Ensure proper identity for animations
+                        .modifier(ConditionalRecordStaggerModifier(index: min(index, 8)))
                     }
                 }
                 .animation(
                     .spring(response: 0.34, dampingFraction: 0.84, blendDuration: 0.12),
-                    value: records.prefix(PerformanceConfig.maxDisplayRecords).map(\.id)
+                    value: records.prefix(displayedRecordCount).map(\.id)
                 )
                 
                 // Show "Load More" if there are more records
-                if records.count > PerformanceConfig.maxDisplayRecords {
-                    Text("\(records.count - PerformanceConfig.maxDisplayRecords) more records...")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                if records.count > displayedRecordCount {
+                    Button {
+                        HapticManager.light()
+                        withAnimation(AnimationConfig.smoothSpring) {
+                            displayedRecordCount += PerformanceConfig.maxDisplayRecords
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(L("history.showMore") + " (\(records.count - displayedRecordCount))")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(.primary.opacity(0.7))
                         .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity)
+                        .glassCard(cornerRadius: 12)
+                    }
+                    .buttonStyle(ScaleButtonStyle())
                 }
             }
         }
@@ -693,7 +786,7 @@ struct HistoryView: View {
                 
                 Button {
                     HapticManager.light()
-                    showLongestJourneyDetail = true
+                    activeSheet = .longestJourney
                 } label: {
                     AchievementRow(
                         icon: "flame.fill",
@@ -705,7 +798,7 @@ struct HistoryView: View {
                 
                 Button {
                     HapticManager.light()
-                    showFarthestDistanceDetail = true
+                    activeSheet = .farthestDistance
                 } label: {
                     AchievementRow(
                         icon: "arrow.up.right",
@@ -717,7 +810,7 @@ struct HistoryView: View {
                 
                 Button {
                     HapticManager.light()
-                    showMostPOIsDetail = true
+                    activeSheet = .mostPOIs
                 } label: {
                     AchievementRow(
                         icon: "star.fill",
@@ -729,7 +822,7 @@ struct HistoryView: View {
                 
                 Button {
                     HapticManager.light()
-                    showFastestSpeedDetail = true
+                    activeSheet = .fastestSpeed
                 } label: {
                     AchievementRow(
                         icon: "speedometer",
@@ -965,47 +1058,23 @@ struct HistoryView: View {
     }
     
     private var morningJourneys: Int {
-        records.filter { Calendar.current.component(.hour, from: $0.startTime) < 12 }.count
+        cachedStats?.morningJourneys ?? 0
     }
     
     private var afternoonJourneys: Int {
-        records.filter {
-            let hour = Calendar.current.component(.hour, from: $0.startTime)
-            return hour >= 12 && hour < 18
-        }.count
+        cachedStats?.afternoonJourneys ?? 0
     }
     
     private var eveningJourneys: Int {
-        records.filter {
-            let hour = Calendar.current.component(.hour, from: $0.startTime)
-            return hour >= 18 && hour < 22
-        }.count
+        cachedStats?.eveningJourneys ?? 0
     }
     
     private var nightJourneys: Int {
-        records.filter {
-            let hour = Calendar.current.component(.hour, from: $0.startTime)
-            return hour >= 22 || hour < 6
-        }.count
+        cachedStats?.nightJourneys ?? 0
     }
     
     private var weeklyActivity: [(day: String, count: Int)] {
-        let calendar = Calendar.current
-        let grouped = Dictionary(grouping: records) { record in
-            calendar.component(.weekday, from: record.startTime)
-        }
-        
-        let weekdays = [
-            (1, L("history.stats.sunday")),
-            (2, L("history.stats.monday")),
-            (3, L("history.stats.tuesday")),
-            (4, L("history.stats.wednesday")),
-            (5, L("history.stats.thursday")),
-            (6, L("history.stats.friday")),
-            (7, L("history.stats.saturday"))
-        ]
-        
-        return weekdays.map { (day: $0.1, count: grouped[$0.0]?.count ?? 0) }
+        cachedStats?.weeklyActivity ?? []
     }
     
     private var totalActiveDays: Int {
@@ -1520,18 +1589,6 @@ struct ExpandedDetailRow: View {
 }
 
 
-
-// MARK: - Wrapper Structures
-
-struct LocationDetailWrapper: Identifiable {
-    let id = UUID()
-    let location: String
-}
-
-struct TransportModeDetailWrapper: Identifiable {
-    let id = UUID()
-    let mode: String
-}
 
 // MARK: - Location Detail View
 
@@ -2517,6 +2574,20 @@ struct MilestoneCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(color.opacity(0.08))
         )
+    }
+}
+
+// MARK: - Conditional Record Stagger Modifier
+
+private struct ConditionalRecordStaggerModifier: ViewModifier {
+    let index: Int
+    
+    func body(content: Content) -> some View {
+        if PerformanceConfig.enableComplexAnimations {
+            content.staggeredAppearance(index: index)
+        } else {
+            content
+        }
     }
 }
 

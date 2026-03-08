@@ -121,6 +121,7 @@
 "location.selected" = "已选位置";
 "location.confirm" = "确认位置";
 "location.favorites" = "收藏地点";
+"location.favorites.viewAll" = "查看全部";
 "location.favorites.empty" = "暂无收藏";
 "location.favorites.empty.message" = "收藏您常用的地点以便快速访问。";
 "location.favorite.add" = "添加到收藏";
@@ -152,6 +153,8 @@
 "settings.support" = "支持";
 "settings.contact" = "联系与支持";
 "settings.privacy" = "隐私政策";
+"privacy.error.title" = "页面加载失败";
+"privacy.error.retry" = "重试";
 "settings.about" = "关于";
 "settings.onboarding" = "新手引导";
 "settings.about.app" = "关于 Roam Focus";
@@ -252,6 +255,23 @@
 "onboarding.v2.page4.feature3.title" = "全局本地化";
 "onboarding.v2.page4.feature3.desc" = "语言与时间格式跟随应用设置。";
 
+// Onboarding New (Simplified)
+"onboarding.new.page1.title" = "专注即旅程";
+"onboarding.new.page1.subtitle" = "将专注时光化为真实地图上的虚拟冒险";
+"onboarding.new.page2.title" = "保持心流";
+"onboarding.new.page2.subtitle" = "自由探索，发现地标，实时追踪你的进度";
+"onboarding.new.page3.title" = "记录与成就";
+"onboarding.new.page3.subtitle" = "累积连续天数，解锁奖杯，庆祝每一个里程碑";
+"onboarding.new.tag.realMap" = "真实地图";
+"onboarding.new.tag.transport" = "步行 · 骑行 · 驾车";
+"onboarding.new.tag.discover" = "探索景点";
+"onboarding.new.tag.liveProgress" = "实时进度";
+"onboarding.new.tag.freeExplore" = "自由浏览";
+"onboarding.new.tag.pois" = "地标";
+"onboarding.new.tag.stats" = "会话统计";
+"onboarding.new.tag.history" = "历史记录";
+"onboarding.new.tag.achievements" = "成就";
+
 // History
 "history.title" = "漫游历史";
 "history.journeys" = "%d 次旅程";
@@ -315,6 +335,7 @@
 "history.stats.thursday" = "周四";
 "history.stats.friday" = "周五";
 "history.stats.saturday" = "周六";
+"history.showMore" = "显示更多";
 "history.stats.milestones" = "里程碑";
 "history.stats.totalDays" = "活跃天数";
 "history.stats.totalSteps" = "预估步数";
@@ -788,11 +809,12 @@
 // Trophy
 "trophy.loading" = "加载奖杯中...";
 "trophy.notFound" = "未找到奖杯";
+"trophy.empty.category" = "该分类暂无奖杯";
 "trophy.done" = "完成";
 
 // About
 "about.appName" = "Roam Focus";
-"about.copyright" = "© 2026 Roam Focus";
+"about.copyright" = "© 2026 Cheng Liang";
 
 // Common UI
 "common.bullet" = "•";

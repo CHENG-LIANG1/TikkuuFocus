@@ -28,7 +28,6 @@ struct SetupView: View {
     @State private var showLocationPicker = false
     @State private var showHistory = false
     @State private var showSettings = false
-    @State private var showTrophies = false
     @ObservedObject private var settings = AppSettings.shared
     @State private var cardsAppeared = false
     @State private var buttonScale: CGFloat = 1.0
@@ -38,6 +37,7 @@ struct SetupView: View {
     @State private var showFirstJourneyGuide = false
     @State private var showWeatherDetail = false
     @State private var mapPreloadCoordinate: CLLocationCoordinate2D?
+    @State private var journeyPreparationTask: Task<Void, Never>?
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var allRecords: [JourneyRecord]
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     
@@ -67,6 +67,45 @@ struct SetupView: View {
             : weatherManager.optimalSecondaryTextColor
     }
     
+    private var mainScrollViewContent: some View {
+        VStack(spacing: 0) {
+            // Header
+            headerView
+                .padding(.top, 20)
+                .padding(.bottom, 20)
+            
+            // Weather & History Row
+            weatherAndHistoryRow
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+            
+            // Main content
+            VStack(spacing: 20) {
+                locationSelectionCard
+                    .scaleEffect(cardsAppeared ? 1 : 0.9)
+                    .opacity(cardsAppeared ? 1 : 0)
+                    .offset(y: cardsAppeared ? 0 : 20)
+                    .animation(AnimationConfig.smoothSpring.delay(0.08), value: cardsAppeared)
+                    // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
+
+                transportSelectionCard
+                    .scaleEffect(cardsAppeared ? 1 : 0.9)
+                    .opacity(cardsAppeared ? 1 : 0)
+                    .offset(y: cardsAppeared ? 0 : 20)
+                    .animation(AnimationConfig.smoothSpring.delay(0.12), value: cardsAppeared)
+                    // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
+                
+                durationSelectionCard
+                    .scaleEffect(cardsAppeared ? 1 : 0.9)
+                    .opacity(cardsAppeared ? 1 : 0)
+                    .offset(y: cardsAppeared ? 0 : 20)
+                    .animation(AnimationConfig.smoothSpring.delay(0.16), value: cardsAppeared)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
+        }
+    }
+    
     var body: some View {
         let weatherColors = weatherManager.weatherGradientColors
         let weatherCondition = weatherManager.weatherCondition
@@ -91,45 +130,7 @@ struct SetupView: View {
             }
             
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    // Header
-                    headerView
-                        .padding(.top, 20)
-                        .padding(.bottom, 20)
-                    
-                    // Weather & History Row
-                    weatherAndHistoryRow
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 20)
-                    
-                    // Main content
-                    VStack(spacing: 20) {
-                        locationSelectionCard
-                            .scaleEffect(cardsAppeared ? 1 : 0.9)
-                            .opacity(cardsAppeared ? 1 : 0)
-                            .offset(y: cardsAppeared ? 0 : 20)
-                            .blur(radius: cardsAppeared ? 0 : 4)
-                            .animation(AnimationConfig.smoothSpring.delay(0.08), value: cardsAppeared)
-                            // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
-
-                    transportSelectionCard
-                        .scaleEffect(cardsAppeared ? 1 : 0.9)
-                        .opacity(cardsAppeared ? 1 : 0)
-                        .offset(y: cardsAppeared ? 0 : 20)
-                        .blur(radius: cardsAppeared ? 0 : 4)
-                        .animation(AnimationConfig.smoothSpring.delay(0.12), value: cardsAppeared)
-                            // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
-                        
-                    durationSelectionCard
-                        .scaleEffect(cardsAppeared ? 1 : 0.9)
-                        .opacity(cardsAppeared ? 1 : 0)
-                        .offset(y: cardsAppeared ? 0 : 20)
-                        .blur(radius: cardsAppeared ? 0 : 4)
-                        .animation(AnimationConfig.smoothSpring.delay(0.16), value: cardsAppeared)
-                }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 24)
-                }
+                mainScrollViewContent
             }
             .environment(\.adaptiveTextColor, baseTextColor)
             .environment(\.adaptiveSecondaryTextColor, baseSecondaryTextColor)
@@ -138,7 +139,7 @@ struct SetupView: View {
                     .scaleEffect(cardsAppeared ? 1 : 0.9)
                     .opacity(cardsAppeared ? 1 : 0)
                     .offset(y: cardsAppeared ? 0 : 20)
-                    .blur(radius: cardsAppeared ? 0 : 4)
+                    .opacity(cardsAppeared ? 1 : 0)
                     .animation(AnimationConfig.smoothSpring.delay(0.20), value: cardsAppeared)
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
@@ -146,9 +147,12 @@ struct SetupView: View {
             }
 
             if let preloadCoordinate = mapPreloadCoordinate {
-                MapPreloadView(center: preloadCoordinate)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+                MapPreloadView(
+                    center: preloadCoordinate,
+                    destination: journeyManager.preparedDestination
+                )
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
             }
         }
         .preferredColorScheme(settings.currentColorScheme)
@@ -179,6 +183,12 @@ struct SetupView: View {
             fetchWeatherForSelectedLocation()
             prewarmMapIfPossible()
         }
+        .onChange(of: selectedTransport) { _, _ in
+            scheduleJourneyPreparation()
+        }
+        .onChange(of: selectedDuration) { _, _ in
+            scheduleJourneyPreparation()
+        }
         .onChange(of: locationManager.currentLocation) { _, newLocation in
             if case .currentLocation = selectedLocation, let location = newLocation {
                 // Throttle weather updates to avoid excessive API calls
@@ -187,6 +197,10 @@ struct SetupView: View {
                 }
                 prewarmMapIfPossible()
             }
+        }
+        .onDisappear {
+            journeyPreparationTask?.cancel()
+            journeyPreparationTask = nil
         }
         .onChange(of: locationManager.authorizationStatus) { _, newStatus in
             if newStatus == .denied || newStatus == .restricted {
@@ -275,9 +289,6 @@ struct SetupView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
-        }
-        .sheet(isPresented: $showTrophies) {
-            TrophyView()
         }
         .sheet(isPresented: $showWeatherDetail) {
             NavigationStack {
@@ -379,6 +390,49 @@ struct SetupView: View {
         let coordinate = currentCoordinate
         mapPreloadCoordinate = coordinate
         journeyManager.prewarmMapServices(near: coordinate)
+        scheduleJourneyPreparation(immediate: true)
+    }
+
+    private func scheduleJourneyPreparation(immediate: Bool = false) {
+        journeyPreparationTask?.cancel()
+        guard !isStarting else { return }
+
+        let startCoordinate: CLLocationCoordinate2D
+        let isPresetCity: Bool
+        var presetLocation: PresetLocation? = nil
+
+        switch selectedLocation {
+        case .currentLocation:
+            guard let location = locationManager.currentLocation?.coordinate else { return }
+            startCoordinate = location
+            isPresetCity = false
+        case .preset(let location):
+            startCoordinate = location.coordinate
+            isPresetCity = true
+            presetLocation = location
+        case .custom(let coordinate, _):
+            startCoordinate = coordinate
+            isPresetCity = false
+        }
+
+        let selectedMode = selectedTransport
+        let selectedDurationValue = selectedDuration
+
+        journeyPreparationTask = Task {
+            // Only debounce when not immediate (user is changing settings)
+            if !immediate {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                guard !Task.isCancelled else { return }
+            }
+
+            journeyManager.prepareJourney(
+                from: startCoordinate,
+                transportMode: selectedMode,
+                duration: TimeInterval(selectedDurationValue * 60),
+                isPresetCity: isPresetCity,
+                presetLocation: presetLocation
+            )
+        }
     }
     
     // MARK: - Header
@@ -396,7 +450,7 @@ struct SetupView: View {
             .scaleEffect(cardsAppeared ? 1 : 0.9)
             .opacity(cardsAppeared ? 1 : 0)
             .offset(x: cardsAppeared ? 0 : -15)
-            .blur(radius: cardsAppeared ? 0 : 3)
+            .opacity(cardsAppeared ? 1 : 0)
             .animation(AnimationConfig.smoothSpring.delay(0.04), value: cardsAppeared)
             
             Button {
@@ -410,7 +464,7 @@ struct SetupView: View {
             .scaleEffect(cardsAppeared ? 1 : 0.9)
             .opacity(cardsAppeared ? 1 : 0)
             .offset(x: cardsAppeared ? 0 : 15)
-            .blur(radius: cardsAppeared ? 0 : 3)
+            .opacity(cardsAppeared ? 1 : 0)
             .animation(AnimationConfig.smoothSpring.delay(0.04), value: cardsAppeared)
         }
     }
@@ -419,26 +473,17 @@ struct SetupView: View {
     
     private var headerView: some View {
         ZStack {
-            // Left button - Trophy only
+            // Left button - History/Records
             HStack {
                 Button {
                     HapticManager.light()
                     withAnimation(AnimationConfig.quickSpring) {
-                        showTrophies = true
+                        showHistory = true
                     }
                 } label: {
-                    Image(systemName: "trophy.fill")
+                    Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.85, blue: 0.2),
-                                    Color(red: 1.0, green: 0.7, blue: 0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .foregroundColor(baseTextColor)
                         .frame(width: 44, height: 44)
                         .background(
                             Group {
@@ -462,7 +507,6 @@ struct SetupView: View {
                 .buttonStyle(PressableButtonStyle())
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
                 .opacity(cardsAppeared ? 1 : 0)
-                .blur(radius: cardsAppeared ? 0 : 5)
                 .animation(AnimationConfig.bouncySpring.delay(0.0), value: cardsAppeared)
                 
                 Spacer()
@@ -513,7 +557,7 @@ struct SetupView: View {
                 .buttonStyle(PressableButtonStyle())
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
                 .opacity(cardsAppeared ? 1 : 0)
-                .blur(radius: cardsAppeared ? 0 : 5)
+                .opacity(cardsAppeared ? 1 : 0)
                 .animation(AnimationConfig.bouncySpring.delay(0.0), value: cardsAppeared)
             }
         }
@@ -1037,6 +1081,9 @@ struct SetupView: View {
     // MARK: - Actions
     
     private func startJourney() {
+        journeyPreparationTask?.cancel()
+        journeyPreparationTask = nil
+
         let startCoordinate: CLLocationCoordinate2D
         let isPresetCity: Bool
         var presetLocation: PresetLocation? = nil
@@ -1095,69 +1142,65 @@ struct SetupView: View {
 private struct MapPreloadView: View {
     @ObservedObject private var settings = AppSettings.shared
     let center: CLLocationCoordinate2D
+    var destination: CLLocationCoordinate2D?
     @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var destCameraPosition: MapCameraPosition = .automatic
 
     var body: some View {
-        Map(position: $cameraPosition) {}
-            .mapStyle(settings.selectedMapMode.style)
-            .frame(width: 1, height: 1)
-            .opacity(0.01)
-            .onAppear {
-                cameraPosition = .region(
-                    MKCoordinateRegion(
-                        center: center,
-                        span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
-                    )
-                )
+        ZStack {
+            // Preload start region
+            Map(position: $cameraPosition) {}
+                .mapStyle(settings.selectedMapMode.style)
+                .frame(width: 1, height: 1)
+                .opacity(0.01)
+            
+            // Preload destination region if available
+            if destination != nil {
+                Map(position: $destCameraPosition) {}
+                    .mapStyle(settings.selectedMapMode.style)
+                    .frame(width: 1, height: 1)
+                    .opacity(0.01)
             }
-            .onChange(of: center.latitude) { _, _ in
-                cameraPosition = .region(
-                    MKCoordinateRegion(
-                        center: center,
-                        span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
-                    )
-                )
-            }
-            .onChange(of: center.longitude) { _, _ in
-                cameraPosition = .region(
-                    MKCoordinateRegion(
-                        center: center,
-                        span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
-                    )
-                )
-            }
+        }
+        .onAppear {
+            updateCameraPositions()
+        }
+        .onChange(of: center.latitude) { _, _ in
+            updateStartCamera()
+        }
+        .onChange(of: center.longitude) { _, _ in
+            updateStartCamera()
+        }
+        .onChange(of: destination?.latitude) { _, _ in
+            updateDestCamera()
+        }
+        .onChange(of: destination?.longitude) { _, _ in
+            updateDestCamera()
+        }
     }
-}
-
-// MARK: - Scale Button Style
-
-struct ScaleButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .animation(AnimationConfig.snappy, value: configuration.isPressed)
+    
+    private func updateCameraPositions() {
+        updateStartCamera()
+        updateDestCamera()
     }
-}
-
-// MARK: - Pressable Button Style
-
-struct PressableButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-            .opacity(configuration.isPressed ? 0.85 : 1.0)
-            .animation(AnimationConfig.quickSpring, value: configuration.isPressed)
+    
+    private func updateStartCamera() {
+        cameraPosition = .region(
+            MKCoordinateRegion(
+                center: center,
+                span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+            )
+        )
     }
-}
-
-// MARK: - Card Button Style
-
-struct CardButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .opacity(configuration.isPressed ? 0.92 : 1.0)
-            .animation(AnimationConfig.snappy, value: configuration.isPressed)
+    
+    private func updateDestCamera() {
+        guard let dest = destination else { return }
+        destCameraPosition = .region(
+            MKCoordinateRegion(
+                center: dest,
+                span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+            )
+        )
     }
 }
 
