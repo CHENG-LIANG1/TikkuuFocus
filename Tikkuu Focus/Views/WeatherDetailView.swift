@@ -50,6 +50,7 @@ struct WeatherDetailView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
                         currentSummaryCard
+                        weatherAttributionCard
                         metricsGridCard
                         tabSelector
 
@@ -118,6 +119,17 @@ struct WeatherDetailView: View {
         .padding(.vertical, 28)
         .padding(.horizontal, 20)
         .glassCard(cornerRadius: 20)
+    }
+
+    private var weatherAttributionCard: some View {
+        AppleWeatherAttributionView(
+            textColor: primaryTextColor,
+            secondaryColor: secondaryTextColor
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .glassCard(cornerRadius: 14)
     }
 
     private var metricsGridCard: some View {

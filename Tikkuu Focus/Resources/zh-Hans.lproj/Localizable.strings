@@ -72,6 +72,8 @@
 "weather.noData" = "暂无预报数据";
 "weather.now" = "现在";
 "weather.today" = "今天";
+"weather.attribution.trademark" = " Weather";
+"weather.attribution.link" = "https://weatherkit.apple.com/legal-attribution.html";
 
 // POI Messages
 "poi.discovered" = "发现景点：%@";

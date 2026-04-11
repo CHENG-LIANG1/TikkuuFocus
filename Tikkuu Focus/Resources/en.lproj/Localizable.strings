@@ -71,6 +71,8 @@
 "weather.noData" = "No forecast data available";
 "weather.now" = "Now";
 "weather.today" = "Today";
+"weather.attribution.trademark" = " Weather";
+"weather.attribution.link" = "https://weatherkit.apple.com/legal-attribution.html";
 
 // Map Controls
 "map.recenter" = "Recenter";

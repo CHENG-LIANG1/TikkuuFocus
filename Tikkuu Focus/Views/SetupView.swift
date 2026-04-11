@@ -82,7 +82,11 @@ struct SetupView: View {
             // Weather & History Row
             weatherAndHistoryRow
                 .padding(.horizontal, 24)
-                .padding(.bottom, 20)
+                .padding(.bottom, 10)
+
+            homeWeatherAttribution
+                .padding(.horizontal, 24)
+                .padding(.bottom, 18)
             
             // Main content
             VStack(spacing: 20) {
@@ -470,6 +474,18 @@ struct SetupView: View {
             .opacity(cardsAppeared ? 1 : 0)
             .animation(AnimationConfig.smoothSpring.delay(0.04), value: cardsAppeared)
         }
+    }
+
+    private var homeWeatherAttribution: some View {
+        AppleWeatherAttributionView(
+            textColor: baseTextColor,
+            secondaryColor: baseSecondaryTextColor,
+            fontSize: 9
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .glassCard(cornerRadius: 12)
     }
     
     // MARK: - Header
