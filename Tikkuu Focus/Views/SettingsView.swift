@@ -34,31 +34,6 @@ struct SettingsView: View {
                 // Content
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        // Appearance Section
-                        modernSection(
-                            icon: "paintbrush.pointed.fill",
-                            title: L("settings.style"),
-                            gradient: LinearGradient(
-                                colors: [Color.cyan, Color.blue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        ) {
-                            appearanceOptions
-                        }
-
-                        modernSection(
-                            icon: "paintpalette.fill",
-                            title: L("settings.theme"),
-                            gradient: LinearGradient(
-                                colors: [Color.indigo, Color.cyan],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        ) {
-                            themeOptions
-                        }
-
                         // Language Section
                         modernSection(
                             icon: "globe",
@@ -149,7 +124,9 @@ struct SettingsView: View {
             OnboardingView(canDismiss: false)
         }
         .fullScreenCover(isPresented: $showPrivacyPolicy) {
-            PrivacyPolicyView()
+            PrivacyPolicyView {
+                showPrivacyPolicy = false
+            }
         }
         .alert(L("settings.data.clear.confirm1.title"), isPresented: $showClearDataStep1) {
             Button(L("common.cancel"), role: .cancel) {}
@@ -214,89 +191,18 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var sectionBackground: some View {
-        if settings.selectedVisualStyle == .neumorphism {
-            // Neumorphism: use NeumorphSurface directly for raised effect with shadows
-            NeumorphSurface(cornerRadius: 20, depth: .raised)
-                .shadow(
-                    color: colorScheme == .dark ? Color.black.opacity(0.4) : Color.black.opacity(0.12),
-                    radius: 12,
-                    x: 8,
-                    y: 8
-                )
-                .shadow(
-                    color: colorScheme == .dark ? Color.white.opacity(0.06) : Color.white.opacity(0.8),
-                    radius: 8,
-                    x: -6,
-                    y: -6
-                )
-        } else {
-            Color.clear
-                .glassCard(cornerRadius: 20)
-        }
+        Color.clear
+            .glassCard(cornerRadius: 20)
     }
     
     // MARK: - Language Options
 
     private var appearanceOptions: some View {
-        VStack(spacing: 12) {
-            ModernOptionRow(
-                title: "Liquid Glass",
-                icon: "sparkles",
-                isSelected: settings.selectedVisualStyle == .liquidGlass
-            ) {
-                HapticManager.selection()
-                if settings.selectedVisualStyle != .liquidGlass {
-                    settings.selectedVisualStyle = .liquidGlass
-                }
-            }
-
-            ModernOptionRow(
-                title: L("settings.style.neumorphism"),
-                icon: "square.3.layers.3d.down.right",
-                isSelected: settings.selectedVisualStyle == .neumorphism
-            ) {
-                HapticManager.selection()
-                if settings.selectedVisualStyle != .neumorphism {
-                    settings.selectedVisualStyle = .neumorphism
-                }
-            }
-        }
+        EmptyView()
     }
 
     private var themeOptions: some View {
-        VStack(spacing: 12) {
-            if settings.selectedVisualStyle == .liquidGlass {
-                ModernOptionRow(
-                    title: L("settings.theme.weather"),
-                    icon: "cloud.sun.fill",
-                    isSelected: true
-                ) {
-                    HapticManager.selection()
-                }
-            } else {
-                ModernOptionRow(
-                    title: L("settings.theme.neumorphism.dark"),
-                    icon: "moon.fill",
-                    isSelected: settings.selectedNeumorphismTone == .dark
-                ) {
-                    HapticManager.selection()
-                    if settings.selectedNeumorphismTone != .dark {
-                        settings.selectedNeumorphismTone = .dark
-                    }
-                }
-
-                ModernOptionRow(
-                    title: L("settings.theme.neumorphism.light"),
-                    icon: "sun.max.fill",
-                    isSelected: settings.selectedNeumorphismTone == .light
-                ) {
-                    HapticManager.selection()
-                    if settings.selectedNeumorphismTone != .light {
-                        settings.selectedNeumorphismTone = .light
-                    }
-                }
-            }
-        }
+        EmptyView()
     }
 
     private var languageOptions: some View {
@@ -443,7 +349,7 @@ struct ModernOptionRow: View {
     let action: () -> Void
 
     private var selectedTextColor: Color {
-        settings.isNeumorphismLight ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
+        false ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
     }
     
     var body: some View {
@@ -485,14 +391,14 @@ struct ModernOptionRow: View {
             .padding(.vertical, 14)
             .background(optionRowBackground)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 
     @ViewBuilder
     private var optionRowBackground: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(Color.clear)
-            .insetSurface(cornerRadius: 12, isActive: isSelected)
+            .insetSurface(cornerRadius: 20, isActive: isSelected)
     }
 }
 
@@ -512,16 +418,7 @@ struct ModernActionRow: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.3, green: 0.5, blue: 0.8),
-                                Color(red: 0.5, green: 0.3, blue: 0.7)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .foregroundStyle(GradientStyles.primaryGradient)
                     .frame(width: 24)
                 
                 VStack(alignment: .leading, spacing: 3) {
@@ -548,14 +445,14 @@ struct ModernActionRow: View {
             .padding(.vertical, 14)
             .background(actionRowBackground)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 
     @ViewBuilder
     private var actionRowBackground: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(Color.clear)
-            .insetSurface(cornerRadius: 12, isActive: false)
+            .insetSurface(cornerRadius: 20, isActive: false)
     }
 }
 

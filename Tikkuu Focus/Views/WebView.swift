@@ -91,14 +91,13 @@ struct WebView: UIViewRepresentable {
     }
 }
 
-/// Privacy Policy View with Immersive WebView
+/// Privacy Policy View
 struct PrivacyPolicyView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isLoading = true
     @State private var loadError: Error?
     @State private var retryTrigger = UUID()
-    @State private var dragOffset: CGFloat = 0
-    @State private var contentVisible = false
+    var onClose: (() -> Void)? = nil
     
     // URL will be configurable
     private var privacyPolicyURL: URL {
@@ -108,180 +107,65 @@ struct PrivacyPolicyView: View {
         return URL(string: "https://cheng-liang1.github.io/App-Support/Roam%20Focus/privacy/index.html")!
     }
     
-    private var dragThreshold: CGFloat { UIScreen.main.bounds.height * 0.25 }
+    private func closePage() {
+        if let onClose {
+            onClose()
+        } else {
+            dismiss()
+        }
+    }
     
     var body: some View {
-        ZStack {
-            immersiveBackground
-            
-            // Full screen WebView
-            WebView(url: privacyPolicyURL, isLoading: $isLoading, loadError: $loadError)
-                .id(retryTrigger)
-                .ignoresSafeArea()
-                .offset(y: dragOffset)
-                .scaleEffect(contentVisible ? 1.0 : 0.985)
-                .opacity(contentVisible ? 1.0 : 0.25)
-                .animation(.easeOut(duration: 0.28), value: contentVisible)
-                .overlay(alignment: .top) {
-                    topEdgeFade
+        NavigationStack {
+            ZStack {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+
+                WebView(url: privacyPolicyURL, isLoading: $isLoading, loadError: $loadError)
+                    .id(retryTrigger)
+
+                if isLoading && loadError == nil {
+                    loadingOverlay
+                        .transition(.opacity)
                 }
-            
-            // Loading overlay
-            if isLoading && loadError == nil {
-                loadingOverlay
-                    .transition(.opacity)
+
+                if let error = loadError, !isLoading {
+                    errorOverlay(error: error)
+                        .transition(.opacity.combined(with: .scale))
+                }
             }
-            
-            // Error overlay
-            if let error = loadError, !isLoading {
-                errorOverlay(error: error)
-                    .transition(.opacity.combined(with: .scale))
-            }
-            
-            floatingControls
-            bottomDismissHint
-        }
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    if value.translation.height > 0 {
-                        dragOffset = value.translation.height * 0.45
+            .navigationTitle(L("settings.privacy"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(L("common.done")) {
+                        closePage()
                     }
+                    .fontWeight(.semibold)
                 }
-                .onEnded { value in
-                    if value.translation.height > dragThreshold || value.velocity.height > 500 {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            dragOffset = UIScreen.main.bounds.height
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            dismiss()
-                        }
-                    } else {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            dragOffset = 0
-                        }
-                    }
-                }
-        )
-        .onAppear {
-            withAnimation {
-                contentVisible = true
             }
         }
-    }
-    
-    // MARK: - Background
-    
-    private var immersiveBackground: some View {
-        LinearGradient(
-            colors: [
-                Color.black,
-                Color(red: 0.03, green: 0.05, blue: 0.10),
-                Color.black
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-    }
-    
-    private var topEdgeFade: some View {
-        LinearGradient(
-            colors: [Color.black.opacity(0.22), Color.clear],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(height: 120)
-        .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(false)
-    }
-    
-    private var bottomDismissHint: some View {
-        VStack {
-            Spacer()
-            Capsule()
-                .fill(Color.white.opacity(0.45))
-                .frame(width: 38, height: 5)
-                .padding(.bottom, 10)
-        }
-        .ignoresSafeArea(edges: .bottom)
-        .allowsHitTesting(false)
-    }
-    
-    // MARK: - Floating Controls
-    
-    private var floatingControls: some View {
-        VStack {
-            HStack(spacing: 10) {
-                Button {
-                    dismiss()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "stop.fill")
-                            .font(.system(size: 11, weight: .bold))
-                        Text(L("journey.stop.confirm"))
-                            .font(.system(size: 13, weight: .semibold))
-                    }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background(
-                            Capsule()
-                                .fill(Color.red.opacity(0.24))
-                        )
-                }
-                
-                Text(L("settings.privacy"))
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.2), lineWidth: 0.6)
-                    )
-            )
-            .shadow(color: .black.opacity(0.35), radius: 16, x: 0, y: 8)
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            
-            Spacer()
-        }
-        .ignoresSafeArea(edges: .top)
     }
     
     // MARK: - Loading Overlay
     
     private var loadingOverlay: some View {
-        VStack {
+        VStack(spacing: 0) {
+            Spacer()
             HStack(spacing: 10) {
                 ProgressView()
-                    .tint(.white)
+                    .tint(.primary)
                 
                 Text(L("common.loading"))
                     .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
+                    .foregroundColor(.primary)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .background(
-                Capsule()
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(.ultraThinMaterial)
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.22), lineWidth: 0.6)
-                    )
             )
-            .padding(.top, 72)
-            
             Spacer()
         }
         .allowsHitTesting(false)
@@ -292,21 +176,21 @@ struct PrivacyPolicyView: View {
     private func errorOverlay(error: Error) -> some View {
         ZStack {
             Rectangle()
-                .fill(Color.black.opacity(0.45))
+                .fill(Color.black.opacity(0.2))
                 .ignoresSafeArea()
             
             VStack(spacing: 16) {
                 Image(systemName: "wifi.exclamationmark")
                     .font(.system(size: 38, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                 
                 Text(L("privacy.error.title"))
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                 
                 Text(error.localizedDescription)
                     .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.85))
+                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(4)
                 
@@ -319,12 +203,12 @@ struct PrivacyPolicyView: View {
                 } label: {
                     Text(L("privacy.error.retry"))
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
                         .background(
                             Capsule()
-                                .fill(Color.white.opacity(0.16))
+                                .fill(.thinMaterial)
                         )
                 }
             }
@@ -335,7 +219,7 @@ struct PrivacyPolicyView: View {
                     .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 0.8)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 0.8)
                     )
             )
             .padding(.horizontal, 24)

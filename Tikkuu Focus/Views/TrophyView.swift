@@ -18,7 +18,6 @@ struct TrophyView: View {
     @State private var selectedTrophy: Trophy? = nil
     @State private var showTrophyDetail = false
     @State private var isLoading = true
-    @State private var previousCategory: TrophyCategory? = nil
     @State private var scrollToTopTrigger = UUID()
     @State private var isProgressCollapsed = false
     @State private var lastScrollOffset: CGFloat = 0
@@ -95,7 +94,7 @@ struct TrophyView: View {
                                             } label: {
                                                 TrophyCard(trophy: trophy)
                                             }
-                                            .buttonStyle(CardButtonStyle())
+                                            .buttonStyle(ScaleButtonStyle())
                                             .id(trophy.id)
                                             .modifier(ConditionalStaggerModifier(index: min(index, 11)))
                                         }
@@ -104,10 +103,9 @@ struct TrophyView: View {
                                 .padding(.horizontal, 24)
                                 .padding(.bottom, 40)
                                 .id(gridRenderID)
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: slideDirection).combined(with: .opacity),
-                                    removal: .move(edge: slideDirection == .trailing ? .leading : .trailing).combined(with: .opacity)
-                                ))
+                                .transition(
+                                    .opacity.combined(with: .scale(scale: 0.985, anchor: .center))
+                                )
                             }
                             .coordinateSpace(name: "trophyGridScroll")
                             .onPreferenceChange(TrophyScrollOffsetPreferenceKey.self) { offset in
@@ -227,14 +225,24 @@ struct TrophyView: View {
     // MARK: - Progress Overview
     
     private var progressOverview: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(L("trophy.title"))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                Spacer()
+                Text("\(Int(trophyManager.unlockedPercentage * 100))%")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(LiquidGlassStyle.primaryGradient)
+            }
+
             // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.16))
                     
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 10)
                         .fill(
                             LinearGradient(
                                 colors: [Color.yellow, Color.orange],
@@ -245,7 +253,7 @@ struct TrophyView: View {
                         .frame(width: geometry.size.width * trophyManager.unlockedPercentage)
                 }
             }
-            .frame(height: 12)
+            .frame(height: 14)
             
             // Stats
             if !isProgressCollapsed {
@@ -275,23 +283,11 @@ struct TrophyView: View {
             }
         }
         .padding(isProgressCollapsed ? 12 : 16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
         .animation(.spring(response: 0.3, dampingFraction: 0.85), value: isProgressCollapsed)
     }
     
     // MARK: - Category Filter
-    
-    private var slideDirection: Edge {
-        // Determine slide direction based on category order
-        let allCategories: [TrophyCategory?] = [nil] + TrophyCategory.allCases.map { $0 as TrophyCategory? }
-        
-        guard let currentIndex = allCategories.firstIndex(where: { $0 == selectedCategory }),
-              let previousIndex = allCategories.firstIndex(where: { $0 == previousCategory }) else {
-            return .trailing
-        }
-        
-        return currentIndex > previousIndex ? .trailing : .leading
-    }
     
     private var categoryFilter: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -303,7 +299,6 @@ struct TrophyView: View {
                     isSelected: selectedCategory == nil
                 ) {
                     HapticManager.selection()
-                    previousCategory = selectedCategory
                     selectedCategory = nil
                     scrollToTopTrigger = UUID()
                 }
@@ -315,7 +310,6 @@ struct TrophyView: View {
                         isSelected: selectedCategory == category
                     ) {
                         HapticManager.selection()
-                        previousCategory = selectedCategory
                         selectedCategory = category
                         scrollToTopTrigger = UUID()
                     }
@@ -324,6 +318,8 @@ struct TrophyView: View {
             .padding(.horizontal, 4)
             .padding(.vertical, 4)
         }
+        .padding(8)
+        .glassCard(cornerRadius: 24, tintColor: Color.indigo.opacity(0.45))
     }
 
     private func handleGridScrollOffset(_ offset: CGFloat) {
@@ -465,7 +461,7 @@ struct TrophyCard: View {
         .frame(maxWidth: .infinity) // Fill available width
         .frame(height: 180) // Fixed total height
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
         .opacity(trophy.isUnlocked ? 1.0 : 0.7)
         .onAppear {
             if PerformanceConfig.enableComplexAnimations {
@@ -504,7 +500,7 @@ struct StatBadge: View {
                 .foregroundColor(color)
             
             Text(value)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundColor(.primary)
             
             Text(label)
@@ -518,34 +514,10 @@ struct StatBadge: View {
 // MARK: - Category Button
 
 struct CategoryButton: View {
-    @ObservedObject private var settings = AppSettings.shared
     let icon: String
     let label: String
     let isSelected: Bool
     let action: () -> Void
-
-    private var isLightTone: Bool {
-        settings.selectedNeumorphismTone == .light
-    }
-
-    private var selectedTextColor: Color {
-        isLightTone ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
-    }
-
-    private var unselectedTextColor: Color {
-        isLightTone ? Color(red: 0.42, green: 0.46, blue: 0.54) : .white.opacity(0.7)
-    }
-
-    private var selectedFill: AnyShapeStyle {
-        let baseColor = isLightTone
-            ? Color(red: 0.70, green: 0.80, blue: 0.97)
-            : Color(red: 0.40, green: 0.54, blue: 0.90)
-        return AnyShapeStyle(baseColor.opacity(isLightTone ? 0.95 : 0.78))
-    }
-
-    private var unselectedShadowColor: Color {
-        isLightTone ? Color.black.opacity(0.07) : Color.black.opacity(0.22)
-    }
     
     var body: some View {
         Button(action: action) {
@@ -556,42 +528,12 @@ struct CategoryButton: View {
                 Text(label)
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundColor(isSelected ? selectedTextColor : unselectedTextColor)
+            .foregroundColor(isSelected ? .white : .white.opacity(0.78))
             .padding(.horizontal, 15)
             .padding(.vertical, 9)
-            .background {
-                if settings.selectedVisualStyle == .neumorphism {
-                    NeumorphSurface(
-                        cornerRadius: 999,
-                        depth: isSelected ? .raised : .inset,
-                        fill: isSelected ? selectedFill : nil
-                    )
-                } else {
-                    // Liquid Glass: highlight color when selected, subtle border when not
-                    Capsule()
-                        .fill(isSelected ? Color.white.opacity(0.25) : Color.clear)
-                        .overlay(
-                            Capsule()
-                                .stroke(isSelected ? Color.white.opacity(0.4) : Color.primary.opacity(0.25), lineWidth: 1.5)
-                        )
-                }
-            }
-            .overlay {
-                if settings.selectedVisualStyle == .neumorphism && isSelected {
-                    Capsule()
-                        .stroke(
-                            Color.white.opacity(isLightTone ? 0.44 : 0.20),
-                            lineWidth: 0.8
-                        )
-                }
-            }
-            .shadow(
-                color: settings.selectedVisualStyle == .neumorphism && !isSelected ? unselectedShadowColor : .clear,
-                radius: settings.selectedVisualStyle == .neumorphism && !isSelected ? 4 : 0,
-                x: 0,
-                y: settings.selectedVisualStyle == .neumorphism && !isSelected ? 2 : 0
-            )
+            .insetSurface(cornerRadius: 999, isActive: isSelected)
         }
+        .buttonStyle(PremiumButtonStyle())
     }
 }
 
@@ -698,7 +640,7 @@ struct TrophyDetailView: View {
         VStack(spacing: 12) {
             // Title
             Text(trophy.localizedTitle)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .semibold, design: .rounded))
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.center)
             
@@ -714,16 +656,8 @@ struct TrophyDetailView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background {
-                if settings.selectedVisualStyle == .neumorphism {
-                    NeumorphSurface(
-                        cornerRadius: 999,
-                        depth: .raised,
-                        fill: trophy.isUnlocked ? AnyShapeStyle(trophy.color) : AnyShapeStyle(Color.gray.opacity(0.5))
-                    )
-                } else {
-                    Capsule()
-                        .fill(trophy.isUnlocked ? trophy.color : Color.gray)
-                }
+                Capsule()
+                    .fill(trophy.isUnlocked ? trophy.color : Color.gray)
             }
             .shadow(color: trophy.isUnlocked ? trophy.color.opacity(0.3) : Color.clear, radius: 8, x: 0, y: 4)
             
@@ -751,16 +685,12 @@ struct TrophyDetailView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background {
-                if settings.selectedVisualStyle == .neumorphism {
-                    NeumorphSurface(cornerRadius: 12, depth: .inset)
-                } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.green.opacity(0.1))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.green.opacity(0.3), lineWidth: 2)
-                        )
-                }
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.green.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.green.opacity(0.3), lineWidth: 2)
+                    )
             }
             
             // Unlock date
@@ -771,12 +701,12 @@ struct TrophyDetailView: View {
                         .foregroundColor(.secondary)
                     
                     Text(FormatUtilities.formatDateTime(date))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity)
-                .glassCard(cornerRadius: 16)
+                .glassCard(cornerRadius: 24)
             }
         }
     }
@@ -807,7 +737,7 @@ struct TrophyDetailView: View {
                 // Progress text
                 HStack {
                     Text("\(trophy.progress)")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 24, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                     
                     Text("/")
@@ -824,7 +754,7 @@ struct TrophyDetailView: View {
                     .foregroundColor(.secondary)
             }
             .padding(20)
-            .glassCard(cornerRadius: 16)
+            .glassCard(cornerRadius: 24)
         }
     }
     
@@ -843,7 +773,7 @@ struct TrophyDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }
 

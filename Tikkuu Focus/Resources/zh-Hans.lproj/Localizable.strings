@@ -73,7 +73,7 @@
 "weather.now" = "现在";
 "weather.today" = "今天";
 "weather.attribution.trademark" = " Weather";
-"weather.attribution.link" = "https://weatherkit.apple.com/legal-attribution.html";
+"weather.attribution.link" = "数据来源";
 
 // POI Messages
 "poi.discovered" = "发现景点：%@";
@@ -140,12 +140,13 @@
 // Settings
 "settings.title" = "设置";
 "settings.style" = "视觉风格";
+"settings.style.default" = "默认";
 "settings.style.neumorphism" = "新拟态";
 "settings.style.liquid.subtitle" = "通透液态玻璃，带柔和高光";
 "settings.style.neumorphism.subtitle" = "柔和浮雕层次，立体按压感";
 "settings.theme" = "主题";
 "settings.theme.weather" = "跟随天气";
-"settings.theme.weather.subtitle" = "Liquid Glass 仅支持根据当前天气变化主题色";
+"settings.theme.weather.subtitle" = "默认风格支持根据当前天气变化主题色";
 "settings.theme.neumorphism.dark" = "深色";
 "settings.theme.neumorphism.dark.subtitle" = "亮度更低，层次更深";
 "settings.theme.neumorphism.light" = "浅色";

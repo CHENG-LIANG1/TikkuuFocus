@@ -538,7 +538,7 @@ struct HistoryView: View {
             }
         }
         .padding(7)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24, tintColor: Color.indigo.opacity(0.5))
     }
     
     // MARK: - Overview Content
@@ -555,7 +555,8 @@ struct HistoryView: View {
                         icon: "clock.fill",
                         title: L("history.totalTime"),
                         value: FormatUtilities.formatTime(totalDuration),
-                        gradient: LiquidGlassStyle.primaryGradient
+                        gradient: LiquidGlassStyle.primaryGradient,
+                        tintColor: Color(red: 0.15, green: 0.25, blue: 0.35)
                     )
                 }
                 
@@ -567,7 +568,8 @@ struct HistoryView: View {
                         icon: "location.fill",
                         title: L("history.totalDistance"),
                         value: FormatUtilities.formatDistance(totalDistance),
-                        gradient: LiquidGlassStyle.accentGradient
+                        gradient: LiquidGlassStyle.accentGradient,
+                        tintColor: Color(red: 0.35, green: 0.2, blue: 0.15)
                     )
                 }
             }
@@ -585,7 +587,8 @@ struct HistoryView: View {
                             colors: [Color.green, Color.green.opacity(0.7)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
-                        )
+                        ),
+                        tintColor: Color(red: 0.15, green: 0.35, blue: 0.2)
                     )
                 }
                 
@@ -601,7 +604,8 @@ struct HistoryView: View {
                             colors: [Color.yellow, Color.orange],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
-                        )
+                        ),
+                        tintColor: Color(red: 0.35, green: 0.3, blue: 0.1)
                     )
                 }
             }
@@ -627,7 +631,7 @@ struct HistoryView: View {
                     }
                 }
                 .padding(20)
-                .glassCard(cornerRadius: 20)
+                .glassCard(cornerRadius: 24)
             }
             
             // Transport mode breakdown
@@ -651,7 +655,7 @@ struct HistoryView: View {
                     }
                 }
                 .padding(20)
-                .glassCard(cornerRadius: 20)
+                .glassCard(cornerRadius: 24)
             }
         }
     }
@@ -751,7 +755,7 @@ struct HistoryView: View {
                         .foregroundColor(.primary.opacity(0.7))
                         .padding(.vertical, 12)
                         .frame(maxWidth: .infinity)
-                        .glassCard(cornerRadius: 12)
+                        .glassCard(cornerRadius: 24)
                     }
                     .buttonStyle(ScaleButtonStyle())
                 }
@@ -776,7 +780,7 @@ struct HistoryView: View {
                 StatRow(label: L("history.stats.averageSpeed"), value: FormatUtilities.formatSpeed(averageSpeed))
             }
             .padding(20)
-            .glassCard(cornerRadius: 20)
+            .glassCard(cornerRadius: 24)
             
             // Streaks and achievements
             VStack(alignment: .leading, spacing: 12) {
@@ -833,7 +837,7 @@ struct HistoryView: View {
                 }
             }
             .padding(20)
-            .glassCard(cornerRadius: 20)
+            .glassCard(cornerRadius: 24)
             
             // Time distribution
             VStack(alignment: .leading, spacing: 12) {
@@ -876,7 +880,7 @@ struct HistoryView: View {
                 }
             }
             .padding(20)
-            .glassCard(cornerRadius: 20)
+            .glassCard(cornerRadius: 24)
             
             // Weekly activity
             if !weeklyActivity.isEmpty {
@@ -888,7 +892,7 @@ struct HistoryView: View {
                     WeeklyActivityChart(data: weeklyActivity)
                 }
                 .padding(20)
-                .glassCard(cornerRadius: 20)
+                .glassCard(cornerRadius: 24)
             }
             
             // Milestones
@@ -968,7 +972,7 @@ struct HistoryView: View {
                 }
             }
             .padding(20)
-            .glassCard(cornerRadius: 20)
+            .glassCard(cornerRadius: 24)
         }
     }
     
@@ -1179,7 +1183,7 @@ struct TabButton: View {
             .foregroundColor(isSelected ? .white : .primary.opacity(0.78))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 11)
-            .insetSurface(cornerRadius: 12, isActive: isSelected)
+            .insetSurface(cornerRadius: 20, isActive: isSelected)
         }
     }
 }
@@ -1187,10 +1191,12 @@ struct TabButton: View {
 // MARK: - Summary Card
 
 struct SummaryCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     let icon: String
     let title: String
     let value: String
     let gradient: LinearGradient
+    var tintColor: Color? = nil
     
     var body: some View {
         VStack(spacing: 12) {
@@ -1210,7 +1216,7 @@ struct SummaryCard: View {
                     .foregroundColor(.secondary)
                 
                 Text(value)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -1218,7 +1224,10 @@ struct SummaryCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .glassCard(cornerRadius: 16)
+        .glassCard(
+            cornerRadius: 24,
+            tintColor: colorScheme == .dark ? tintColor?.opacity(0.6) : tintColor?.opacity(0.1)
+        )
     }
 }
 
@@ -1248,7 +1257,7 @@ struct LocationFrequencyRow: View {
             Spacer()
             
             Text("\(count)")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundStyle(LiquidGlassStyle.primaryGradient)
         }
         .padding(.vertical, 8)
@@ -1295,13 +1304,14 @@ struct RecordCard: View {
             }
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }
 
 // MARK: - Expandable Record Card
 
 struct ExpandableRecordCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     let record: JourneyRecord
     let isExpanded: Bool
     let isEditMode: Bool
@@ -1468,17 +1478,17 @@ struct ExpandableRecordCard: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .themedRoundedBackground(cornerRadius: 18, depth: .inset)
+        .glassCard(cornerRadius: 24, tintColor: colorScheme == .dark ? colorForTransportMode(record.transportMode).opacity(0.15) : colorForTransportMode(record.transportMode).opacity(0.05))
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: 24)
                 .strokeBorder(
-                    isExpanded ? Color.blue.opacity(0.34) : Color.white.opacity(0.16),
-                    lineWidth: isExpanded ? 1.5 : 1
+                    isExpanded ? colorForTransportMode(record.transportMode).opacity(0.5) : Color.clear,
+                    lineWidth: 1.5
                 )
         )
         .shadow(
-            color: Color.black.opacity(isExpanded ? 0.15 : 0.08),
-            radius: isExpanded ? 14 : 8,
+            color: colorForTransportMode(record.transportMode).opacity(isExpanded ? 0.2 : 0),
+            radius: isExpanded ? 16 : 8,
             x: 0,
             y: isExpanded ? 8 : 4
         )
@@ -1531,7 +1541,7 @@ struct ExpandedQuickStat: View {
             
             VStack(spacing: 3) {
                 Text(value)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -1641,7 +1651,7 @@ struct LocationDetailView: View {
                             HStack(spacing: 12) {
                                 VStack(spacing: 8) {
                                     Text("\(locationRecords.count)")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .font(.system(size: 28, weight: .semibold, design: .rounded))
                                         .foregroundStyle(LiquidGlassStyle.primaryGradient)
                                     
                                     Text(L("common.journeys"))
@@ -1650,11 +1660,11 @@ struct LocationDetailView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 20)
-                                .glassCard(cornerRadius: 16)
+                                .glassCard(cornerRadius: 24)
                                 
                                 VStack(spacing: 8) {
                                     Text(FormatUtilities.formatTime(totalTime))
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .font(.system(size: 28, weight: .semibold, design: .rounded))
                                         .foregroundStyle(LiquidGlassStyle.primaryGradient)
                                     
                                     Text(L("history.totalTime"))
@@ -1663,12 +1673,12 @@ struct LocationDetailView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 20)
-                                .glassCard(cornerRadius: 16)
+                                .glassCard(cornerRadius: 24)
                             }
                             
                             VStack(spacing: 8) {
                                 Text(FormatUtilities.formatDistance(totalDistance))
-                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .font(.system(size: 28, weight: .semibold, design: .rounded))
                                     .foregroundStyle(LiquidGlassStyle.accentGradient)
                                 
                                 Text(L("history.totalDistance"))
@@ -1677,7 +1687,7 @@ struct LocationDetailView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 20)
-                            .glassCard(cornerRadius: 16)
+                            .glassCard(cornerRadius: 24)
                             
                             // Records list
                             VStack(spacing: 12) {
@@ -1766,7 +1776,7 @@ struct TransportModeDetailView: View {
                             HStack(spacing: 12) {
                                 VStack(spacing: 8) {
                                     Text("\(modeRecords.count)")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .font(.system(size: 28, weight: .semibold, design: .rounded))
                                         .foregroundStyle(LiquidGlassStyle.primaryGradient)
                                     
                                     Text(L("common.journeys"))
@@ -1775,11 +1785,11 @@ struct TransportModeDetailView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 20)
-                                .glassCard(cornerRadius: 16)
+                                .glassCard(cornerRadius: 24)
                                 
                                 VStack(spacing: 8) {
                                     Text(FormatUtilities.formatTime(totalTime))
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .font(.system(size: 28, weight: .semibold, design: .rounded))
                                         .foregroundStyle(LiquidGlassStyle.primaryGradient)
                                     
                                     Text(L("history.totalTime"))
@@ -1788,13 +1798,13 @@ struct TransportModeDetailView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 20)
-                                .glassCard(cornerRadius: 16)
+                                .glassCard(cornerRadius: 24)
                             }
                             
                             HStack(spacing: 12) {
                                 VStack(spacing: 8) {
                                     Text(FormatUtilities.formatDistance(totalDistance))
-                                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                                        .font(.system(size: 24, weight: .semibold, design: .rounded))
                                         .foregroundStyle(LiquidGlassStyle.accentGradient)
                                     
                                     Text(L("history.totalDistance"))
@@ -1803,11 +1813,11 @@ struct TransportModeDetailView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 20)
-                                .glassCard(cornerRadius: 16)
+                                .glassCard(cornerRadius: 24)
                                 
                                 VStack(spacing: 8) {
                                     Text(FormatUtilities.formatSpeed(averageSpeed))
-                                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                                        .font(.system(size: 24, weight: .semibold, design: .rounded))
                                         .foregroundStyle(
                                             LinearGradient(
                                                 colors: [Color.purple, Color.blue],
@@ -1822,7 +1832,7 @@ struct TransportModeDetailView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 20)
-                                .glassCard(cornerRadius: 16)
+                                .glassCard(cornerRadius: 24)
                             }
                             
                             // Records list
@@ -1900,7 +1910,7 @@ struct TransportRecordRow: View {
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(FormatUtilities.formatDistance(record.distanceTraveled))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                 
                 if record.duration > 0 {
@@ -1911,7 +1921,7 @@ struct TransportRecordRow: View {
             }
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
     
     private func iconForMode(_ mode: String) -> String {
@@ -1959,7 +1969,7 @@ struct StatRow: View {
             Spacer()
             
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundColor(.primary)
         }
         .padding(.vertical, 6)
@@ -1992,7 +2002,7 @@ struct AchievementRow: View {
                     .foregroundColor(.secondary)
                 
                 Text(value)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
             }
             
@@ -2119,7 +2129,7 @@ struct RecordDetailView: View {
                                 )
                             )
                             .frame(height: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
                             
                             VStack(spacing: 12) {
                                 LocationInfoRow(
@@ -2145,7 +2155,7 @@ struct RecordDetailView: View {
                             }
                         }
                         .padding(20)
-                        .glassCard(cornerRadius: 20)
+                        .glassCard(cornerRadius: 24)
                         
                         // Time info
                         VStack(alignment: .leading, spacing: 12) {
@@ -2160,7 +2170,7 @@ struct RecordDetailView: View {
                             }
                         }
                         .padding(20)
-                        .glassCard(cornerRadius: 20)
+                        .glassCard(cornerRadius: 24)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 20)
@@ -2298,14 +2308,14 @@ struct DetailStatCard: View {
                     .foregroundColor(.secondary)
                 
                 Text(value)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
             }
             
             Spacer()
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }
 
@@ -2430,7 +2440,7 @@ struct TimeDistributionRow: View {
             Spacer()
             
             Text("\(count)")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
@@ -2514,7 +2524,7 @@ struct MilestoneRow: View {
                     .foregroundColor(.secondary)
                 
                 Text(value)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
             }
             
@@ -2548,7 +2558,7 @@ struct MilestoneCard: View {
             
             // Value
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundColor(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -2571,7 +2581,7 @@ struct MilestoneCard: View {
         .padding(.vertical, 16)
         .padding(.horizontal, 12)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 24)
                 .fill(color.opacity(0.08))
         )
     }
@@ -2631,7 +2641,7 @@ struct HistoryMetricRecordRow: View {
 
             HStack(spacing: 8) {
                 Text(value)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(LiquidGlassStyle.primaryGradient)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -2644,7 +2654,7 @@ struct HistoryMetricRecordRow: View {
             }
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 
     private func iconForTransportMode(_ mode: String) -> String {
@@ -3044,7 +3054,7 @@ struct HistoryPOIRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }
 
@@ -3073,9 +3083,9 @@ struct POIItemDetailView: View {
                             }
                         }
                         .frame(height: 220)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
                                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
                         )
 
@@ -3086,7 +3096,7 @@ struct POIItemDetailView: View {
                             HistoryPOIDetailRow(icon: "location.fill", label: L("history.detail.start"), value: item.record.startLocationName.isEmpty ? L("location.current") : item.record.startLocationName, color: .green)
                         }
                         .padding(20)
-                        .glassCard(cornerRadius: 20)
+                        .glassCard(cornerRadius: 24)
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 20)
@@ -3187,7 +3197,7 @@ struct AchievementDetailView: View {
                             .shadow(color: color.opacity(0.3), radius: 20, x: 0, y: 10)
                             
                             Text(title)
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .font(.system(size: 24, weight: .semibold, design: .rounded))
                                 .foregroundColor(.primary)
                                 .multilineTextAlignment(.center)
                         }
@@ -3217,7 +3227,7 @@ struct AchievementDetailView: View {
                             if let record = records.first {
                                 VStack(spacing: 12) {
                                     Text(achievementValue(for: record))
-                                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                                        .font(.system(size: 48, weight: .semibold, design: .rounded))
                                         .foregroundStyle(
                                             LinearGradient(
                                                 colors: [color, color.opacity(0.7)],
@@ -3232,7 +3242,7 @@ struct AchievementDetailView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 24)
-                                .glassCard(cornerRadius: 20)
+                                .glassCard(cornerRadius: 24)
                             }
                             
                             // Journey details
@@ -3306,7 +3316,7 @@ struct AchievementStatItem: View {
                 .foregroundColor(color)
             
             Text(value)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundColor(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -3319,7 +3329,7 @@ struct AchievementStatItem: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(color.opacity(0.1))
         )
     }

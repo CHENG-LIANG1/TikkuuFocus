@@ -287,7 +287,7 @@ struct ExplorationMapView: View {
                     .background(
                         Capsule()
                             .fill(Color.blue)
-                            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+                            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
                     )
                 }
                 .padding(.bottom, 280) // 增加底部间距，避免被 statsPanel 挡住
@@ -543,7 +543,7 @@ struct StartMarker: View {
                     Circle()
                         .stroke(Color.white, lineWidth: 3)
                 )
-                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
+                .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
         }
     }
 }
@@ -578,7 +578,7 @@ struct AvatarMarker: View {
                         .stroke(Color.white, lineWidth: 3)
                 )
                 .shadow(color: Color.blue.opacity(0.5), radius: 8, x: 0, y: 4)
-                .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 3)
+                .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
             
             Image(systemName: transportMode.iconName)
                 .font(.system(size: 16, weight: .bold))
@@ -597,7 +597,7 @@ struct DestinationMarker: View {
             Image(systemName: "flag.fill")
                 .font(.system(size: 24))
                 .foregroundStyle(Color.red, Color.white)
-                .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
+                .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
         }
     }
 }

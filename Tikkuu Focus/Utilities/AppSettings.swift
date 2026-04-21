@@ -9,16 +9,6 @@ import SwiftUI
 import Combine
 import MapKit
 
-enum AppVisualStyle: String, CaseIterable {
-    case liquidGlass = "liquidGlass"
-    case neumorphism = "neumorphism"
-}
-
-enum NeumorphismTone: String, CaseIterable {
-    case dark = "dark"
-    case light = "light"
-}
-
 enum AppMapMode: String, CaseIterable {
     case explore = "explore"
     case transit = "transit"
@@ -118,24 +108,10 @@ class AppSettings: ObservableObject {
         }
     }
 
-    @Published var selectedVisualStyle: AppVisualStyle {
-        didSet {
-            guard selectedVisualStyle != oldValue else { return }
-            UserDefaults.standard.set(selectedVisualStyle.rawValue, forKey: "selectedVisualStyle")
-        }
-    }
-
     @Published var selectedMapMode: AppMapMode {
         didSet {
             guard selectedMapMode != oldValue else { return }
             UserDefaults.standard.set(selectedMapMode.rawValue, forKey: "selectedMapMode")
-        }
-    }
-
-    @Published var selectedNeumorphismTone: NeumorphismTone {
-        didSet {
-            guard selectedNeumorphismTone != oldValue else { return }
-            UserDefaults.standard.set(selectedNeumorphismTone.rawValue, forKey: "selectedNeumorphismTone")
         }
     }
     
@@ -144,12 +120,8 @@ class AppSettings: ObservableObject {
         self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         self.hasCompletedFirstJourney = UserDefaults.standard.bool(forKey: "hasCompletedFirstJourney")
         self.hasSeenFirstJourneyGuide = UserDefaults.standard.bool(forKey: "hasSeenFirstJourneyGuide")
-        let storedStyle = UserDefaults.standard.string(forKey: "selectedVisualStyle") ?? AppVisualStyle.liquidGlass.rawValue
-        self.selectedVisualStyle = AppVisualStyle(rawValue: storedStyle) ?? .liquidGlass
         let storedMapMode = UserDefaults.standard.string(forKey: "selectedMapMode") ?? AppMapMode.explore.rawValue
         self.selectedMapMode = AppMapMode(rawValue: storedMapMode) ?? .explore
-        let storedTone = UserDefaults.standard.string(forKey: "selectedNeumorphismTone") ?? NeumorphismTone.dark.rawValue
-        self.selectedNeumorphismTone = NeumorphismTone(rawValue: storedTone) ?? .dark
     }
     
     var currentLanguage: String {
@@ -161,14 +133,11 @@ class AppSettings: ObservableObject {
     
     // Always return dark mode
     var currentColorScheme: ColorScheme? {
-        if selectedVisualStyle == .neumorphism, selectedNeumorphismTone == .light {
-            return .light
-        }
         return .dark
     }
 
-    var isNeumorphismLight: Bool {
-        selectedVisualStyle == .neumorphism && selectedNeumorphismTone == .light
+    var isDarkMode: Bool {
+        currentColorScheme == .dark
     }
     
     /// Get localized string with current language

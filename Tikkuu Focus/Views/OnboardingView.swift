@@ -255,7 +255,7 @@ private struct PageContentView: View {
             // Text content
             VStack(spacing: isCompact ? 12 : 16) {
                 Text(L(page.titleKey))
-                    .font(.system(size: isCompact ? 28 : 34, weight: .bold, design: .rounded))
+                    .font(.system(size: isCompact ? 28 : 34, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                 
@@ -301,7 +301,7 @@ private struct IllustrationView: View {
             ZStack {
                 // Glass card
                 RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
-                    .fill(.ultraThinMaterial.opacity(0.5))
+                    .fill(.ultraThinMaterial)
                     .frame(width: size, height: size)
                     .overlay(
                         RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
@@ -314,7 +314,7 @@ private struct IllustrationView: View {
                                 lineWidth: 1
                             )
                     )
-                    .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+                    .shadow(color: Color.black.opacity(0.06), radius: 20, x: 0, y: 10)
                 
                 // Illustration content
                 illustrationContent

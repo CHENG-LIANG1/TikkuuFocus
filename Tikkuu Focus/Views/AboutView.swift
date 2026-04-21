@@ -61,9 +61,9 @@ struct AboutView: View {
                             // App Name
                             VStack(spacing: 12) {
                                 Text("Roam Focus")
-                                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                                    .font(.system(size: 42, weight: .semibold, design: .rounded))
                                     .foregroundStyle(
-                                        isNeumorphism
+                                        false
                                             ? AnyShapeStyle(cardTextColor)
                                             : AnyShapeStyle(
                                                 LinearGradient(
@@ -208,7 +208,7 @@ struct AboutView: View {
             }
         }
         .id(refreshID)
-        .preferredColorScheme(settings.selectedVisualStyle == .neumorphism ? settings.currentColorScheme : .dark)
+        .preferredColorScheme(false ? settings.currentColorScheme : .dark)
         .onAppear {
             showContent = true
         }
@@ -221,54 +221,21 @@ struct AboutView: View {
     
     @ViewBuilder
     private var backgroundView: some View {
-        if settings.selectedVisualStyle == .neumorphism {
-            AnimatedGradientBackground()
-        } else {
-            // Liquid Glass: dark gradient background
-            AnimatedGradientBackground()
-        }
-    }
-    
-    private var isNeumorphism: Bool {
-        settings.selectedVisualStyle == .neumorphism
+        AnimatedGradientBackground()
     }
     
     private var cardTextColor: Color {
-        isNeumorphism
-            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white)
-            : .white
+        .white
     }
     
     private var cardSecondaryTextColor: Color {
-        isNeumorphism
-            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.45, green: 0.50, blue: 0.58) : Color.white.opacity(0.7))
-            : Color.white.opacity(0.7)
+        Color.white.opacity(0.7)
     }
     
     @ViewBuilder
     private var cardBackground: some View {
-        let shape = RoundedRectangle(cornerRadius: 20)
-        
-        if isNeumorphism {
-            // Neumorphism: raised surface with soft subtle shadows
-            shape
-                .fill(NeumorphismStyle.surface(for: colorScheme))
-                .shadow(
-                    color: colorScheme == .dark ? Color.black.opacity(0.25) : Color.black.opacity(0.08),
-                    radius: 8,
-                    x: 5,
-                    y: 5
-                )
-                .shadow(
-                    color: colorScheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.5),
-                    radius: 6,
-                    x: -4,
-                    y: -4
-                )
-        } else {
-            Color.clear
-                .glassCard(cornerRadius: 20)
-        }
+        Color.clear
+            .glassCard(cornerRadius: 20)
     }
 }
 
@@ -284,20 +251,12 @@ struct AboutFeatureCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var show = false
     
-    private var isNeumorphism: Bool {
-        settings.selectedVisualStyle == .neumorphism
-    }
-    
     private var cardTextColor: Color {
-        isNeumorphism
-            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white)
-            : .white
+        .white
     }
     
     private var cardSecondaryTextColor: Color {
-        isNeumorphism
-            ? (settings.selectedNeumorphismTone == .light ? Color(red: 0.45, green: 0.50, blue: 0.58) : Color.white.opacity(0.7))
-            : Color.white.opacity(0.7)
+        Color.white.opacity(0.7)
     }
     
     var body: some View {
@@ -338,28 +297,8 @@ struct AboutFeatureCard: View {
     
     @ViewBuilder
     private var featureCardBackground: some View {
-        let shape = RoundedRectangle(cornerRadius: 20)
-        
-        if isNeumorphism {
-            // Neumorphism: raised surface with soft subtle shadows
-            shape
-                .fill(NeumorphismStyle.surface(for: colorScheme))
-                .shadow(
-                    color: colorScheme == .dark ? Color.black.opacity(0.25) : Color.black.opacity(0.08),
-                    radius: 6,
-                    x: 4,
-                    y: 4
-                )
-                .shadow(
-                    color: colorScheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.5),
-                    radius: 5,
-                    x: -3,
-                    y: -3
-                )
-        } else {
-            Color.clear
-                .glassCard(cornerRadius: 20)
-        }
+        Color.clear
+            .glassCard(cornerRadius: 20)
     }
 }
 

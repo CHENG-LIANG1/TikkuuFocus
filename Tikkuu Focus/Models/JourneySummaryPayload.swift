@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import WeatherKit
 
-struct JourneySummaryPayload: Identifiable, Equatable {
+struct JourneySummaryPayload: Identifiable {
     let id: UUID
     let session: JourneySession
     let discoveredPOIs: [DiscoveredPOI]
@@ -16,6 +17,7 @@ struct JourneySummaryPayload: Identifiable, Equatable {
     let progress: Double
     let isCompleted: Bool
     let actualDuration: TimeInterval
+    let attribution: WeatherAttribution?
 
     init(
         id: UUID = UUID(),
@@ -25,7 +27,8 @@ struct JourneySummaryPayload: Identifiable, Equatable {
         isDaytime: Bool,
         progress: Double,
         isCompleted: Bool,
-        actualDuration: TimeInterval
+        actualDuration: TimeInterval,
+        attribution: WeatherAttribution? = nil
     ) {
         self.id = id
         self.session = session
@@ -35,5 +38,12 @@ struct JourneySummaryPayload: Identifiable, Equatable {
         self.progress = progress
         self.isCompleted = isCompleted
         self.actualDuration = actualDuration
+        self.attribution = attribution
+    }
+}
+
+extension JourneySummaryPayload: Equatable {
+    static func == (lhs: JourneySummaryPayload, rhs: JourneySummaryPayload) -> Bool {
+        lhs.id == rhs.id
     }
 }

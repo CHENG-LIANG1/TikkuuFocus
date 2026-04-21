@@ -30,7 +30,7 @@ struct JourneyTimeCard: View {
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(FormatUtilities.formatTime(duration))
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
@@ -166,7 +166,7 @@ struct JourneyDistanceCard: View {
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(FormatUtilities.formatDistance(distance))
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
@@ -180,10 +180,10 @@ struct JourneyDistanceCard: View {
         .padding(12)
         .background(
             ZStack {
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(.ultraThinMaterial)
                 
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(
                         LinearGradient(
                             colors: [
@@ -196,7 +196,7 @@ struct JourneyDistanceCard: View {
                     )
                     .blendMode(.plusLighter)
                 
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
             }
         )
@@ -262,10 +262,10 @@ struct JourneyTransportCard: View {
         .padding(10)
         .background(
             ZStack {
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(.ultraThinMaterial)
                 
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(
                         LinearGradient(
                             colors: [
@@ -278,7 +278,7 @@ struct JourneyTransportCard: View {
                     )
                     .blendMode(.plusLighter)
                 
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
             }
         )
@@ -313,7 +313,7 @@ struct JourneyPOICard: View {
             
             VStack(spacing: 1) {
                 Text("\(poiCount)")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .shadow(color: Color.black.opacity(0.15), radius: 3, x: 0, y: 2)
                 
@@ -325,10 +325,10 @@ struct JourneyPOICard: View {
         .padding(10)
         .background(
             ZStack {
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(.ultraThinMaterial)
                 
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(
                         LinearGradient(
                             colors: [
@@ -341,7 +341,7 @@ struct JourneyPOICard: View {
                     )
                     .blendMode(.plusLighter)
                 
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
             }
         )

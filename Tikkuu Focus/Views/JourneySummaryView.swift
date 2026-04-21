@@ -8,6 +8,7 @@
 import SwiftUI
 import MapKit
 import Photos
+import WeatherKit
 
 struct JourneySummaryView: View {
     @Environment(\.dismiss) private var dismiss
@@ -21,6 +22,7 @@ struct JourneySummaryView: View {
     let progress: Double
     let isCompleted: Bool
     let actualDuration: TimeInterval
+    let attribution: WeatherAttribution?
     let onDismiss: () -> Void
 
     @State private var animateIn = false
@@ -30,12 +32,31 @@ struct JourneySummaryView: View {
     @State private var showConfetti = false
     @State private var showSaveToast = false
 
-    private var isNeumorphism: Bool {
-        settings.selectedVisualStyle == .neumorphism
+    init(
+        session: JourneySession,
+        discoveredPOIs: [DiscoveredPOI],
+        weatherCondition: String,
+        isDaytime: Bool,
+        progress: Double,
+        isCompleted: Bool,
+        actualDuration: TimeInterval,
+        attribution: WeatherAttribution? = nil,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.session = session
+        self.discoveredPOIs = discoveredPOIs
+        self.weatherCondition = weatherCondition
+        self.isDaytime = isDaytime
+        self.progress = progress
+        self.isCompleted = isCompleted
+        self.actualDuration = actualDuration
+        self.attribution = attribution
+        self.onDismiss = onDismiss
     }
 
+
     private var isLightTone: Bool {
-        settings.selectedNeumorphismTone == .light
+        false
     }
 
     // MARK: - Layout Constants
@@ -106,33 +127,11 @@ struct JourneySummaryView: View {
 
     @ViewBuilder
     private var backgroundLayer: some View {
-        if isNeumorphism {
-            // Neumorphism: keep map visible with a softer veil.
-            ZStack {
-                neumorphismBackground
-                backgroundMapLayer
-                LinearGradient(
-                    colors: [
-                        Color.black.opacity(isLightTone ? 0.08 : 0.14),
-                        Color.black.opacity(isLightTone ? 0.18 : 0.32)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            }
-        } else {
-            // Liquid Glass: Map with gradient overlay
-            ZStack {
-                backgroundMapLayer
-                overlayGradient
-            }
+        // Liquid Glass: Map with gradient overlay
+        ZStack {
+            backgroundMapLayer
+            overlayGradient
         }
-    }
-
-    private var neumorphismBackground: some View {
-        (isLightTone ? NeumorphismColors.lightBackground : NeumorphismColors.darkBackground)
-            .ignoresSafeArea()
     }
 
     private var overlayGradient: some View {
@@ -151,217 +150,7 @@ struct JourneySummaryView: View {
 
     @ViewBuilder
     private var summaryCard: some View {
-        if isNeumorphism {
-            neumorphicSummaryCard
-        } else {
-            liquidGlassSummaryCard
-        }
-    }
-
-    // MARK: Neumorphic Summary Card
-
-    private var neumorphicSummaryCard: some View {
-        VStack(spacing: Layout.innerSpacing) {
-            // Brand Header
-            Text("Roam Focus App")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundColor(textColor.opacity(0.8))
-                .tracking(0.5)
-
-            // Status Badge
-            neumorphicStatusBadge
-
-            // Metrics Grid
-            neumorphicMetricsSection
-
-            // POI Highlights
-            if !topPOIs.isEmpty {
-                neumorphicPOIHighlights
-            }
-
-            // Route Preview (Static for Neumorphism)
-            neumorphicRoutePreview
-        }
-        .padding(20)
-        .background(
-            NeumorphSurface(cornerRadius: Layout.cornerRadius, depth: .raised)
-        )
-        .scaleEffect(animateIn ? 1 : 0.96)
-        .opacity(animateIn ? 1 : 0)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: animateIn)
-    }
-
-    private var neumorphicStatusBadge: some View {
-        HStack(spacing: 6) {
-            Image(systemName: isCompleted ? "checkmark.circle.fill" : "pause.circle.fill")
-                .font(.system(size: 13, weight: .semibold))
-
-            Text(String(format: L("journey.summary.completed"), progress * 100))
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-        }
-        .foregroundColor(isCompleted ? successColor : warningColor)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
-        .background(
-            NeumorphSurface(cornerRadius: 12, depth: .inset)
-        )
-    }
-
-    private var neumorphicMetricsSection: some View {
-        VStack(spacing: 10) {
-            // Row 1: Time & Weather
-            HStack(spacing: 10) {
-                neumorphicMetricCell(
-                    icon: "clock.fill",
-                    title: L("journey.summary.focusTime"),
-                    value: FormatUtilities.formatTime(actualDuration),
-                    iconColor: Color.blue
-                )
-
-                neumorphicMetricCell(
-                    icon: weatherIcon,
-                    title: isDaytime ? L("journey.summary.day") : L("journey.summary.night"),
-                    value: weatherCondition,
-                    iconColor: Color.cyan
-                )
-            }
-
-            // Row 2: Distance & Transport
-            HStack(spacing: 10) {
-                neumorphicMetricCell(
-                    icon: "location.fill",
-                    title: L("journey.summary.distance"),
-                    value: FormatUtilities.formatDistance(session.totalDistance),
-                    iconColor: Color.orange
-                )
-
-                neumorphicMetricCell(
-                    icon: session.transportMode.iconName,
-                    title: L("history.detail.transport"),
-                    value: transportDisplayText,
-                    iconColor: Color.green
-                )
-            }
-
-            // Row 3: POI Count (Full Width)
-            neumorphicMetricCell(
-                icon: "star.fill",
-                title: L("journey.summary.pois"),
-                value: "\(discoveredPOIs.count)",
-                iconColor: Color.yellow
-            )
-        }
-    }
-
-    private func neumorphicMetricCell(icon: String, title: String, value: String, iconColor: Color) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(iconColor)
-
-            Spacer(minLength: 0)
-
-            Text(value)
-                .font(.system(size: 19, weight: .bold, design: .rounded))
-                .foregroundColor(textColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(textColor.opacity(0.5))
-                .lineLimit(1)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 95, alignment: .leading)
-        .background(
-            NeumorphSurface(cornerRadius: 16, depth: .inset)
-        )
-    }
-
-    private var neumorphicPOIHighlights: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Header
-            HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .semibold))
-                Text(L("journey.summary.pois"))
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .foregroundColor(textColor.opacity(0.7))
-
-            // POI List
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(topPOIs) { poi in
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.yellow)
-                            .frame(width: 6, height: 6)
-                            .shadow(color: Color.yellow.opacity(0.5), radius: 2, x: 0, y: 1)
-
-                        Text(poi.name)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(textColor.opacity(1.0))
-                            .lineLimit(1)
-
-                        Spacer(minLength: 0)
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            NeumorphSurface(cornerRadius: Layout.cardCornerRadius, depth: .inset)
-        )
-    }
-
-    private var neumorphicRoutePreview: some View {
-        ZStack(alignment: .bottomLeading) {
-            Map(initialPosition: .region(mapRegion)) {
-                MapPolyline(coordinates: session.route)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.green, Color.blue, Color.purple],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                    )
-
-                Annotation("", coordinate: session.startLocation) {
-                    routePoint(color: .green)
-                }
-
-                Annotation("", coordinate: session.destinationLocation) {
-                    routePoint(color: .red)
-                }
-            }
-            .mapStyle(summaryMapStyle)
-            .disabled(true)
-            .clipShape(RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous))
-
-            HStack(spacing: 6) {
-                Image(systemName: "map.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                Text(L("journey.summary.route"))
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .foregroundColor(textColor.opacity(1.0))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(isLightTone ? Color.white.opacity(0.55) : Color.black.opacity(0.35))
-            )
-            .padding(10)
-        }
-        .frame(height: 150)
-        .background(
-            NeumorphSurface(cornerRadius: Layout.cardCornerRadius, depth: .inset)
-        )
+        liquidGlassSummaryCard
     }
 
     // MARK: Liquid Glass Summary Card (Original)
@@ -379,6 +168,14 @@ struct JourneySummaryView: View {
 
             // Metrics Grid
             metricsSection
+
+            AppleWeatherAttributionView(
+                textColor: .white,
+                fontSize: 9,
+                attribution: attribution
+            )
+            .padding(.top, 2)
+            .opacity(0.8)
 
             // POI Highlights
             if !topPOIs.isEmpty {
@@ -419,7 +216,7 @@ struct JourneySummaryView: View {
                 .font(.system(size: 13, weight: .semibold))
 
             Text(String(format: L("journey.summary.completed"), progress * 100))
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         }
@@ -471,7 +268,7 @@ struct JourneySummaryView: View {
                 MetricCell(
                     icon: "location.fill",
                     title: L("journey.summary.distance"),
-                    value: FormatUtilities.formatDistance(session.totalDistance),
+                    value: FormatUtilities.formatDistance(displayDistance),
                     gradient: LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
 
@@ -579,58 +376,7 @@ struct JourneySummaryView: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        if isNeumorphism {
-            neumorphicActionButtons
-        } else {
-            liquidGlassActionButtons
-        }
-    }
-
-    private var neumorphicActionButtons: some View {
-        HStack(spacing: 12) {
-            NeumorphicButton(cornerRadius: 18) {
-                saveAsImage()
-            } content: {
-                VStack(spacing: 6) {
-                    Image(systemName: "square.and.arrow.down")
-                        .font(.system(size: 18, weight: .semibold))
-                    Text(L("journey.summary.save"))
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundColor(textColor)
-            }
-            .frame(height: 76)
-
-            NeumorphicButton(cornerRadius: 18) {
-                shareImage()
-            } content: {
-                VStack(spacing: 6) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 18, weight: .semibold))
-                    Text(L("journey.summary.share"))
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundColor(primaryColor)
-            }
-            .frame(height: 76)
-
-            NeumorphicButton(cornerRadius: 18) {
-                onDismiss()
-                dismiss()
-            } content: {
-                VStack(spacing: 6) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 18, weight: .semibold))
-                    Text(L("journey.summary.done"))
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundColor(successColor)
-            }
-            .frame(height: 76)
-        }
-        .opacity(animateIn ? 1 : 0)
-        .offset(y: animateIn ? 0 : 15)
-        .animation(.spring(response: 0.45, dampingFraction: 0.82).delay(0.1), value: animateIn)
+        liquidGlassActionButtons
     }
 
     private var liquidGlassActionButtons: some View {
@@ -669,33 +415,7 @@ struct JourneySummaryView: View {
 
     @ViewBuilder
     private var saveToast: some View {
-        if isNeumorphism {
-            neumorphicSaveToast
-        } else {
-            liquidGlassSaveToast
-        }
-    }
-
-    private var neumorphicSaveToast: some View {
-        VStack {
-            Spacer()
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(successColor)
-                Text(L("journey.summary.saved"))
-                    .font(.system(size: 15, weight: .semibold))
-            }
-            .foregroundColor(textColor)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
-            .background(
-                NeumorphSurface(cornerRadius: 20, depth: .raised)
-            )
-            .padding(.bottom, 100)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-        }
-        .allowsHitTesting(false)
+        liquidGlassSaveToast
     }
 
     private var liquidGlassSaveToast: some View {
@@ -756,19 +476,19 @@ struct JourneySummaryView: View {
     // MARK: - Color Helpers
 
     private var textColor: Color {
-        isLightTone ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white
+        .white
     }
 
     private var primaryColor: Color {
-        isLightTone ? Color(red: 0.38, green: 0.52, blue: 0.75) : NeumorphismColors.darkPrimary
+        Color(red: 0.38, green: 0.52, blue: 0.75)
     }
 
     private var successColor: Color {
-        isLightTone ? Color(red: 0.35, green: 0.65, blue: 0.45) : Color(red: 0.4, green: 0.85, blue: 0.5)
+        Color(red: 0.4, green: 0.85, blue: 0.5)
     }
 
     private var warningColor: Color {
-        isLightTone ? Color(red: 0.85, green: 0.55, blue: 0.25) : Color.orange
+        Color.orange
     }
 
     // MARK: - Helpers
@@ -794,11 +514,7 @@ struct JourneySummaryView: View {
     }
 
     private var summaryMapStyle: MapStyle {
-        if isNeumorphism {
-            // Ensure readability in neumorphism cards/background.
-            return .standard(elevation: .realistic)
-        }
-        return settings.selectedMapMode.style
+        settings.selectedMapMode.style
     }
 
     private var weatherIcon: String {
@@ -812,6 +528,23 @@ struct JourneySummaryView: View {
 
     private var transportDisplayText: String {
         return session.transportMode.localizedName
+    }
+
+    private var displayDistance: Double {
+        let safeProgress = min(max(progress, 0), 1)
+        let rawDistance = session.totalDistance * safeProgress
+        return sanitizeDistance(rawDistance, transportMode: session.transportMode, duration: actualDuration)
+    }
+
+    private func sanitizeDistance(
+        _ rawDistance: Double,
+        transportMode: TransportMode,
+        duration: TimeInterval
+    ) -> Double {
+        guard rawDistance.isFinite, rawDistance > 0 else { return 0 }
+        let expectedDistance = transportMode.speedMps * max(duration, 0)
+        let maxReasonableDistance = max(300, expectedDistance * 1.8 + 200)
+        return min(rawDistance, maxReasonableDistance)
     }
 
     // MARK: - Actions
@@ -895,64 +628,14 @@ struct JourneySummaryView: View {
 
     @ViewBuilder
     private func exportCard(snapshotImage: UIImage?) -> some View {
-        if isNeumorphism {
-            neumorphicExportCard(snapshotImage: snapshotImage)
-        } else {
-            liquidGlassExportCard(snapshotImage: snapshotImage)
-        }
-    }
-
-    private func neumorphicExportCard(snapshotImage: UIImage?) -> some View {
-        VStack(spacing: 20) {
-            // App Name Header
-            Text("Roam Focus")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(textColor)
-                .padding(.top, 32)
-            
-            neumorphicStatusBadge
-
-            neumorphicMetricsSection
-                .padding(.horizontal, 20)
-
-            neumorphicExportRouteCard(snapshotImage: snapshotImage)
-                .frame(height: 200)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
-        }
-        .frame(width: 390, height: 720)
-        .background(
-            NeumorphSurface(cornerRadius: Layout.cornerRadius, depth: .raised)
-        )
-    }
-
-    private func neumorphicExportRouteCard(snapshotImage: UIImage?) -> some View {
-        Group {
-            if let snapshotImage {
-                Image(uiImage: snapshotImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-            } else {
-                StaticRoutePreview(
-                    route: session.route,
-                    start: session.startLocation,
-                    end: session.destinationLocation
-                )
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: Layout.cardCornerRadius, style: .continuous))
-        .background(
-            NeumorphSurface(cornerRadius: Layout.cardCornerRadius, depth: .inset)
-        )
+        liquidGlassExportCard(snapshotImage: snapshotImage)
     }
 
     private func liquidGlassExportCard(snapshotImage: UIImage?) -> some View {
         VStack(spacing: 20) {
             // App Name Header
             Text("Roam Focus")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
                 .padding(.top, 32)
             
@@ -960,6 +643,14 @@ struct JourneySummaryView: View {
 
             metricsSection
                 .padding(.horizontal, 20)
+
+            AppleWeatherAttributionView(
+                textColor: .white,
+                fontSize: 9,
+                attribution: attribution
+            )
+            .padding(.horizontal, 20)
+            .opacity(0.8)
 
             exportRouteCard(snapshotImage: snapshotImage)
                 .frame(height: 200)
@@ -1092,10 +783,6 @@ private struct MetricCell: View {
 
     @ObservedObject private var settings = AppSettings.shared
 
-    private var isNeumorphism: Bool {
-        settings.selectedVisualStyle == .neumorphism
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Image(systemName: icon)
@@ -1105,7 +792,7 @@ private struct MetricCell: View {
             Spacer(minLength: 0)
 
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -1118,10 +805,10 @@ private struct MetricCell: View {
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(Color.white.opacity(0.10))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
                 )
         )
@@ -1177,10 +864,10 @@ private struct ActionButton: View {
             .frame(maxWidth: .infinity)
             .frame(height: 72)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(style.gradient)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
                     )
             )
@@ -1211,7 +898,7 @@ private struct StaticRoutePreview: View {
     @ObservedObject private var settings = AppSettings.shared
 
     private var isLightTone: Bool {
-        settings.selectedNeumorphismTone == .light
+        false
     }
 
     var body: some View {
@@ -1263,22 +950,14 @@ private struct StaticRoutePreview: View {
 
     private var backgroundColor: some View {
         Group {
-            if settings.selectedVisualStyle == .neumorphism {
-                if isLightTone {
-                    NeumorphismColors.lightPressed
-                } else {
-                    NeumorphismColors.darkPressed
-                }
-            } else {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.18, green: 0.24, blue: 0.34),
-                        Color(red: 0.15, green: 0.20, blue: 0.30)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
+            LinearGradient(
+                colors: [
+                    Color(red: 0.18, green: 0.24, blue: 0.34),
+                    Color(red: 0.15, green: 0.20, blue: 0.30)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
     }
 

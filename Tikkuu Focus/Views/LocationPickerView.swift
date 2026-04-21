@@ -82,7 +82,7 @@ struct LocationPickerView: View {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(LiquidGlassStyle.primaryGradient)
+                        .fill(Color.accentColor)
                         .frame(width: 50, height: 50)
                     
                     Image(systemName: "location.fill")
@@ -126,23 +126,23 @@ struct LocationPickerView: View {
                     Image(systemName: "location.fill")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(
-                            settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
+                            false
+                                ? (false ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue
                         )
                         .frame(width: 36, height: 36)
                         .background(
                             Circle()
                                 .fill(
-                                    settings.selectedVisualStyle == .neumorphism
-                                        ? (settings.isNeumorphismLight ? Color.blue.opacity(0.15) : Color.blue.opacity(0.25))
+                                    false
+                                        ? (false ? Color.blue.opacity(0.15) : Color.blue.opacity(0.25))
                                         : Color.blue.opacity(0.2)
                                 )
                         )
                 }
             }
             .padding(16)
-            .glassCard(cornerRadius: 16)
+            .glassCard(cornerRadius: 24)
         }
     }
     
@@ -230,7 +230,7 @@ struct LocationPickerView: View {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(isCustomLocationSelected ? LiquidGlassStyle.primaryGradient : LiquidGlassStyle.accentGradient)
+                        .fill(isCustomLocationSelected ? Color.accentColor : Color.orange)
                         .frame(width: 50, height: 50)
                     
                     if isCustomLocationSelected {
@@ -267,8 +267,8 @@ struct LocationPickerView: View {
                     Image(systemName: "mappin.circle.fill")
                         .font(.system(size: 24))
                         .foregroundColor(
-                            settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
+                            false
+                                ? (false ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue
                         )
                 } else {
@@ -278,7 +278,7 @@ struct LocationPickerView: View {
                 }
             }
             .padding(16)
-            .glassCard(cornerRadius: 16)
+            .glassCard(cornerRadius: 24)
         }
     }
     
@@ -335,8 +335,8 @@ struct FavoriteLocationCard: View {
                 ZStack {
                     Circle()
                         .fill(isSelected
-                            ? (settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
+                            ? (false
+                                ? (false ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue)
                             : Color.secondary.opacity(0.3)
                         )
@@ -352,12 +352,12 @@ struct FavoriteLocationCard: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .padding(.horizontal, 8)
-            .glassCard(cornerRadius: 16)
+            .glassCard(cornerRadius: 24)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .stroke(isSelected
-                        ? (settings.selectedVisualStyle == .neumorphism
-                            ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight.opacity(0.6) : LiquidGlassStyle.accentBlueDark.opacity(0.6))
+                        ? (false
+                            ? (false ? LiquidGlassStyle.accentBlueLight.opacity(0.6) : LiquidGlassStyle.accentBlueDark.opacity(0.6))
                             : Color.blue.opacity(0.5))
                         : Color.clear,
                         lineWidth: isSelected ? 2.5 : 0
@@ -397,8 +397,8 @@ struct PresetLocationCard: View {
                 ZStack {
                     Circle()
                         .fill(isSelected
-                            ? (settings.selectedVisualStyle == .neumorphism
-                                ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
+                            ? (false
+                                ? (false ? LiquidGlassStyle.accentBlueLight : LiquidGlassStyle.accentBlueDark)
                                 : Color.blue)
                             : Color.secondary.opacity(0.3)
                         )
@@ -414,12 +414,12 @@ struct PresetLocationCard: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .padding(.horizontal, 8)
-            .glassCard(cornerRadius: 16)
+            .glassCard(cornerRadius: 24)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .stroke(isSelected
-                        ? (settings.selectedVisualStyle == .neumorphism
-                            ? (settings.isNeumorphismLight ? LiquidGlassStyle.accentBlueLight.opacity(0.6) : LiquidGlassStyle.accentBlueDark.opacity(0.6))
+                        ? (false
+                            ? (false ? LiquidGlassStyle.accentBlueLight.opacity(0.6) : LiquidGlassStyle.accentBlueDark.opacity(0.6))
                             : Color.blue.opacity(0.5))
                         : Color.clear,
                         lineWidth: isSelected ? 2.5 : 0
@@ -627,7 +627,7 @@ struct MapPickerView: View {
                         .foregroundColor(.primary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .glassCard(cornerRadius: 12)
+                        .glassCard(cornerRadius: 20)
                     }
                     .transition(.scale.combined(with: .opacity))
                 }
@@ -646,7 +646,7 @@ struct MapPickerView: View {
                         .foregroundColor(.yellow)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .glassCard(cornerRadius: 12)
+                        .glassCard(cornerRadius: 20)
                     }
                 }
                 
@@ -725,8 +725,8 @@ struct MapPickerView: View {
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(LiquidGlassStyle.primaryGradient)
-                        .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .fill(Color.accentColor)
+                        .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
                 )
             }
         }

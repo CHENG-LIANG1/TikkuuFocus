@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harmonic Refactoring - Generative Art</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Anthropic Brand Colors */
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .sidebar h1 {
+            font-family: 'Lora', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .sidebar .subtitle {
+            color: var(--anthropic-mid-gray);
+            font-size: 14px;
+            margin-bottom: 32px;
+            line-height: 1.4;
+        }
+
+        /* Control Sections */
+        .control-section {
+            margin-bottom: 32px;
+        }
+
+        .control-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--anthropic-dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-section h3::before {
+            content: '•';
+            color: var(--anthropic-orange);
+            font-weight: bold;
+        }
+
+        /* Seed Controls */
+        .seed-input {
+            width: 100%;
+            background: var(--anthropic-light);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--anthropic-light-gray);
+            text-align: center;
+        }
+
+        .seed-input:focus {
+            outline: none;
+            border-color: var(--anthropic-orange);
+            box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.1);
+            background: white;
+        }
+
+        .seed-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .regen-button {
+            margin-bottom: 0;
+        }
+
+        /* Parameter Controls */
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 4px;
+            background: var(--anthropic-light-gray);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            background: #c86641;
+        }
+
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--anthropic-orange);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .value-display {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* Color Pickers */
+        .color-group {
+            margin-bottom: 16px;
+        }
+
+        .color-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            margin-bottom: 4px;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-picker-container input[type="color"] {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        .color-value {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+        }
+
+        /* Buttons */
+        .button {
+            background: var(--anthropic-orange);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .button:hover {
+            background: #c86641;
+            transform: translateY(-1px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button.secondary {
+            background: var(--anthropic-blue);
+        }
+
+        .button.secondary:hover {
+            background: #5a8bb8;
+        }
+
+        .button.tertiary {
+            background: var(--anthropic-green);
+        }
+
+        .button.tertiary:hover {
+            background: #6b7b52;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .button-row .button {
+            flex: 1;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 1000px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(20, 20, 19, 0.1);
+            background: white;
+            aspect-ratio: 1 / 1;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--anthropic-mid-gray);
+            height: 100%;
+        }
+
+        /* Responsive - Stack on mobile */
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .canvas-area {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Control Sidebar -->
+        <div class="sidebar">
+            <h1>Harmonic Refactoring</h1>
+            <div class="subtitle">The computational journey from chaotic default styles to structural elegance.</div>
+
+            <!-- Seed Section -->
+            <div class="control-section">
+                <h3>Seed</h3>
+                <input type="number" id="seed-input" class="seed-input" value="8888" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                    <button class="button secondary" onclick="nextSeed()">Next →</button>
+                </div>
+                <button class="button tertiary regen-button" onclick="randomSeedAndUpdate()">↻ Random</button>
+            </div>
+
+            <!-- Parameters Section -->
+            <div class="control-section">
+                <h3>Parameters</h3>
+                
+                <div class="control-group">
+                    <label>Grid Resolution</label>
+                    <div class="slider-container">
+                        <input type="range" id="gridRes" min="10" max="60" step="2" value="24" oninput="updateParam('gridRes', this.value)">
+                        <span class="value-display" id="gridRes-value">24</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Chaos Magnitude</label>
+                    <div class="slider-container">
+                        <input type="range" id="chaosMag" min="0" max="2" step="0.1" value="1.2" oninput="updateParam('chaosMag', this.value)">
+                        <span class="value-display" id="chaosMag-value">1.2</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Noise Scale</label>
+                    <div class="slider-container">
+                        <input type="range" id="noiseScale" min="0.005" max="0.05" step="0.001" value="0.015" oninput="updateParam('noiseScale', this.value)">
+                        <span class="value-display" id="noiseScale-value">0.015</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Evolution Speed</label>
+                    <div class="slider-container">
+                        <input type="range" id="evoSpeed" min="0" max="0.02" step="0.001" value="0.005" oninput="updateParam('evoSpeed', this.value)">
+                        <span class="value-display" id="evoSpeed-value">0.005</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors Section -->
+            <div class="control-section">
+                <h3>Refactored Palette</h3>
+                
+                <div class="color-group">
+                    <label>Primary (Accent)</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color1" value="#d97757" onchange="updateColor('color1', this.value)">
+                        <span class="color-value" id="color1-value">#d97757</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>Secondary (Structure)</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color2" value="#6a9bcc" onchange="updateColor('color2', this.value)">
+                        <span class="color-value" id="color2-value">#6a9bcc</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>Tertiary (Success)</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="color3" value="#788c5d" onchange="updateColor('color3', this.value)">
+                        <span class="color-value" id="color3-value">#788c5d</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Section -->
+            <div class="control-section">
+                <h3>Actions</h3>
+                <div class="button-row">
+                    <button class="button" onclick="resetParameters()">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Canvas Area -->
+        <div class="canvas-area">
+            <div id="canvas-container">
+                <div class="loading">Initializing generative art...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════
+        // GENERATIVE ART PARAMETERS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let params = {
+            seed: 8888,
+            gridRes: 24,
+            chaosMag: 1.2,
+            noiseScale: 0.015,
+            evoSpeed: 0.005,
+            colorPalette: ['#d97757', '#6a9bcc', '#788c5d']
+        };
+
+        let defaultParams = {...params};
+        let defaultColors = ['#cccccc', '#0000ee', '#ff0000', '#333333']; // Harsh unstyled defaults
+        let elements = [];
+        let zoff = 0;
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // P5.JS GENERATIVE ART ALGORITHM
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function setup() {
+            let canvas = createCanvas(1200, 1200);
+            canvas.parent('canvas-container');
+            
+            initializeSystem();
+            
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        function initializeSystem() {
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            
+            elements = [];
+            let cellSize = width / params.gridRes;
+            
+            for (let y = 0; y < params.gridRes; y++) {
+                for (let x = 0; x < params.gridRes; x++) {
+                    // Create a UI element at this grid cell
+                    let cx = x * cellSize + cellSize / 2;
+                    let cy = y * cellSize + cellSize / 2;
+                    
+                    elements.push(new UIElement(cx, cy, cellSize, x, y));
+                }
+            }
+            
+            zoff = random(1000); // Random starting time slice based on seed
+        }
+
+        function draw() {
+            background(250, 249, 245); // Anthropic light background
+            
+            // Draw an underlying subtle grid to represent "structure"
+            stroke(232, 230, 220);
+            strokeWeight(1);
+            let cellSize = width / params.gridRes;
+            for(let i = 0; i <= params.gridRes; i++) {
+                line(i * cellSize, 0, i * cellSize, height);
+                line(0, i * cellSize, width, i * cellSize);
+            }
+            
+            // Draw all elements
+            for (let el of elements) {
+                el.update(zoff);
+                el.display();
+            }
+            
+            zoff += params.evoSpeed;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // UI ELEMENT CLASS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        class UIElement {
+            constructor(cx, cy, size, gridX, gridY) {
+                this.baseX = cx;
+                this.baseY = cy;
+                this.size = size;
+                this.gridX = gridX;
+                this.gridY = gridY;
+                
+                // Element type: 0=Card, 1=Button, 2=TextLine, 3=Avatar
+                this.type = floor(random(4));
+                
+                // Chaotic properties (The "Default" Unstyled State)
+                let maxOffset = size * params.chaosMag;
+                this.chaoticX = cx + random(-maxOffset, maxOffset);
+                this.chaoticY = cy + random(-maxOffset, maxOffset);
+                this.chaoticRot = random(-PI, PI);
+                this.chaoticScale = random(0.2, 2.0);
+                this.chaoticColor = color(random(defaultColors));
+                
+                // Ordered properties (The "Refactored" State)
+                this.orderedColorIndex = floor(random(3));
+                
+                // For layout aesthetics, some elements span multiple cells in "ordered" mode
+                // We'll keep it simple for now and just align them perfectly within their cell
+            }
+            
+            update(z) {
+                // Calculate "Refactoring Progress" using noise
+                // We map noise(0..1) -> smoothstep to create distinct chaotic vs ordered zones
+                let n = noise(this.baseX * params.noiseScale, this.baseY * params.noiseScale, z);
+                
+                // Sharpen the transition: below 0.45 is chaos (0), above 0.55 is order (1)
+                this.progress = constrain(map(n, 0.40, 0.60, 0, 1), 0, 1);
+                
+                // Smooth easing for the progress
+                this.progress = this.easeInOutCubic(this.progress);
+                
+                // Interpolate position
+                this.x = lerp(this.chaoticX, this.baseX, this.progress);
+                this.y = lerp(this.chaoticY, this.baseY, this.progress);
+                
+                // Interpolate rotation
+                this.rot = lerp(this.chaoticRot, 0, this.progress);
+                
+                // Interpolate scale/size
+                this.currentScale = lerp(this.chaoticScale, 1.0, this.progress);
+                
+                // Interpolate color
+                let targetHex = params.colorPalette[this.orderedColorIndex];
+                let orderedC = color(targetHex);
+                // In ordered state, some elements become neutral dark/light for structure
+                if (this.type === 2 && random() > 0.5) orderedC = color('#141413'); // text
+                if (this.type === 0) orderedC = color('#ffffff'); // card background
+                
+                this.currentColor = lerpColor(this.chaoticColor, orderedC, this.progress);
+            }
+            
+            display() {
+                push();
+                translate(this.x, this.y);
+                rotate(this.rot);
+                scale(this.currentScale);
+                
+                // Draw based on element type
+                let s = this.size;
+                let margin = s * 0.15;
+                let innerSize = s - margin * 2;
+                
+                // Corner radius interpolates from sharp (0) to rounded (ordered)
+                let cornerRad = lerp(0, innerSize * 0.15, this.progress);
+                
+                // Stroke weights interpolate from thick/harsh to delicate
+                let sw = lerp(3, 1.5, this.progress);
+                strokeWeight(sw);
+                
+                if (this.type === 0) {
+                    // Card
+                    fill(this.currentColor);
+                    // Chaotic: pure black stroke. Ordered: subtle border or no stroke
+                    let strokeC = lerpColor(color('#000000'), color(this.currentColor.levels[0], this.currentColor.levels[1], this.currentColor.levels[2], 50), this.progress);
+                    stroke(strokeC);
+                    rectMode(CENTER);
+                    rect(0, 0, innerSize, innerSize, cornerRad);
+                } 
+                else if (this.type === 1) {
+                    // Button
+                    fill(this.currentColor);
+                    noStroke();
+                    rectMode(CENTER);
+                    // Buttons are wider than they are tall
+                    rect(0, 0, innerSize, innerSize * 0.4, cornerRad * 2);
+                }
+                else if (this.type === 2) {
+                    // Text Line
+                    fill(this.currentColor);
+                    noStroke();
+                    rectMode(CENTER);
+                    rect(0, 0, innerSize * 0.8, innerSize * 0.15, cornerRad);
+                }
+                else if (this.type === 3) {
+                    // Avatar
+                    fill(this.currentColor);
+                    noStroke();
+                    circle(0, 0, innerSize * 0.7);
+                }
+                
+                pop();
+            }
+            
+            easeInOutCubic(x) {
+                return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // UI CONTROL HANDLERS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function updateParam(paramName, value) {
+            params[paramName] = parseFloat(value);
+            document.getElementById(paramName + '-value').textContent = value;
+            
+            if (paramName === 'gridRes' || paramName === 'chaosMag') {
+                initializeSystem();
+            }
+        }
+
+        function updateColor(colorId, value) {
+            let index = parseInt(colorId.replace('color', '')) - 1;
+            params.colorPalette[index] = value;
+            document.getElementById(colorId + '-value').textContent = value;
+        }
+
+        function updateSeedDisplay() {
+            document.getElementById('seed-input').value = params.seed;
+        }
+
+        function updateSeed() {
+            let input = document.getElementById('seed-input');
+            let newSeed = parseInt(input.value);
+            if (newSeed && newSeed > 0) {
+                params.seed = newSeed;
+                initializeSystem();
+            } else {
+                updateSeedDisplay();
+            }
+        }
+
+        function previousSeed() {
+            params.seed = Math.max(1, params.seed - 1);
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function nextSeed() {
+            params.seed = params.seed + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function randomSeedAndUpdate() {
+            params.seed = Math.floor(Math.random() * 999999) + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function resetParameters() {
+            params = JSON.parse(JSON.stringify(defaultParams));
+            
+            document.getElementById('gridRes').value = params.gridRes;
+            document.getElementById('gridRes-value').textContent = params.gridRes;
+            document.getElementById('chaosMag').value = params.chaosMag;
+            document.getElementById('chaosMag-value').textContent = params.chaosMag;
+            document.getElementById('noiseScale').value = params.noiseScale;
+            document.getElementById('noiseScale-value').textContent = params.noiseScale;
+            document.getElementById('evoSpeed').value = params.evoSpeed;
+            document.getElementById('evoSpeed-value').textContent = params.evoSpeed;
+            
+            for(let i=0; i<3; i++) {
+                let id = 'color' + (i+1);
+                document.getElementById(id).value = params.colorPalette[i];
+                document.getElementById(id + '-value').textContent = params.colorPalette[i];
+            }
+            
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        window.addEventListener('load', function() {
+            updateSeedDisplay();
+        });
+    </script>
+</body>
+</html>

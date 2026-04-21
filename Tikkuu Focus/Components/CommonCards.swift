@@ -44,7 +44,7 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }
 
@@ -91,7 +91,7 @@ struct InfoCard: View {
             Spacer()
         }
         .padding(16)
-        .glassCard(cornerRadius: 12)
+        .glassCard(cornerRadius: 20)
     }
 }
 
@@ -130,7 +130,7 @@ struct MetricCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }
 
@@ -220,6 +220,6 @@ struct FeatureCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }

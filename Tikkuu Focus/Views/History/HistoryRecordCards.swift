@@ -47,7 +47,7 @@ struct LocationRecordRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.35, green: 0.15, blue: 0.1))
     }
 }
 
@@ -90,7 +90,7 @@ struct TransportModeRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.1, green: 0.25, blue: 0.35))
     }
     
     private func iconForMode(_ mode: String) -> String {
@@ -138,7 +138,7 @@ struct TimeRecordRow: View {
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(FormatUtilities.formatDistance(record.distanceTraveled))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                 
                 Text(L("transport.\(record.transportMode.lowercased())"))
@@ -147,7 +147,7 @@ struct TimeRecordRow: View {
             }
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.1, green: 0.15, blue: 0.35))
     }
 }
 
@@ -194,7 +194,7 @@ struct DistanceRecordRow: View {
             }
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.35, green: 0.2, blue: 0.1))
     }
     
     private func iconForMode(_ mode: String) -> String {
@@ -248,7 +248,7 @@ struct CompletedRecordRow: View {
             }
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.1, green: 0.35, blue: 0.15))
     }
 }
 
@@ -299,7 +299,7 @@ struct POIRecordRow: View {
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(record.discoveredPOICount)")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [Color.yellow, Color.orange],
@@ -314,7 +314,7 @@ struct POIRecordRow: View {
             }
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.35, green: 0.25, blue: 0.05))
     }
 }
 
@@ -371,10 +371,14 @@ struct AchievementRecordCard: View {
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 24)
+                .fill(highlightColor.opacity(0.1))
+                .background(
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(.ultraThinMaterial)
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: 24)
                         .strokeBorder(highlightColor.opacity(0.3), lineWidth: 2)
                 )
         )

@@ -15,6 +15,7 @@ import Combine
 @MainActor
 class WeatherManager: ObservableObject {
     @Published var currentWeather: CurrentWeather?
+    @Published var attribution: WeatherAttribution?
     @Published var isLoading = false
     @Published var error: Error?
     
@@ -64,6 +65,7 @@ class WeatherManager: ObservableObject {
             let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
             let weather = try await weatherService.weather(for: location)
             currentWeather = weather.currentWeather
+            attribution = try await weatherService.attribution
             
             // Update cache
             lastFetchTime = Date()

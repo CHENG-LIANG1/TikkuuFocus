@@ -10,6 +10,7 @@ import MapKit
 import SwiftData
 
 struct ActiveJourneyView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var journeyManager: JourneyManager
@@ -88,7 +89,7 @@ struct ActiveJourneyView: View {
                         Circle()
                             .stroke(Color.white.opacity(0.2), lineWidth: 1)
                     )
-                    .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
             }
 
             
@@ -111,7 +112,7 @@ struct ActiveJourneyView: View {
                     Capsule()
                         .stroke(Color.white.opacity(0.2), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
             } else if case .paused = journeyManager.state {
                 HStack(spacing: 6) {
                     Circle()
@@ -128,7 +129,7 @@ struct ActiveJourneyView: View {
                     Capsule()
                         .stroke(Color.white.opacity(0.2), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
             }
             
             Spacer()
@@ -152,7 +153,7 @@ struct ActiveJourneyView: View {
                                 Circle()
                                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             )
-                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
                     }
                 } else if case .paused = journeyManager.state {
                     Button {
@@ -171,7 +172,7 @@ struct ActiveJourneyView: View {
                                 Circle()
                                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             )
-                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
                     }
                 }
             }
@@ -194,7 +195,7 @@ struct ActiveJourneyView: View {
                                 .foregroundColor(.secondary)
                             
                             Text(FormatUtilities.formatTimeDigital(position.remainingTime))
-                                .font(.system(size: 48, weight: .bold, design: .rounded))
+                                .font(.system(size: 48, weight: .semibold, design: .rounded))
                                 .foregroundStyle(
                                     LinearGradient(
                                         colors: [
@@ -226,7 +227,7 @@ struct ActiveJourneyView: View {
                                 .rotationEffect(.degrees(-90))
                             
                             Text(FormatUtilities.formatProgress(position.progress))
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
                                 .foregroundColor(.primary)
                         }
                     }
@@ -287,9 +288,9 @@ struct ActiveJourneyView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(
-                                RoundedRectangle(cornerRadius: 16)
+                                RoundedRectangle(cornerRadius: 24)
                                     .fill(LiquidGlassStyle.primaryGradient)
-                                    .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
                             )
                     }
                     .padding(.top, 8)
@@ -297,30 +298,7 @@ struct ActiveJourneyView: View {
             }
         }
         .padding(16)
-        .background {
-            if settings.selectedVisualStyle == .liquidGlass {
-                let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
-                ZStack {
-                    shape
-                        .fill(.ultraThinMaterial)
-
-                    shape
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.14), Color.clear],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .blendMode(.overlay)
-
-                    shape
-                        .strokeBorder(Color.white.opacity(0.35), lineWidth: 1.2)
-                }
-            } else {
-                NeumorphSurface(cornerRadius: 20, depth: NeumorphDepth.inset)
-            }
-        }
+        .glassCard(cornerRadius: 20, tintColor: Color(red: 0.10, green: 0.14, blue: 0.22))
     }
     
     // MARK: - Custom Stop Dialog
@@ -328,7 +306,7 @@ struct ActiveJourneyView: View {
     @ViewBuilder
     private var customStopDialog: some View {
         ZStack {
-            Color.black.opacity(settings.selectedVisualStyle == .neumorphism ? 0.46 : 0.6)
+            Color.black.opacity(0.6)
                 .ignoresSafeArea()
                 .onTapGesture {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -342,7 +320,7 @@ struct ActiveJourneyView: View {
                 // Title and message
                 VStack(spacing: 10) {
                     Text(L("journey.stop.title"))
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .font(.system(size: 22, weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                     
                     Text(L("journey.stop.message"))
@@ -398,10 +376,10 @@ struct ActiveJourneyView: View {
             .padding(.horizontal, 28)
             .background(stopDialogContainerBackground)
             .shadow(
-                color: Color.black.opacity(settings.selectedVisualStyle == .neumorphism ? 0.24 : 0.35),
-                radius: settings.selectedVisualStyle == .neumorphism ? 24 : 35,
+                color: Color.black.opacity(0.35),
+                radius: 35,
                 x: 0,
-                y: settings.selectedVisualStyle == .neumorphism ? 12 : 18
+                y: 18
             )
             .padding(.horizontal, 36)
         }
@@ -409,180 +387,92 @@ struct ActiveJourneyView: View {
     
     @ViewBuilder
     private var stopDialogIcon: some View {
-        if settings.selectedVisualStyle == .neumorphism {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: settings.isNeumorphismLight
-                                ? [Color.red.opacity(0.72), Color.orange.opacity(0.62)]
-                                : [Color.red.opacity(0.52), Color.orange.opacity(0.42)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 74, height: 74)
-                    .shadow(color: Color.black.opacity(0.24), radius: 10, x: 0, y: 6)
-                
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-        } else {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.red.opacity(0.25),
-                                Color.orange.opacity(0.2)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 90, height: 90)
-                    .blur(radius: 20)
-                
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.red.opacity(0.15),
-                                Color.orange.opacity(0.1)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 70, height: 70)
-                
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.red, Color.orange],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .shadow(color: Color.red.opacity(0.4), radius: 25, x: 0, y: 12)
-        }
-    }
-    
-    @ViewBuilder
-    private var stopConfirmButtonBackground: some View {
-        if settings.selectedVisualStyle == .neumorphism {
-            NeumorphSurface(
-                cornerRadius: 16,
-                depth: .raised,
-                fill: AnyShapeStyle(
+        ZStack {
+            Circle()
+                .fill(
                     LinearGradient(
-                        colors: settings.isNeumorphismLight
-                            ? [Color(red: 0.95, green: 0.43, blue: 0.42), Color(red: 0.91, green: 0.33, blue: 0.37)]
-                            : [Color(red: 0.73, green: 0.26, blue: 0.29), Color(red: 0.64, green: 0.24, blue: 0.26)],
+                        colors: [
+                            Color.red.opacity(0.25),
+                            Color.orange.opacity(0.2)
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
+                .frame(width: 90, height: 90)
+                .blur(radius: 20)
+            
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.red.opacity(0.15),
+                            Color.orange.opacity(0.1)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 70, height: 70)
+            
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 36, weight: .semibold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.red, Color.orange],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        }
+        .shadow(color: Color.red.opacity(0.4), radius: 25, x: 0, y: 12)
+    }
+    
+    @ViewBuilder
+    private var stopConfirmButtonBackground: some View {
+        RoundedRectangle(cornerRadius: 24)
+            .fill(
+                LinearGradient(
+                    colors: [Color(red: 0.95, green: 0.45, blue: 0.40), Color(red: 0.90, green: 0.35, blue: 0.30)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(settings.isNeumorphismLight ? 0.28 : 0.12), lineWidth: 0.8)
+                RoundedRectangle(cornerRadius: 24)
+                    .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
             )
-        } else {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.red, Color.orange],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.2),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .blendMode(.overlay)
-            }
-        }
+            .shadow(color: Color.red.opacity(0.3), radius: 12, x: 0, y: 6)
     }
     
     @ViewBuilder
     private var stopCancelButtonBackground: some View {
-        if settings.selectedVisualStyle == .neumorphism {
-            NeumorphSurface(cornerRadius: 16, depth: .raised)
-        } else {
+        Group {
             ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.95))
                 
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.15),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .blendMode(.overlay)
-                
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 24)
+                    .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.02), lineWidth: 0.5)
             }
         }
     }
     
     @ViewBuilder
     private var stopDialogContainerBackground: some View {
-        if settings.selectedVisualStyle == .neumorphism {
-            NeumorphSurface(cornerRadius: 20, depth: .raised)
-        } else {
+        Group {
             ZStack {
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(.ultraThinMaterial)
+                    .fill(colorScheme == .dark ? Color(white: 0.1) : Color.white)
                 
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.12),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .blendMode(.overlay)
-                
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.4),
-                                Color.white.opacity(0.1)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.5
-                    )
+                    .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.02), lineWidth: 0.5)
             }
+            .shadow(color: colorScheme == .dark ? Color.black.opacity(0.06) : Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
         }
     }
+
+
     
     // MARK: - Helper Functions
 
@@ -596,6 +486,11 @@ struct ActiveJourneyView: View {
         
         // Calculate actual duration
         let actualDuration = Date().timeIntervalSince(session.startTime)
+        let sanitizedDistance = sanitizeRecordedDistance(
+            position.distanceTraveled,
+            transportMode: session.transportMode,
+            referenceDuration: actualDuration
+        )
         
         // Find nearest POI to current position as destination
         let destinationName = getNearestPOIName(to: position.coordinate) ?? L("label.destination")
@@ -614,7 +509,7 @@ struct ActiveJourneyView: View {
             destinationLatitude: position.coordinate.latitude,
             destinationLongitude: position.coordinate.longitude,
             totalDistance: session.totalDistance,
-            distanceTraveled: position.distanceTraveled,
+            distanceTraveled: sanitizedDistance,
             progress: position.progress,
             discoveredPOICount: journeyManager.discoveredPOIs.count,
             discoveredPOIsJSON: JourneyRecord.encodePOIs(journeyManager.discoveredPOIs),
@@ -647,7 +542,8 @@ struct ActiveJourneyView: View {
             isDaytime: weatherManager.isDaytime,
             progress: progress,
             isCompleted: isCompleted,
-            actualDuration: actualDuration
+            actualDuration: actualDuration,
+            attribution: weatherManager.attribution
         )
 
         // Dismiss map screen first.
@@ -690,6 +586,11 @@ struct ActiveJourneyView: View {
     
     private func saveCompletedJourney(session: JourneySession) {
         let actualDuration = Date().timeIntervalSince(session.startTime)
+        let sanitizedDistance = sanitizeRecordedDistance(
+            session.totalDistance,
+            transportMode: session.transportMode,
+            referenceDuration: session.duration
+        )
         
         // Use destination location or nearest POI
         let destinationName = getNearestPOIName(to: session.destinationLocation) ?? L("label.destination")
@@ -707,7 +608,7 @@ struct ActiveJourneyView: View {
             destinationLatitude: session.destinationLocation.latitude,
             destinationLongitude: session.destinationLocation.longitude,
             totalDistance: session.totalDistance,
-            distanceTraveled: session.totalDistance,
+            distanceTraveled: sanitizedDistance,
             progress: 1.0,
             discoveredPOICount: journeyManager.discoveredPOIs.count,
             discoveredPOIsJSON: JourneyRecord.encodePOIs(journeyManager.discoveredPOIs),
@@ -720,6 +621,18 @@ struct ActiveJourneyView: View {
         if !settings.hasCompletedFirstJourney {
             settings.hasCompletedFirstJourney = true
         }
+    }
+
+    private func sanitizeRecordedDistance(
+        _ rawDistance: Double,
+        transportMode: TransportMode,
+        referenceDuration: TimeInterval
+    ) -> Double {
+        guard rawDistance.isFinite, rawDistance > 0 else { return 0 }
+
+        let expectedDistance = transportMode.speedMps * max(referenceDuration, 0)
+        let maxReasonableDistance = max(300, expectedDistance * 1.8 + 200)
+        return min(rawDistance, maxReasonableDistance)
     }
     
 }
@@ -750,7 +663,7 @@ struct GuideFeatureRow: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(Color.white.opacity(0.1))
         )
     }
@@ -780,7 +693,7 @@ struct CompactStatCard: View {
                     .lineLimit(1)
                 
                 Text(value)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundColor(valueColor)
                     .lineLimit(1)
             }
@@ -794,46 +707,22 @@ struct CompactStatCard: View {
     }
     
     private var iconColor: some ShapeStyle {
-        if settings.selectedVisualStyle == .neumorphism {
-            return AnyShapeStyle(
-                settings.isNeumorphismLight
-                    ? Color(red: 0.35, green: 0.45, blue: 0.65)
-                    : Color(red: 0.545, green: 0.655, blue: 1.0)
-            )
-        }
         return AnyShapeStyle(LiquidGlassStyle.accentGradient)
     }
     
     private var labelColor: Color {
-        if settings.selectedVisualStyle == .neumorphism && settings.isNeumorphismLight {
-            return Color(red: 0.35, green: 0.40, blue: 0.48)
-        }
         return .secondary
     }
     
     private var valueColor: Color {
-        if settings.selectedVisualStyle == .neumorphism && settings.isNeumorphismLight {
-            return Color(red: 0.25, green: 0.30, blue: 0.38)
-        }
         return .primary
     }
     
     @ViewBuilder
     private var backgroundView: some View {
-        if settings.selectedVisualStyle == .neumorphism {
-            NeumorphSurface(
-                cornerRadius: 12,
-                depth: .raised
-            )
-        } else {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.thinMaterial)
-                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                )
-        }
+        RoundedRectangle(cornerRadius: 20)
+            .fill(Color.clear)
+            .glassCard(cornerRadius: 20, tintColor: Color(red: 0.13, green: 0.18, blue: 0.28))
     }
 }
 

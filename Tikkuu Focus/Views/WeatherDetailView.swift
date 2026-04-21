@@ -19,38 +19,24 @@ struct WeatherDetailView: View {
     @State private var isLoadingForecast = false
     @State private var selectedTab: ForecastTab = .hourly
 
-    private var isNeumorphism: Bool {
-        settings.selectedVisualStyle == .neumorphism
-    }
 
     private var primaryTextColor: Color {
-        isNeumorphism ? .primary : weatherManager.optimalTextColor
+        false ? .primary : .primary
     }
 
     private var secondaryTextColor: Color {
-        isNeumorphism ? .secondary : weatherManager.optimalSecondaryTextColor
+        false ? .secondary : .secondary
     }
 
     var body: some View {
         ZStack {
-            if isNeumorphism {
-                AnimatedGradientBackground()
-            } else {
-                WeatherBackgroundView(
-                    colors: weatherManager.weatherGradientColors,
-                    weatherCondition: weatherManager.weatherCondition,
-                    isDaytime: weatherManager.isDaytime,
-                    animationSpeed: weatherManager.gradientAnimationSpeed,
-                    overlayIntensity: weatherManager.overlayIntensity
-                )
+            AnimatedGradientBackground()
                 .ignoresSafeArea()
-            }
 
             VStack(spacing: 0) {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
                         currentSummaryCard
-                        weatherAttributionCard
                         metricsGridCard
                         tabSelector
 
@@ -113,23 +99,23 @@ struct WeatherDetailView: View {
                         secondaryColor: secondaryTextColor
                     )
                 }
+                
+                // Keep it close to badges but NOT overlapping
+                AppleWeatherAttributionView(
+                    textColor: secondaryTextColor,
+                    fontSize: 8,
+                    attribution: weatherManager.attribution
+                )
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.top, -2) // Pull it slightly closer
+                .opacity(0.7)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
+        .padding(.top, 28)
+        .padding(.bottom, 16) // Balanced padding
         .padding(.horizontal, 20)
         .glassCard(cornerRadius: 20)
-    }
-
-    private var weatherAttributionCard: some View {
-        AppleWeatherAttributionView(
-            textColor: primaryTextColor,
-            secondaryColor: secondaryTextColor
-        )
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 14)
-        .glassCard(cornerRadius: 14)
     }
 
     private var metricsGridCard: some View {
@@ -336,7 +322,7 @@ struct WeatherBadge: View {
                 .foregroundColor(textColor.opacity(0.9))
 
             Text(value)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundColor(textColor)
 
             Text(title)
@@ -347,12 +333,8 @@ struct WeatherBadge: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .background {
-            if settings.selectedVisualStyle == .neumorphism {
-                NeumorphSurface(cornerRadius: 12, depth: .inset)
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.14))
-            }
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white.opacity(0.14))
         }
     }
 }
@@ -378,7 +360,7 @@ struct WeatherMetricTile: View {
                     .foregroundColor(secondaryColor)
 
                 Text(value)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(textColor)
             }
 
@@ -388,12 +370,8 @@ struct WeatherMetricTile: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .background {
-            if settings.selectedVisualStyle == .neumorphism {
-                NeumorphSurface(cornerRadius: 12, depth: .inset)
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.14))
-            }
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white.opacity(0.14))
         }
     }
 }
@@ -412,7 +390,7 @@ struct ForecastTabButton: View {
                 .foregroundColor(isSelected ? .white : textColor)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .insetSurface(cornerRadius: 12, isActive: isSelected)
+                .insetSurface(cornerRadius: 20, isActive: isSelected)
         }
         .buttonStyle(ScaleButtonStyle())
     }
@@ -444,23 +422,15 @@ struct HourlyTile: View {
                 .frame(height: 24)
 
             Text(String(format: "%.0f°", hour.temperature.value))
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundColor(textColor)
         }
         .frame(width: 76)
         .padding(.vertical, 12)
         .background {
-            if settings.selectedVisualStyle == .neumorphism {
-                NeumorphSurface(
-                    cornerRadius: 12,
-                    depth: isCurrent ? .raised : .inset,
-                    fill: isCurrent ? AnyShapeStyle(Color(red: 0.42, green: 0.56, blue: 0.92)) : nil
-                )
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.14)))
-            }
+            RoundedRectangle(cornerRadius: 20)
+                .fill(isCurrent ? AnyShapeStyle(LiquidGlassStyle.primaryGradient) : AnyShapeStyle(Color.white.opacity(0.14)))
         }
     }
 }
@@ -514,7 +484,7 @@ struct DailyTile: View {
                 .frame(width: 24)
 
             Text(String(format: "%.0f°", day.lowTemperature.value))
-                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundColor(secondaryColor)
                 .frame(width: 34, alignment: .trailing)
@@ -522,7 +492,7 @@ struct DailyTile: View {
             GeometryReader { proxy in
                 let width = max(0, proxy.size.width)
                 ZStack(alignment: .leading) {
-                    if settings.selectedVisualStyle == .neumorphism {
+                    if false {
                         RoundedRectangle(cornerRadius: 3)
                             .fill(secondaryColor.opacity(0.18))
                             .frame(height: 6)
@@ -537,7 +507,7 @@ struct DailyTile: View {
                     }
 
                     Group {
-                        if settings.selectedVisualStyle == .neumorphism {
+                        if false {
                             RoundedRectangle(cornerRadius: 3)
                                 .fill(
                                     LinearGradient(
@@ -564,7 +534,7 @@ struct DailyTile: View {
             .frame(height: 6)
 
             Text(String(format: "%.0f°", day.highTemperature.value))
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundColor(textColor)
                 .frame(width: 34, alignment: .leading)
@@ -572,12 +542,8 @@ struct DailyTile: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 10)
         .background {
-            if settings.selectedVisualStyle == .neumorphism {
-                NeumorphSurface(cornerRadius: 12, depth: isToday ? .raised : .inset)
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isToday ? AnyShapeStyle(Color.white.opacity(0.2)) : AnyShapeStyle(Color.white.opacity(0.08)))
-            }
+            RoundedRectangle(cornerRadius: 20)
+                .fill(isToday ? AnyShapeStyle(Color.white.opacity(0.2)) : AnyShapeStyle(Color.white.opacity(0.08)))
         }
     }
 }

@@ -25,6 +25,9 @@ fileprivate struct JourneyConfig {
     static let preparationMatchDistance: CLLocationDistance = 220 // meters
     static let poiMovementThreshold: Double = 50 // meters
     static let routeDistanceAcceptanceRatio: Double = 0.15 // 15%
+    static let routeDistanceReasonableRatio: Double = 0.60 // 60%
+    static let routeDistanceHardMinRatio: Double = 0.30 // 30%
+    static let routeDistanceHardMaxRatio: Double = 1.80 // 180%
 }
 
 /// Manages the journey logic: destination generation, routing, and progress tracking
@@ -234,6 +237,7 @@ class JourneyManager: ObservableObject {
         transportMode: TransportMode
     ) async throws -> (destination: CLLocationCoordinate2D, route: RouteResult) {
         let maxAttempts = 6
+        let targetDistance = max(distance, 1)
         var lastError: Error = JourneyError.noRouteFound
         var bestCandidate: (destination: CLLocationCoordinate2D, route: RouteResult, distanceErrorRatio: Double)?
         
@@ -246,6 +250,7 @@ class JourneyManager: ObservableObject {
         
         for (index, bearing) in bearings.prefix(maxAttempts).enumerated() {
             let destination = start.coordinate(at: distance, bearing: bearing)
+            guard isCoordinateValidForRouting(destination) else { continue }
             
             do {
                 let route = try await calculateRouteStrict(
@@ -254,7 +259,7 @@ class JourneyManager: ObservableObject {
                     transportMode: transportMode,
                     targetDistance: distance
                 )
-                let distanceErrorRatio = abs(route.distance - distance) / max(distance, 1)
+                let distanceErrorRatio = abs(route.distance - targetDistance) / targetDistance
                 if bestCandidate == nil || distanceErrorRatio < (bestCandidate?.distanceErrorRatio ?? .greatestFiniteMagnitude) {
                     bestCandidate = (destination, route, distanceErrorRatio)
                 }
@@ -273,8 +278,17 @@ class JourneyManager: ObservableObject {
             }
         }
 
-        if let bestCandidate {
+        if let bestCandidate,
+           bestCandidate.distanceErrorRatio <= JourneyConfig.routeDistanceReasonableRatio {
             return (bestCandidate.destination, bestCandidate.route)
+        }
+
+        if let fallback = makeFallbackRoute(
+            from: start,
+            preferredDestination: bestCandidate?.destination,
+            targetDistance: targetDistance
+        ) {
+            return fallback
         }
 
         throw lastError
@@ -540,12 +554,20 @@ class JourneyManager: ObservableObject {
         duration: TimeInterval,
         transportMode: TransportMode
     ) {
+        let targetDistance = max(transportMode.speedMps * duration, 1)
+        let safeRoute = sanitizeRouteResult(
+            route,
+            start: start,
+            destination: destination,
+            targetDistance: targetDistance
+        )
+
         let session = JourneySession(
             id: UUID(),
             startLocation: start,
             destinationLocation: destination,
-            route: route.coordinates,
-            totalDistance: route.distance,
+            route: safeRoute.coordinates,
+            totalDistance: safeRoute.distance,
             duration: duration,
             transportMode: transportMode,
             startTime: Date()
@@ -606,6 +628,70 @@ class JourneyManager: ObservableObject {
         } catch {
             return nil
         }
+    }
+
+    private func isCoordinateValidForRouting(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        guard CLLocationCoordinate2DIsValid(coordinate) else { return false }
+        return coordinate.latitude.isFinite && coordinate.longitude.isFinite
+    }
+
+    private func makeFallbackRoute(
+        from start: CLLocationCoordinate2D,
+        preferredDestination: CLLocationCoordinate2D?,
+        targetDistance: Double
+    ) -> (destination: CLLocationCoordinate2D, route: RouteResult)? {
+        let fallbackDistance = max(targetDistance, 50)
+        var fallbackDestinations: [CLLocationCoordinate2D] = []
+
+        if let preferredDestination {
+            fallbackDestinations.append(preferredDestination)
+        }
+        fallbackDestinations.append(start.coordinate(at: fallbackDistance, bearing: Double.random(in: 0..<360)))
+        fallbackDestinations.append(start.coordinate(at: fallbackDistance, bearing: 45))
+        fallbackDestinations.append(start.coordinate(at: fallbackDistance, bearing: 225))
+
+        for destination in fallbackDestinations where isCoordinateValidForRouting(destination) {
+            let straightLineDistance = start.distance(to: destination)
+            guard straightLineDistance.isFinite, straightLineDistance > 0 else { continue }
+            let route = RouteResult(
+                coordinates: [start, destination],
+                distance: straightLineDistance
+            )
+            return (destination, route)
+        }
+
+        return nil
+    }
+
+    private func sanitizeRouteResult(
+        _ route: RouteResult,
+        start: CLLocationCoordinate2D,
+        destination: CLLocationCoordinate2D,
+        targetDistance: Double
+    ) -> RouteResult {
+        let isDistanceFinite = route.distance.isFinite && route.distance > 0
+        let ratio = route.distance / max(targetDistance, 1)
+        let isRatioReasonable = ratio >= JourneyConfig.routeDistanceHardMinRatio &&
+            ratio <= JourneyConfig.routeDistanceHardMaxRatio
+        let hasValidCoordinates = route.coordinates.count >= 2 &&
+            route.coordinates.allSatisfy { isCoordinateValidForRouting($0) }
+
+        if isDistanceFinite, isRatioReasonable, hasValidCoordinates {
+            return route
+        }
+
+        if let fallback = makeFallbackRoute(
+            from: start,
+            preferredDestination: destination,
+            targetDistance: targetDistance
+        ) {
+            return fallback.route
+        }
+
+        return RouteResult(
+            coordinates: [start, destination],
+            distance: max(targetDistance, 1)
+        )
     }
     
     /// Complete the journey
@@ -897,13 +983,15 @@ extension CLLocationCoordinate2D {
     ///   - distance: Distance in meters
     ///   - bearing: Bearing in degrees (0-360)
     func coordinate(at distance: Double, bearing: Double) -> CLLocationCoordinate2D {
+        guard distance.isFinite, bearing.isFinite else { return self }
+
         let earthRadius = 6371000.0 // Earth's radius in meters
         
         let bearingRadians = bearing * .pi / 180.0
         let latRadians = latitude * .pi / 180.0
         let lonRadians = longitude * .pi / 180.0
         
-        let angularDistance = distance / earthRadius
+        let angularDistance = max(distance, 0) / earthRadius
         
         let newLatRadians = asin(
             sin(latRadians) * cos(angularDistance) +
@@ -915,10 +1003,11 @@ extension CLLocationCoordinate2D {
             cos(angularDistance) - sin(latRadians) * sin(newLatRadians)
         )
         
-        return CLLocationCoordinate2D(
-            latitude: newLatRadians * 180.0 / .pi,
-            longitude: newLonRadians * 180.0 / .pi
-        )
+        let newLatitude = max(min(newLatRadians * 180.0 / .pi, 90), -90)
+        let rawLongitude = newLonRadians * 180.0 / .pi
+        let normalizedLongitude = ((rawLongitude + 540).truncatingRemainder(dividingBy: 360)) - 180
+
+        return CLLocationCoordinate2D(latitude: newLatitude, longitude: normalizedLongitude)
     }
 }
 

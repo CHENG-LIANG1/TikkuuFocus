@@ -72,7 +72,7 @@
 "weather.now" = "Now";
 "weather.today" = "Today";
 "weather.attribution.trademark" = " Weather";
-"weather.attribution.link" = "https://weatherkit.apple.com/legal-attribution.html";
+"weather.attribution.link" = "Data Sources";
 
 // Map Controls
 "map.recenter" = "Recenter";
@@ -142,12 +142,13 @@
 // Settings
 "settings.title" = "Settings";
 "settings.style" = "Visual Style";
+"settings.style.default" = "Default";
 "settings.style.neumorphism" = "Neumorphism";
 "settings.style.liquid.subtitle" = "Translucent glass, glowing highlights";
 "settings.style.neumorphism.subtitle" = "Soft depth, embossed surfaces";
 "settings.theme" = "Theme";
 "settings.theme.weather" = "Weather Adaptive";
-"settings.theme.weather.subtitle" = "Liquid Glass colors follow current weather";
+"settings.theme.weather.subtitle" = "Default colors follow current weather";
 "settings.theme.neumorphism.dark" = "Dark";
 "settings.theme.neumorphism.dark.subtitle" = "Lower luminance with stronger depth";
 "settings.theme.neumorphism.light" = "Light";

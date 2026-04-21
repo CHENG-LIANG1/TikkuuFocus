@@ -27,6 +27,7 @@ struct SetupView: View {
     @State private var selectedLocation: LocationSource = .currentLocation
     @State private var showLocationPicker = false
     @State private var showHistory = false
+    @State private var showTrophies = false
     @State private var showSettings = false
     @ObservedObject private var settings = AppSettings.shared
     @State private var cardsAppeared = false
@@ -46,14 +47,6 @@ struct SetupView: View {
     
     // MARK: - Theme Colors
     
-    private var isNeumorphism: Bool {
-        settings.selectedVisualStyle == .neumorphism
-    }
-    
-    private var isNeumorphismLight: Bool {
-        isNeumorphism && settings.selectedNeumorphismTone == .light
-    }
-
     private var isEnergySavingMode: Bool {
         reduceMotion || ProcessInfo.processInfo.isLowPowerModeEnabled
     }
@@ -61,15 +54,11 @@ struct SetupView: View {
     private let weatherFetchMinDistance: CLLocationDistance = 500
     
     private var baseTextColor: Color {
-        isNeumorphism 
-            ? (isNeumorphismLight ? Color(red: 0.25, green: 0.30, blue: 0.38) : .white)
-            : weatherManager.optimalTextColor
+        .primary
     }
     
     private var baseSecondaryTextColor: Color {
-        isNeumorphism 
-            ? (isNeumorphismLight ? Color(red: 0.45, green: 0.50, blue: 0.58) : Color.white.opacity(0.7))
-            : weatherManager.optimalSecondaryTextColor
+        .secondary
     }
     
     private var mainScrollViewContent: some View {
@@ -81,10 +70,6 @@ struct SetupView: View {
             
             // Weather & History Row
             weatherAndHistoryRow
-                .padding(.horizontal, 24)
-                .padding(.bottom, 10)
-
-            homeWeatherAttribution
                 .padding(.horizontal, 24)
                 .padding(.bottom, 18)
             
@@ -116,27 +101,8 @@ struct SetupView: View {
     }
     
     var body: some View {
-        let weatherColors = weatherManager.weatherGradientColors
-        let weatherCondition = weatherManager.weatherCondition
-        let isDaytime = weatherManager.isDaytime
-        let animSpeed = weatherManager.gradientAnimationSpeed
-        let overlayInt = weatherManager.overlayIntensity
-        
         return ZStack {
-            if isNeumorphism {
-                AnimatedGradientBackground()
-            } else {
-                // Weather-based background with decorations
-                WeatherBackgroundView(
-                    colors: weatherColors,
-                    weatherCondition: weatherCondition,
-                    isDaytime: isDaytime,
-                    animationSpeed: animSpeed,
-                    overlayIntensity: overlayInt
-                )
-                .animation(.easeInOut(duration: 1.5), value: weatherColors)
-                .animation(.easeInOut(duration: 1.5), value: isDaytime)
-            }
+            AnimatedGradientBackground()
             
             ScrollView(showsIndicators: false) {
                 mainScrollViewContent
@@ -296,6 +262,9 @@ struct SetupView: View {
         .sheet(isPresented: $showHistory) {
             HistoryView()
         }
+        .sheet(isPresented: $showTrophies) {
+            TrophyView()
+        }
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
@@ -328,6 +297,7 @@ struct SetupView: View {
                     progress: payload.progress,
                     isCompleted: payload.isCompleted,
                     actualDuration: payload.actualDuration,
+                    attribution: payload.attribution,
                     onDismiss: {
                         journeyManager.pendingSummaryPayload = nil
                     }
@@ -451,13 +421,11 @@ struct SetupView: View {
                 showWeatherDetail = true
             } label: {
                 WeatherWidget(weatherManager: weatherManager)
-                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(CardButtonStyle())
+            .buttonStyle(ScaleButtonStyle())
             .scaleEffect(cardsAppeared ? 1 : 0.9)
             .opacity(cardsAppeared ? 1 : 0)
             .offset(x: cardsAppeared ? 0 : -15)
-            .opacity(cardsAppeared ? 1 : 0)
             .animation(AnimationConfig.smoothSpring.delay(0.04), value: cardsAppeared)
             
             Button {
@@ -465,29 +433,16 @@ struct SetupView: View {
                 showHistory = true
             } label: {
                 HistorySummaryWidget(records: monthRecords)
-                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(CardButtonStyle())
+            .buttonStyle(ScaleButtonStyle())
             .scaleEffect(cardsAppeared ? 1 : 0.9)
             .opacity(cardsAppeared ? 1 : 0)
             .offset(x: cardsAppeared ? 0 : 15)
-            .opacity(cardsAppeared ? 1 : 0)
             .animation(AnimationConfig.smoothSpring.delay(0.04), value: cardsAppeared)
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var homeWeatherAttribution: some View {
-        AppleWeatherAttributionView(
-            textColor: baseTextColor,
-            secondaryColor: baseSecondaryTextColor,
-            fontSize: 9
-        )
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 14)
-        .glassCard(cornerRadius: 12)
-    }
-    
     // MARK: - Header
     
     private var headerView: some View {
@@ -497,33 +452,23 @@ struct SetupView: View {
                 Button {
                     HapticManager.light()
                     withAnimation(AnimationConfig.quickSpring) {
-                        showHistory = true
+                        showTrophies = true
                     }
                 } label: {
-                    Image(systemName: "clock.arrow.circlepath")
+                    Image(systemName: "trophy.fill")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(baseTextColor)
                         .frame(width: 44, height: 44)
                         .background(
                             Group {
-                                if settings.selectedVisualStyle == .neumorphism {
-                                    Circle()
-                                        .fill(NeumorphismStyle.surface(for: colorScheme))
-                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 6, x: 4, y: 4)
-                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 4, x: -3, y: -3)
-                                } else {
-                                    // Liquid Glass: transparent with subtle border
-                                    Circle()
-                                        .fill(Color.clear)
-                                        .overlay(
-                                            Circle()
-                                                .stroke(baseTextColor.opacity(0.25), lineWidth: 1.0)
-                                        )
-                                }
+                                // Clean frosted glass
+                                Circle()
+                                    .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.5))
+                                    .background(Circle().fill(.ultraThinMaterial))
                             }
                         )
                 }
-                .buttonStyle(PressableButtonStyle())
+                .buttonStyle(ScaleButtonStyle())
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
                 .opacity(cardsAppeared ? 1 : 0)
                 .animation(AnimationConfig.bouncySpring.delay(0.0), value: cardsAppeared)
@@ -533,9 +478,9 @@ struct SetupView: View {
             
             // Center title (absolutely centered)
             Text("Roam Focus")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundColor(baseTextColor)
-                .shadow(color: isNeumorphismLight ? Color.white.opacity(0.5) : (weatherManager.isBackgroundDark ? Color.black.opacity(0.3) : Color.white.opacity(0.5)), radius: 2, x: 0, y: 1)
+                .shadow(color: colorScheme == .dark ? Color.black.opacity(0.06) : Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
                 .opacity(cardsAppeared ? 1 : 0)
                 .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.0), value: cardsAppeared)
@@ -556,26 +501,15 @@ struct SetupView: View {
                         .frame(width: 44, height: 44)
                         .background(
                             Group {
-                                if settings.selectedVisualStyle == .neumorphism {
-                                    Circle()
-                                        .fill(NeumorphismStyle.surface(for: colorScheme))
-                                        .shadow(color: NeumorphismStyle.raisedBottomShadow(for: colorScheme), radius: 6, x: 4, y: 4)
-                                        .shadow(color: NeumorphismStyle.raisedTopHighlight(for: colorScheme), radius: 4, x: -3, y: -3)
-                                } else {
-                                    // Liquid Glass: transparent with subtle border
-                                    Circle()
-                                        .fill(Color.clear)
-                                        .overlay(
-                                            Circle()
-                                                .stroke(baseTextColor.opacity(0.25), lineWidth: 1.0)
-                                        )
-                                }
+                                // Clean frosted glass
+                                Circle()
+                                    .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.5))
+                                    .background(Circle().fill(.ultraThinMaterial))
                             }
                         )
                 }
-                .buttonStyle(PressableButtonStyle())
+                .buttonStyle(ScaleButtonStyle())
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
-                .opacity(cardsAppeared ? 1 : 0)
                 .opacity(cardsAppeared ? 1 : 0)
                 .animation(AnimationConfig.bouncySpring.delay(0.0), value: cardsAppeared)
             }
@@ -617,7 +551,7 @@ struct SetupView: View {
         } label: {
             VStack(alignment: .leading, spacing: 14) {
                 Text(L("location.selectStart"))
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 19, weight: .semibold, design: .rounded))
                     .foregroundColor(baseTextColor)
                 
                 HStack(spacing: 12) {
@@ -626,7 +560,7 @@ struct SetupView: View {
                         // Show emoji for preset locations
                         ZStack {
                             Circle()
-                                .fill(LiquidGlassStyle.primaryGradient)
+                                .fill(Color.accentColor)
                                 .frame(width: 44, height: 44)
                             
                             Text(location.emoji)
@@ -636,7 +570,7 @@ struct SetupView: View {
                         // Show SF Symbol for current location and custom
                         ZStack {
                             Circle()
-                                .fill(LiquidGlassStyle.primaryGradient)
+                                .fill(Color.accentColor)
                                 .frame(width: 44, height: 44)
                             
                             Image(systemName: locationIcon)
@@ -665,8 +599,11 @@ struct SetupView: View {
                         .foregroundColor(baseSecondaryTextColor)
                 }
             }
-            .padding(20)
-            .glassCard(cornerRadius: 20)
+            .padding(24)
+            .glassCard(
+                cornerRadius: 28,
+                tintColor: colorScheme == .dark ? Color(red: 0.15, green: 0.2, blue: 0.3).opacity(0.6) : Color.blue.opacity(0.1)
+            )
         }
     }
     
@@ -713,7 +650,7 @@ struct SetupView: View {
     private var transportSelectionCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L("label.selectTransport"))
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold, design: .rounded))
                 .foregroundColor(baseTextColor)
             
             HStack(spacing: 10) {
@@ -731,8 +668,11 @@ struct SetupView: View {
                 }
             }
         }
-        .padding(20)
-        .glassCard(cornerRadius: 20)
+        .padding(24)
+        .glassCard(
+            cornerRadius: 28,
+            tintColor: colorScheme == .dark ? Color(red: 0.1, green: 0.25, blue: 0.15).opacity(0.6) : Color.green.opacity(0.1)
+        )
     }
     
     // MARK: - Duration Selection
@@ -740,7 +680,7 @@ struct SetupView: View {
     private var durationSelectionCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L("label.selectDuration"))
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold, design: .rounded))
                 .foregroundColor(baseTextColor)
             
             VStack(spacing: 14) {
@@ -769,8 +709,8 @@ struct SetupView: View {
                         Spacer()
                         
                         Text("\(selectedDuration) \(L("time.unit.min"))")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.accentColor)
                     }
                     
                     Slider(value: Binding(
@@ -787,16 +727,17 @@ struct SetupView: View {
                 .padding(.top, 4)
             }
         }
-        .padding(20)
-        .glassCard(cornerRadius: 20)
+        .padding(24)
+        .glassCard(
+            cornerRadius: 28,
+            tintColor: colorScheme == .dark ? Color(red: 0.25, green: 0.15, blue: 0.3).opacity(0.6) : Color.purple.opacity(0.1)
+        )
     }
     
     // MARK: - Start Button (优化尺寸)
     
     private var startButton: some View {
-        let ctaTextColor: Color = settings.isNeumorphismLight
-            ? Color(red: 0.18, green: 0.22, blue: 0.32)
-            : .white
+        let ctaTextColor: Color = .white
 
         return Button {
             HapticManager.medium()
@@ -827,137 +768,66 @@ struct SetupView: View {
                             .frame(width: 20, height: 20)
                             .rotationEffect(.degrees(preparingRotation))
                     }
+                    .frame(width: 26, height: 26)
                     .scaleEffect(preparingPulse)
                     .transition(.scale.combined(with: .opacity))
                     
                     Text(L("transport.status.warmingUp"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .kerning(0.1)
                         .transition(.opacity)
                 } else {
-                    // Normal state
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .transition(.scale.combined(with: .opacity))
-                    
+                    // Normal state: text only
                     Text(L("label.startJourney"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .kerning(0.1)
                         .transition(.opacity)
                 }
             }
             .foregroundColor(ctaTextColor)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 17)
             .background(
                 Group {
-                    if settings.selectedVisualStyle == .neumorphism {
-                        ZStack {
-                            NeumorphSurface(
-                                cornerRadius: 16,
-                                depth: canStartJourney ? .raised : .inset,
-                                fill: AnyShapeStyle(
-                                    canStartJourney
-                                    ? LinearGradient(
-                                        colors: [
-                                            Color(red: 0.45, green: 0.57, blue: 0.90),
-                                            Color(red: 0.36, green: 0.48, blue: 0.80)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                    : LinearGradient(
-                                        colors: [
-                                            NeumorphismStyle.pressedSurface(for: colorScheme).opacity(0.95),
-                                            NeumorphismStyle.surface(for: colorScheme).opacity(0.92)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                            )
-                        }
-                    } else {
-                        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        ZStack {
-                            shape
-                                .fill(.ultraThinMaterial)
+                    PremiumAnimatedGradientButtonBackground(isEnabled: canStartJourney)
 
-                            shape
-                                .fill(
-                                    canStartJourney ?
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 0.34, green: 0.62, blue: 1.0).opacity(0.36),
-                                            Color(red: 0.46, green: 0.42, blue: 0.96).opacity(0.32)
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    ) :
-                                    LinearGradient(
-                                        colors: [Color.gray.opacity(0.20)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-
+                        if canStartJourney && !isStarting && !isEnergySavingMode {
+                            let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
                             shape
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.26),
-                                            Color.white.opacity(0.0)
+                                            Color.white.opacity(0),
+                                            Color.white.opacity(0.3),
+                                            Color.white.opacity(0)
                                         ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                                        startPoint: .leading,
+                                        endPoint: .trailing
                                     )
                                 )
-                                .blendMode(.overlay)
-
-                            shape
-                                .strokeBorder(Color.white.opacity(0.28), lineWidth: 1.1)
-
-                            // Shimmer effect (only when not preparing and motion is enabled)
-                            if canStartJourney && !isStarting && !isEnergySavingMode {
-                                shape
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0),
-                                                Color.white.opacity(0.25),
-                                                Color.white.opacity(0)
-                                            ],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .offset(x: -200 + buttonGlow * 400)
-                                    .mask(shape)
-                            }
+                                .offset(x: -220 + buttonGlow * 440)
+                                .mask(shape)
                         }
-                    }
                 }
             )
             .shadow(
-                color: settings.selectedVisualStyle == .neumorphism
-                    ? Color.clear
-                    : (canStartJourney
-                        ? Color(red: 0.3, green: 0.5, blue: 0.9).opacity(0.3 + buttonGlow * 0.15)
-                        : Color.clear),
-                radius: settings.selectedVisualStyle == .neumorphism ? 0 : (12 + buttonGlow * 6),
+                color: canStartJourney
+                    ? Color(red: 0.28, green: 0.49, blue: 0.92).opacity(0.30 + buttonGlow * 0.14)
+                    : Color.black.opacity(0.06),
+                radius: canStartJourney ? (14 + buttonGlow * 6) : 6,
                 x: 0,
-                y: settings.selectedVisualStyle == .neumorphism ? 0 : (6 + buttonGlow * 2)
+                y: canStartJourney ? (8 + buttonGlow * 2) : 3
             )
             .shadow(
-                color: settings.selectedVisualStyle == .neumorphism
-                    ? Color.clear
-                    : Color.black.opacity(canStartJourney ? 0.2 : 0.08),
-                radius: settings.selectedVisualStyle == .neumorphism ? 0 : 10,
+                color: Color.black.opacity(canStartJourney ? 0.22 : 0.08),
+                radius: 10,
                 x: 0,
-                y: settings.selectedVisualStyle == .neumorphism ? 0 : 5
+                y: 5
             )
         }
         .disabled(!canStartJourney)
         .scaleEffect(buttonScale)
-        .opacity(canStartJourney ? 1.0 : 0.5)
+        .opacity(canStartJourney ? 1.0 : 0.56)
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: canStartJourney)
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isStarting)
     }
@@ -1023,7 +893,7 @@ struct SetupView: View {
                 
                 // 标题
                 Text("🎉 " + L("guide.firstJourney.title"))
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                 
@@ -1077,7 +947,7 @@ struct SetupView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: 24)
                                 .fill(
                                     LinearGradient(
                                         colors: [Color.green, Color.teal],
@@ -1092,7 +962,7 @@ struct SetupView: View {
             }
             .padding(.vertical, 40)
             .padding(.horizontal, 24)
-            .themedRoundedBackground(cornerRadius: 28, depth: .inset)
+            .themedRoundedBackground(cornerRadius: 28)
             .padding(.horizontal, 32)
         }
     }
@@ -1267,7 +1137,7 @@ struct OnboardingStepView: View {
                     .frame(width: 50, height: 50)
                 
                 Text(number)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(color)
             }
             
@@ -1293,6 +1163,88 @@ struct OnboardingStepView: View {
             
             Spacer()
         }
+    }
+}
+
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Premium Animated Gradient Button Background
+
+struct PremiumAnimatedGradientButtonBackground: View {
+    @State private var animateGradient = false
+    let isEnabled: Bool
+    
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
+        
+        ZStack {
+            if isEnabled {
+                // Base Animated Gradient
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.18, green: 0.46, blue: 0.93),
+                                Color(red: 0.28, green: 0.63, blue: 0.96),
+                                Color(red: 0.42, green: 0.50, blue: 0.94),
+                                Color(red: 0.31, green: 0.44, blue: 0.90)
+                            ],
+                            startPoint: animateGradient ? .topLeading : .bottomTrailing,
+                            endPoint: animateGradient ? .bottomTrailing : .topLeading
+                        )
+                    )
+                    .hueRotation(.degrees(animateGradient ? 8 : -4))
+                    .animation(.easeInOut(duration: 4.2).repeatForever(autoreverses: true), value: animateGradient)
+                    .onAppear {
+                        animateGradient = true
+                    }
+
+                // Top highlight for glassy premium look
+                shape
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.30), Color.white.opacity(0.01)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .blendMode(.overlay)
+
+                // Soft center bloom for richer depth
+                shape
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.white.opacity(0.22),
+                                Color.white.opacity(0.0)
+                            ],
+                            center: animateGradient ? .topLeading : .topTrailing,
+                            startRadius: 0,
+                            endRadius: 180
+                        )
+                    )
+                    .blendMode(.screen)
+
+                shape
+                    .strokeBorder(Color.white.opacity(0.30), lineWidth: 0.9)
+
+                shape
+                    .strokeBorder(Color.black.opacity(0.08), lineWidth: 0.6)
+                    .blur(radius: 0.3)
+            } else {
+                shape
+                    .fill(Color.secondary.opacity(0.2))
+                shape
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+            }
+        }
+        .shadow(color: isEnabled ? Color(red: 0.31, green: 0.56, blue: 0.94).opacity(0.38) : Color.clear, radius: 12, x: 0, y: 6)
     }
 }
 
@@ -1366,7 +1318,7 @@ struct HistorySummaryWidget: View {
             // Stats
             VStack(alignment: .leading, spacing: 6) {
                 Text(FormatUtilities.formatTime(totalTime))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(adaptiveTextColor)
                 
                 HStack(spacing: 4) {
@@ -1382,9 +1334,9 @@ struct HistorySummaryWidget: View {
             // Match WeatherWidget height for consistent card sizing
             .frame(height: 52, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .glassCard(cornerRadius: 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(20)
+        .glassCard(cornerRadius: 24, tintColor: Color.indigo)
     }
 }
 
@@ -1441,9 +1393,9 @@ struct WeatherWidget: View {
             // Weather info
             VStack(alignment: .leading, spacing: 6) {
                 Text(weatherManager.temperatureString)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(adaptiveTextColor)
-                
+
                 // Always show description to maintain consistent card height
                 Text(weatherManager.isLoading ? L("common.loading") : weatherManager.weatherDescription)
                     .font(.system(size: 13, weight: .medium))
@@ -1451,12 +1403,20 @@ struct WeatherWidget: View {
                     .lineLimit(1)
                     .opacity(weatherManager.isLoading || !weatherManager.weatherDescription.isEmpty ? 1 : 0)
             }
-            // Ensure consistent height during loading
             .frame(height: 52, alignment: .leading)
+            .padding(.bottom, 2) // Subtle gap before attribution
+
+            // Attribution
+            AppleWeatherAttributionView(
+                textColor: adaptiveSecondaryTextColor,
+                fontSize: 8,
+                attribution: weatherManager.attribution
+            )
+            .opacity(0.8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .glassCard(cornerRadius: 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(20)
+        .glassCard(cornerRadius: 24, tintColor: Color.blue)
     }
 }
 

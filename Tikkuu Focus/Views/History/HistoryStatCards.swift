@@ -160,7 +160,7 @@ struct AchievementCard: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundColor(hasData ? .primary : .secondary)
                 
                 Text(title)
@@ -171,7 +171,7 @@ struct AchievementCard: View {
         }
         .frame(height: 120)
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
         .opacity(hasData ? 1.0 : 0.6)
     }
 }
@@ -197,7 +197,7 @@ struct MilestoneStatCard: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(.primary)
                 
                 Text(title)
@@ -208,6 +208,6 @@ struct MilestoneStatCard: View {
             Spacer()
         }
         .padding(16)
-        .glassCard(cornerRadius: 16)
+        .glassCard(cornerRadius: 24)
     }
 }

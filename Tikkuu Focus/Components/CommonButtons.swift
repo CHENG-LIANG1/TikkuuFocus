@@ -10,14 +10,13 @@ import SwiftUI
 // MARK: - Primary Button
 
 struct PrimaryButton: View {
-    @ObservedObject private var settings = AppSettings.shared
     let title: String
     let icon: String?
     let action: () -> Void
     let isLoading: Bool
 
     private var accentTextColor: Color {
-        settings.isNeumorphismLight ? Color(red: 0.18, green: 0.22, blue: 0.32) : .white
+        .white
     }
     
     init(title: String, icon: String? = nil, isLoading: Bool = false, action: @escaping () -> Void) {
@@ -45,18 +44,10 @@ struct PrimaryButton: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background {
-                if settings.selectedVisualStyle == .neumorphism {
-                    NeumorphSurface(
-                        cornerRadius: 16,
-                        depth: .raised,
-                        fill: AnyShapeStyle(Color(red: 0.42, green: 0.56, blue: 0.92))
-                    )
-                } else {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(GradientStyles.primaryGradient)
-                }
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(GradientStyles.primaryGradient)
             }
-            .shadow(color: Color.blue.opacity(settings.selectedVisualStyle == .neumorphism ? 0.2 : 0.3), radius: 10, x: 0, y: 5)
+            .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
         }
         .disabled(isLoading)
         .buttonStyle(ScaleButtonStyle())
@@ -92,7 +83,7 @@ struct SecondaryButton: View {
             .padding(.vertical, 12)
             .insetSurface(cornerRadius: 12, isActive: false)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
@@ -117,21 +108,20 @@ struct IconButton: View {
                 .frame(width: size, height: size)
                 .glassCard(cornerRadius: size / 2)
         }
-        .buttonStyle(PressableButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
 // MARK: - Gradient Button
 
 struct GradientButton: View {
-    @ObservedObject private var settings = AppSettings.shared
     let title: String
     let icon: String?
     let gradient: LinearGradient
     let action: () -> Void
 
     private var accentTextColor: Color {
-        settings.isNeumorphismLight ? Color(red: 0.18, green: 0.22, blue: 0.32) : .white
+        .white
     }
     
     init(title: String, icon: String? = nil, gradient: LinearGradient = GradientStyles.primaryGradient, action: @escaping () -> Void) {
@@ -156,19 +146,11 @@ struct GradientButton: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background {
-                if settings.selectedVisualStyle == .neumorphism {
-                    NeumorphSurface(
-                        cornerRadius: 999,
-                        depth: .raised,
-                        fill: AnyShapeStyle(Color(red: 0.45, green: 0.55, blue: 0.90))
-                    )
-                } else {
-                    Capsule()
-                        .fill(gradient)
-                }
+                Capsule()
+                    .fill(gradient)
             }
-            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+            .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(ScaleButtonStyle())
     }
 }
