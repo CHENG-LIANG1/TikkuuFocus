@@ -53,6 +53,8 @@ class JourneyManager: ObservableObject {
     private var preparationGeneration: Int = 0
     private var didEnterBackgroundObserver: NSObjectProtocol?
     private var didBecomeActiveObserver: NSObjectProtocol?
+    private var shouldAutoResumeWhenActive: Bool = false
+    private let liveActivityManager = FocusLiveActivityManager.shared
 
     init() {
         didEnterBackgroundObserver = NotificationCenter.default.addObserver(
@@ -497,16 +499,20 @@ class JourneyManager: ObservableObject {
     // MARK: - Journey Control
     
     /// Pause the current journey
-    func pauseJourney() {
+    func pauseJourney(autoPaused: Bool = false) {
         guard case .active(let session) = state else { return }
+        let remainingTime = max(session.endTime.timeIntervalSinceNow, 0)
         stopTimer()
         pausedAt = Date()
+        shouldAutoResumeWhenActive = autoPaused
         state = .paused(session)
+        liveActivityManager.pause(session: session, remainingTime: remainingTime)
     }
     
     /// Resume a paused journey
     func resumeJourney() {
         guard case .paused(let session) = state else { return }
+        shouldAutoResumeWhenActive = false
 
         let pauseDuration = Date().timeIntervalSince(pausedAt ?? Date())
         pausedAt = nil
@@ -525,12 +531,17 @@ class JourneyManager: ObservableObject {
         
         state = .active(newSession)
         startTimer()
+        liveActivityManager.resume(session: newSession)
     }
     
     /// Cancel the current journey
     func cancelJourney() {
+        Task { @MainActor in
+            await liveActivityManager.endCurrent()
+        }
         stopTimer()
         pausedAt = nil
+        shouldAutoResumeWhenActive = false
         state = .idle
         currentPosition = nil
         discoveredPOIs.removeAll()
@@ -545,6 +556,7 @@ class JourneyManager: ObservableObject {
         lastCheckedCoordinate = nil
         lastPOICheckTime = nil
         pausedAt = nil
+        shouldAutoResumeWhenActive = false
     }
 
     private func activateJourney(
@@ -575,6 +587,7 @@ class JourneyManager: ObservableObject {
 
         state = .active(session)
         startTimer()
+        liveActivityManager.start(session: session)
 
         // Run start-area POI cache in background to avoid delaying journey start.
         Task(priority: .utility) {
@@ -697,8 +710,12 @@ class JourneyManager: ObservableObject {
     /// Complete the journey
     private func completeJourney() {
         guard case .active(let session) = state else { return }
+        Task { @MainActor in
+            await liveActivityManager.endCurrent()
+        }
         stopTimer()
         pausedAt = nil
+        shouldAutoResumeWhenActive = false
         state = .completed(session)
     }
     
@@ -706,6 +723,7 @@ class JourneyManager: ObservableObject {
     
     private func startTimer() {
         stopTimer()
+        setScreenAutoLockDisabled(true)
 
         journeyTask = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -721,6 +739,7 @@ class JourneyManager: ObservableObject {
     private func stopTimer() {
         journeyTask?.cancel()
         journeyTask = nil
+        setScreenAutoLockDisabled(false)
     }
     
     private func updateJourney() async {
@@ -759,8 +778,10 @@ class JourneyManager: ObservableObject {
     }
 
     private func handleDidEnterBackground() {
-        // Pause periodic updates in background to save battery.
-        stopTimer()
+        // Automatically pause active countdown when app moves to background.
+        if case .active = state {
+            pauseJourney(autoPaused: true)
+        }
     }
 
     private func handleDidBecomeActive() {
@@ -770,7 +791,13 @@ class JourneyManager: ObservableObject {
             Task { @MainActor [weak self] in
                 await self?.updateJourney()
             }
+        } else if case .paused = state, shouldAutoResumeWhenActive {
+            resumeJourney()
         }
+    }
+
+    private func setScreenAutoLockDisabled(_ disabled: Bool) {
+        UIApplication.shared.isIdleTimerDisabled = disabled
     }
     
     // MARK: - POI Detection

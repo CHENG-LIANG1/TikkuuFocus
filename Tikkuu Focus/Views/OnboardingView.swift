@@ -11,54 +11,42 @@ struct OnboardingView: View {
     @StateObject private var settings = AppSettings.shared
     @State private var currentPage = 0
     @State private var refreshID = UUID()
-    @State private var animationPhase: CGFloat = 0
-    @State private var floatOffset: CGFloat = 0
+    @State private var orbDrift: CGFloat = 0
+    @State private var cardLift: CGFloat = 0
     let canDismiss: Bool
     @Environment(\.dismiss) private var dismiss
-    
+
     init(canDismiss: Bool = false) {
         self.canDismiss = canDismiss
     }
-    
+
     var body: some View {
         GeometryReader { geometry in
-            let isCompact = geometry.size.height < 700
-            
+            let isCompact = geometry.size.height < 760
+
             ZStack {
-                // Animated background
                 backgroundView
                     .ignoresSafeArea()
-                
+
                 VStack(spacing: 0) {
-                    // Skip button
-                    HStack {
-                        Spacer()
-                        if canDismiss {
-                            skipButton(title: L("common.done"), action: dismissAction)
-                        } else if currentPage < pages.count - 1 {
-                            skipButton(title: L("onboarding.skip"), action: completeOnboarding)
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, isCompact ? 12 : 20)
-                    
-                    // Main content
+                    topBar(isCompact: isCompact)
+
                     TabView(selection: $currentPage) {
-                        ForEach(Array(pages.enumerated()), id: \.offset) { index, page in
-                            PageContentView(
-                                page: page,
-                                floatOffset: floatOffset,
-                                isCompact: isCompact
+                        ForEach(Array(pages.enumerated()), id: \.offset) { index, slide in
+                            OnboardingSlideView(
+                                slide: slide,
+                                isCompact: isCompact,
+                                cardLift: cardLift
                             )
                             .tag(index)
+                            .padding(.horizontal, 20)
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .onChange(of: currentPage) { _, _ in
                         HapticManager.selection()
                     }
-                    
-                    // Bottom section
+
                     bottomSection(isCompact: isCompact)
                 }
             }
@@ -66,138 +54,181 @@ struct OnboardingView: View {
         .id(refreshID)
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
-            startFloatingAnimation()
+            startAnimations()
         }
         .onChange(of: settings.selectedLanguage) { _, _ in
             refreshID = UUID()
         }
     }
-    
-    // MARK: - Data
-    
-    private var activePage: OnboardingPage {
+
+    private var activeSlide: OnboardingSlide {
         pages[min(max(currentPage, 0), pages.count - 1)]
     }
-    
-    private var pages: [OnboardingPage] {
+
+    private var progressText: String {
+        "\(currentPage + 1) / \(pages.count)"
+    }
+
+    private var pages: [OnboardingSlide] {
         [
-            OnboardingPage(
-                illustration: .journey,
+            OnboardingSlide(
+                artwork: .route,
                 titleKey: "onboarding.new.page1.title",
                 subtitleKey: "onboarding.new.page1.subtitle",
-                gradient: [Color(red: 0.29, green: 0.56, blue: 1.0), Color(red: 0.58, green: 0.40, blue: 0.98)]
+                chips: [
+                    "onboarding.new.tag.realMap",
+                    "onboarding.new.tag.transport",
+                    "onboarding.new.tag.discover"
+                ],
+                gradient: [Color(red: 0.20, green: 0.55, blue: 0.98), Color(red: 0.18, green: 0.79, blue: 0.81)],
+                backgroundAccent: Color(red: 0.12, green: 0.29, blue: 0.60)
             ),
-            OnboardingPage(
-                illustration: .explore,
+            OnboardingSlide(
+                artwork: .compass,
                 titleKey: "onboarding.new.page2.title",
                 subtitleKey: "onboarding.new.page2.subtitle",
-                gradient: [Color(red: 1.0, green: 0.62, blue: 0.35), Color(red: 0.98, green: 0.42, blue: 0.56)]
+                chips: [
+                    "onboarding.new.tag.liveProgress",
+                    "onboarding.new.tag.freeExplore",
+                    "onboarding.new.tag.pois"
+                ],
+                gradient: [Color(red: 0.98, green: 0.55, blue: 0.30), Color(red: 0.93, green: 0.29, blue: 0.48)],
+                backgroundAccent: Color(red: 0.50, green: 0.19, blue: 0.34)
             ),
-            OnboardingPage(
-                illustration: .achieve,
+            OnboardingSlide(
+                artwork: .stats,
                 titleKey: "onboarding.new.page3.title",
                 subtitleKey: "onboarding.new.page3.subtitle",
-                gradient: [Color(red: 0.30, green: 0.85, blue: 0.65), Color(red: 0.25, green: 0.72, blue: 0.95)]
+                chips: [
+                    "onboarding.new.tag.stats",
+                    "onboarding.new.tag.history",
+                    "onboarding.new.tag.achievements"
+                ],
+                gradient: [Color(red: 0.31, green: 0.83, blue: 0.56), Color(red: 0.18, green: 0.64, blue: 0.93)],
+                backgroundAccent: Color(red: 0.09, green: 0.35, blue: 0.42)
             )
         ]
     }
-    
-    // MARK: - Background
-    
+
     private var backgroundView: some View {
         ZStack {
-            // Base gradient
             LinearGradient(
                 colors: [
-                    Color(red: 0.06, green: 0.08, blue: 0.14),
-                    activePage.gradient[0].opacity(0.35),
-                    activePage.gradient[1].opacity(0.25)
+                    Color(red: 0.03, green: 0.05, blue: 0.10),
+                    activeSlide.backgroundAccent.opacity(0.85),
+                    Color(red: 0.06, green: 0.07, blue: 0.14)
                 ],
-                startPoint: .top,
+                startPoint: .topLeading,
                 endPoint: .bottom
             )
-            
-            // Floating orbs
+
             Circle()
-                .fill(activePage.gradient[0].opacity(0.3))
-                .frame(width: 300, height: 300)
-                .blur(radius: 80)
-                .offset(x: -80, y: -200 + floatOffset * 15)
-            
+                .fill(activeSlide.gradient[0].opacity(0.32))
+                .frame(width: 350, height: 350)
+                .blur(radius: 92)
+                .offset(x: -120, y: -250 + orbDrift * 22)
+
             Circle()
-                .fill(activePage.gradient[1].opacity(0.25))
-                .frame(width: 250, height: 250)
-                .blur(radius: 70)
-                .offset(x: 100, y: 100 - floatOffset * 12)
-            
+                .fill(activeSlide.gradient[1].opacity(0.30))
+                .frame(width: 280, height: 280)
+                .blur(radius: 84)
+                .offset(x: 130, y: 110 - orbDrift * 18)
+
             Circle()
-                .fill(Color.white.opacity(0.05))
-                .frame(width: 200, height: 200)
+                .fill(Color.white.opacity(0.07))
+                .frame(width: 180, height: 180)
                 .blur(radius: 60)
-                .offset(x: 50, y: 300 + floatOffset * 10)
+                .offset(x: 32, y: 330 + orbDrift * 14)
         }
-        .animation(.easeInOut(duration: 0.8), value: currentPage)
+        .animation(.easeInOut(duration: 0.75), value: currentPage)
     }
-    
-    // MARK: - Skip Button
-    
-    private func skipButton(title: String, action: @escaping () -> Void) -> some View {
+
+    private func topBar(isCompact: Bool) -> some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(activeSlide.gradient[0])
+                    .frame(width: 8, height: 8)
+                Text(progressText)
+                    .font(.system(size: isCompact ? 12 : 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.14))
+            )
+
+            Spacer()
+
+            if canDismiss {
+                ghostButton(title: L("common.done"), action: dismissAction)
+            } else if currentPage < pages.count - 1 {
+                ghostButton(title: L("onboarding.skip"), action: completeOnboarding)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, isCompact ? 12 : 20)
+    }
+
+    private func ghostButton(title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.85))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(Color.white.opacity(0.12))
+                )
         }
         .buttonStyle(.plain)
     }
-    
-    // MARK: - Bottom Section
-    
+
     private func bottomSection(isCompact: Bool) -> some View {
         VStack(spacing: isCompact ? 20 : 28) {
-            // Page indicators
-            HStack(spacing: 8) {
+            HStack(spacing: 9) {
                 ForEach(0..<pages.count, id: \.self) { index in
-                    Circle()
-                        .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
-                        .frame(width: currentPage == index ? 10 : 8, height: currentPage == index ? 10 : 8)
+                    Capsule(style: .continuous)
+                        .fill(currentPage == index ? Color.white : Color.white.opacity(0.30))
+                        .frame(width: currentPage == index ? 28 : 8, height: 8)
                         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: currentPage)
                 }
             }
-            
-            // Action button
+
             Button(action: handlePrimaryAction) {
                 Text(primaryButtonTitle)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: 280)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
                     .padding(.vertical, isCompact ? 15 : 18)
                     .background(
-                        Capsule()
+                        Capsule(style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: activePage.gradient,
+                                    colors: activeSlide.gradient,
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
-                            .shadow(color: activePage.gradient[0].opacity(0.5), radius: 20, x: 0, y: 10)
+                            .shadow(color: activeSlide.gradient[0].opacity(0.45), radius: 18, x: 0, y: 10)
                     )
             }
             .buttonStyle(ScaleButtonStyle())
         }
-        .padding(.horizontal, 32)
+        .padding(.horizontal, 24)
         .padding(.bottom, isCompact ? 30 : 50)
     }
-    
+
     private var primaryButtonTitle: String {
         if currentPage < pages.count - 1 {
             return L("onboarding.next")
         }
         return canDismiss ? L("common.done") : L("onboarding.getStarted")
     }
-    
-    // MARK: - Actions
-    
+
     private func handlePrimaryAction() {
         HapticManager.medium()
         if currentPage < pages.count - 1 {
@@ -212,18 +243,21 @@ struct OnboardingView: View {
             completeOnboarding()
         }
     }
-    
-    private func startFloatingAnimation() {
+
+    private func startAnimations() {
         withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
-            floatOffset = 1
+            orbDrift = 1
+        }
+        withAnimation(.easeInOut(duration: 2.3).repeatForever(autoreverses: true)) {
+            cardLift = 1
         }
     }
-    
+
     private func dismissAction() {
         HapticManager.light()
         dismiss()
     }
-    
+
     private func completeOnboarding() {
         HapticManager.success()
         withAnimation {
@@ -233,192 +267,187 @@ struct OnboardingView: View {
     }
 }
 
-// MARK: - Page Content View
-
-private struct PageContentView: View {
-    let page: OnboardingPage
-    let floatOffset: CGFloat
+private struct OnboardingSlideView: View {
+    let slide: OnboardingSlide
     let isCompact: Bool
-    
+    let cardLift: CGFloat
+
     var body: some View {
-        VStack(spacing: isCompact ? 28 : 40) {
-            Spacer()
-            
-            // Illustration
-            IllustrationView(
-                type: page.illustration,
-                gradient: page.gradient,
-                floatOffset: floatOffset,
-                isCompact: isCompact
-            )
-            
-            // Text content
-            VStack(spacing: isCompact ? 12 : 16) {
-                Text(L(page.titleKey))
-                    .font(.system(size: isCompact ? 28 : 34, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                
-                Text(L(page.subtitleKey))
-                    .font(.system(size: isCompact ? 15 : 17, weight: .regular))
-                    .foregroundColor(.white.opacity(0.7))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-            }
-            .padding(.horizontal, 32)
-            
-            Spacer()
-            Spacer()
+        VStack(spacing: isCompact ? 22 : 30) {
+            Spacer(minLength: isCompact ? 16 : 24)
+            heroCard
+            textSection
+            chipSection
+            Spacer(minLength: 10)
         }
+    }
+
+    private var heroCard: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.26),
+                            Color.white.opacity(0.10)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 18)
+
+            OnboardingArtworkView(
+                artwork: slide.artwork,
+                gradient: slide.gradient,
+                cardLift: cardLift
+            )
+            .padding(20)
+        }
+        .frame(height: isCompact ? 250 : 305)
+    }
+
+    private var textSection: some View {
+        VStack(spacing: 12) {
+            Text(L(slide.titleKey))
+                .font(.system(size: isCompact ? 30 : 36, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+
+            Text(L(slide.subtitleKey))
+                .font(.system(size: isCompact ? 15 : 17, weight: .medium))
+                .foregroundStyle(.white.opacity(0.78))
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+        }
+        .padding(.horizontal, 10)
+    }
+
+    private var chipSection: some View {
+        HStack(spacing: 10) {
+            ForEach(slide.chips, id: \.self) { key in
+                Text(L(key))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.16))
+                    )
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
     }
 }
 
-// MARK: - Illustration View
-
-private struct IllustrationView: View {
-    let type: IllustrationType
+private struct OnboardingArtworkView: View {
+    let artwork: OnboardingArtwork
     let gradient: [Color]
-    let floatOffset: CGFloat
-    let isCompact: Bool
-    
-    private var size: CGFloat { isCompact ? 200 : 260 }
-    
+    let cardLift: CGFloat
+
     var body: some View {
-        ZStack {
-            // Background glow
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [gradient[0].opacity(0.4), gradient[1].opacity(0.1), Color.clear],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: size * 0.7
-                    )
-                )
-                .frame(width: size * 1.4, height: size * 1.4)
-            
-            // Main illustration container
-            ZStack {
-                // Glass card
-                RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .frame(width: size, height: size)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [Color.white.opacity(0.3), Color.white.opacity(0.05)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(color: Color.black.opacity(0.06), radius: 20, x: 0, y: 10)
-                
-                // Illustration content
-                illustrationContent
-            }
-            .offset(y: floatOffset * -8)
-        }
+        artworkContent
+            .offset(y: -cardLift * 8)
     }
-    
+
     @ViewBuilder
-    private var illustrationContent: some View {
-        switch type {
-        case .journey:
-            journeyIllustration
-        case .explore:
-            exploreIllustration
-        case .achieve:
-            achieveIllustration
+    private var artworkContent: some View {
+        switch artwork {
+        case .route:
+            routeArtwork
+        case .compass:
+            compassArtwork
+        case .stats:
+            statsArtwork
         }
     }
-    
-    private var journeyIllustration: some View {
+
+    private var routeArtwork: some View {
         ZStack {
-            // Route line
             Path { path in
-                path.move(to: CGPoint(x: size * 0.25, y: size * 0.7))
+                path.move(to: CGPoint(x: 40, y: 178))
                 path.addCurve(
-                    to: CGPoint(x: size * 0.75, y: size * 0.3),
-                    control1: CGPoint(x: size * 0.35, y: size * 0.4),
-                    control2: CGPoint(x: size * 0.65, y: size * 0.5)
+                    to: CGPoint(x: 256, y: 58),
+                    control1: CGPoint(x: 95, y: 90),
+                    control2: CGPoint(x: 188, y: 140)
                 )
             }
             .stroke(
                 LinearGradient(colors: gradient, startPoint: .leading, endPoint: .trailing),
-                style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6])
+                style: StrokeStyle(lineWidth: 6, lineCap: .round, dash: [9, 7])
             )
-            .frame(width: size, height: size)
-            
-            // Start point
+            .frame(width: 300, height: 220)
+
             Circle()
                 .fill(gradient[0])
-                .frame(width: 20, height: 20)
+                .frame(width: 18, height: 18)
                 .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                .offset(x: -size * 0.25, y: size * 0.2)
-            
-            // End point
+                .offset(x: -108, y: 64)
+
             Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 32, weight: .medium))
+                .font(.system(size: 34, weight: .semibold))
                 .foregroundStyle(gradient[1], .white)
-                .offset(x: size * 0.25, y: -size * 0.2)
-            
-            // Globe icon
-            Image(systemName: "globe.asia.australia.fill")
-                .font(.system(size: isCompact ? 50 : 64, weight: .light))
+                .offset(x: 110, y: -60)
+
+            Image(systemName: "map.fill")
+                .font(.system(size: 74, weight: .light))
                 .foregroundStyle(
-                    LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(
+                        colors: [.white.opacity(0.96), .white.opacity(0.58)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-                .offset(y: floatOffset * 4)
+                .offset(y: -6)
         }
     }
-    
-    private var exploreIllustration: some View {
+
+    private var compassArtwork: some View {
         ZStack {
-            // Map grid
             ForEach(0..<3) { row in
                 ForEach(0..<3) { col in
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(Color.white.opacity(0.08))
-                        .frame(width: size * 0.22, height: size * 0.22)
+                        .frame(width: 58, height: 58)
                         .offset(
-                            x: CGFloat(col - 1) * size * 0.26,
-                            y: CGFloat(row - 1) * size * 0.26
+                            x: CGFloat(col - 1) * 66,
+                            y: CGFloat(row - 1) * 66
                         )
                 }
             }
-            
-            // POI markers
+
             Image(systemName: "cup.and.saucer.fill")
                 .font(.system(size: 18))
                 .foregroundColor(gradient[0])
-                .offset(x: -size * 0.2, y: -size * 0.15)
-            
+                .offset(x: -56, y: -46)
+
             Image(systemName: "leaf.fill")
                 .font(.system(size: 18))
                 .foregroundColor(.green)
-                .offset(x: size * 0.22, y: size * 0.1)
-            
+                .offset(x: 62, y: 34)
+
             Image(systemName: "building.2.fill")
                 .font(.system(size: 18))
                 .foregroundColor(gradient[1])
-                .offset(x: size * 0.05, y: -size * 0.25)
-            
-            // Center icon
+                .offset(x: 16, y: -72)
+
             Image(systemName: "location.north.fill")
-                .font(.system(size: isCompact ? 44 : 56, weight: .medium))
+                .font(.system(size: 56, weight: .bold))
                 .foregroundStyle(
                     LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
                 )
-                .rotationEffect(.degrees(floatOffset * 15))
+                .rotationEffect(.degrees(Double(cardLift) * 12))
         }
     }
-    
-    private var achieveIllustration: some View {
+
+    private var statsArtwork: some View {
         ZStack {
-            // Stats bars
             HStack(spacing: 12) {
                 ForEach(0..<4) { index in
                     VStack {
@@ -431,16 +460,15 @@ private struct IllustrationView: View {
                                     endPoint: .top
                                 )
                             )
-                            .frame(width: 20, height: CGFloat([50, 70, 45, 85][index]) + floatOffset * 5)
+                            .frame(width: 20, height: CGFloat([48, 70, 52, 92][index]) + cardLift * 6)
                     }
-                    .frame(height: 100)
+                    .frame(height: 110)
                 }
             }
-            .offset(y: size * 0.15)
-            
-            // Trophy
+            .offset(y: 56)
+
             Image(systemName: "trophy.fill")
-                .font(.system(size: isCompact ? 52 : 66, weight: .medium))
+                .font(.system(size: 64, weight: .semibold))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [Color(red: 1.0, green: 0.85, blue: 0.35), Color(red: 1.0, green: 0.65, blue: 0.2)],
@@ -449,35 +477,34 @@ private struct IllustrationView: View {
                     )
                 )
                 .shadow(color: Color.orange.opacity(0.4), radius: 15, x: 0, y: 8)
-                .offset(y: -size * 0.12 + floatOffset * 6)
-            
-            // Sparkles
+                .offset(y: -40 + cardLift * 8)
+
             Image(systemName: "sparkle")
                 .font(.system(size: 14))
                 .foregroundColor(.yellow)
-                .offset(x: -size * 0.28, y: -size * 0.25)
-            
+                .offset(x: -88, y: -72)
+
             Image(systemName: "sparkle")
                 .font(.system(size: 10))
                 .foregroundColor(.yellow.opacity(0.7))
-                .offset(x: size * 0.3, y: -size * 0.18)
+                .offset(x: 92, y: -52)
         }
     }
 }
 
-// MARK: - Data Models
-
-private enum IllustrationType {
-    case journey
-    case explore
-    case achieve
+private enum OnboardingArtwork {
+    case route
+    case compass
+    case stats
 }
 
-private struct OnboardingPage {
-    let illustration: IllustrationType
+private struct OnboardingSlide {
+    let artwork: OnboardingArtwork
     let titleKey: String
     let subtitleKey: String
+    let chips: [String]
     let gradient: [Color]
+    let backgroundAccent: Color
 }
 
 #Preview {

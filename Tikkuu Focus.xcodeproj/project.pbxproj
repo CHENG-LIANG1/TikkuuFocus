@@ -6,7 +6,21 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		33C84A6FC297BC9A474E5CDA /* FocusTimerActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22000A29764640E236EC2D76 /* FocusTimerActivityAttributes.swift */; };
+		725A9B15980471A48317C480 /* Tikkuu Focus Live Activity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = D2BC73895336F7CD32A94B75 /* Tikkuu Focus Live Activity.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		DB05B5E630AA7C3892887FB6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91F8A07F68FD3BCE1F185470 /* Foundation.framework */; };
+		DEA2CE520DEB0723D1CA76A9 /* Tikkuu_Focus_Live_Activity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3411D5A41BCE3B393CBF8D7B /* Tikkuu_Focus_Live_Activity.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		1FEBDD6E66B2511BCB01B7DC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BFC103822F386994005DE4F6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ADD069ED43A11889FB706B38;
+			remoteInfo = "Tikkuu Focus Live Activity";
+		};
 		BFC1039A2F386996005DE4F6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = BFC103822F386994005DE4F6 /* Project object */;
@@ -23,10 +37,29 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		1C4EED1D4BC6900ED5F42DBD /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				725A9B15980471A48317C480 /* Tikkuu Focus Live Activity.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		22000A29764640E236EC2D76 /* FocusTimerActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FocusTimerActivityAttributes.swift; path = "Tikkuu Focus/LiveActivity/FocusTimerActivityAttributes.swift"; sourceTree = "<group>"; };
+		3411D5A41BCE3B393CBF8D7B /* Tikkuu_Focus_Live_Activity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Tikkuu_Focus_Live_Activity.swift; sourceTree = "<group>"; };
+		91F8A07F68FD3BCE1F185470 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		BFC1038A2F386994005DE4F6 /* Tikkuu Focus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Tikkuu Focus.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFC103992F386996005DE4F6 /* Tikkuu FocusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Tikkuu FocusTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFC103A32F386996005DE4F6 /* Tikkuu FocusUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Tikkuu FocusUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2BC73895336F7CD32A94B75 /* Tikkuu Focus Live Activity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Tikkuu Focus Live Activity.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2210C0FAC1D21C740D41A4F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -48,6 +81,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0CD1EAD87FAA082E40B48E22 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DB05B5E630AA7C3892887FB6 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BFC103872F386994005DE4F6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -72,6 +113,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		91D09A7C9BC727D0C92FA350 /* Tikkuu Focus Live Activity */ = {
+			isa = PBXGroup;
+			children = (
+				3411D5A41BCE3B393CBF8D7B /* Tikkuu_Focus_Live_Activity.swift */,
+				F2210C0FAC1D21C740D41A4F /* Info.plist */,
+			);
+			path = "Tikkuu Focus Live Activity";
+			sourceTree = "<group>";
+		};
 		BFC103812F386994005DE4F6 = {
 			isa = PBXGroup;
 			children = (
@@ -79,6 +129,9 @@
 				BFC1039C2F386996005DE4F6 /* Tikkuu FocusTests */,
 				BFC103A62F386996005DE4F6 /* Tikkuu FocusUITests */,
 				BFC1038B2F386994005DE4F6 /* Products */,
+				C351E89E5AF9078E5A8136DC /* Frameworks */,
+				91D09A7C9BC727D0C92FA350 /* Tikkuu Focus Live Activity */,
+				22000A29764640E236EC2D76 /* FocusTimerActivityAttributes.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -88,13 +141,47 @@
 				BFC1038A2F386994005DE4F6 /* Tikkuu Focus.app */,
 				BFC103992F386996005DE4F6 /* Tikkuu FocusTests.xctest */,
 				BFC103A32F386996005DE4F6 /* Tikkuu FocusUITests.xctest */,
+				D2BC73895336F7CD32A94B75 /* Tikkuu Focus Live Activity.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C351E89E5AF9078E5A8136DC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DF606E971C64854FF2E7BFCD /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		DF606E971C64854FF2E7BFCD /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				91F8A07F68FD3BCE1F185470 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		ADD069ED43A11889FB706B38 /* Tikkuu Focus Live Activity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 31175556C1601739F1706985 /* Build configuration list for PBXNativeTarget "Tikkuu Focus Live Activity" */;
+			buildPhases = (
+				41A7069BC4B22FCE29E29051 /* Sources */,
+				0CD1EAD87FAA082E40B48E22 /* Frameworks */,
+				84464CE12EFA020216827A5D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Tikkuu Focus Live Activity";
+			productName = "Tikkuu Focus Live Activity";
+			productReference = D2BC73895336F7CD32A94B75 /* Tikkuu Focus Live Activity.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		BFC103892F386994005DE4F6 /* Tikkuu Focus */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BFC103AD2F386996005DE4F6 /* Build configuration list for PBXNativeTarget "Tikkuu Focus" */;
@@ -102,17 +189,17 @@
 				BFC103862F386994005DE4F6 /* Sources */,
 				BFC103872F386994005DE4F6 /* Frameworks */,
 				BFC103882F386994005DE4F6 /* Resources */,
+				1C4EED1D4BC6900ED5F42DBD /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				34F6C4839E789BC40238BFFB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BFC1038C2F386994005DE4F6 /* Tikkuu Focus */,
 			);
 			name = "Tikkuu Focus";
-			packageProductDependencies = (
-			);
 			productName = "Tikkuu Focus";
 			productReference = BFC1038A2F386994005DE4F6 /* Tikkuu Focus.app */;
 			productType = "com.apple.product-type.application";
@@ -134,8 +221,6 @@
 				BFC1039C2F386996005DE4F6 /* Tikkuu FocusTests */,
 			);
 			name = "Tikkuu FocusTests";
-			packageProductDependencies = (
-			);
 			productName = "Tikkuu FocusTests";
 			productReference = BFC103992F386996005DE4F6 /* Tikkuu FocusTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -157,8 +242,6 @@
 				BFC103A62F386996005DE4F6 /* Tikkuu FocusUITests */,
 			);
 			name = "Tikkuu FocusUITests";
-			packageProductDependencies = (
-			);
 			productName = "Tikkuu FocusUITests";
 			productReference = BFC103A32F386996005DE4F6 /* Tikkuu FocusUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -204,11 +287,19 @@
 				BFC103892F386994005DE4F6 /* Tikkuu Focus */,
 				BFC103982F386996005DE4F6 /* Tikkuu FocusTests */,
 				BFC103A22F386996005DE4F6 /* Tikkuu FocusUITests */,
+				ADD069ED43A11889FB706B38 /* Tikkuu Focus Live Activity */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		84464CE12EFA020216827A5D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BFC103882F386994005DE4F6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -233,6 +324,15 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		41A7069BC4B22FCE29E29051 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DEA2CE520DEB0723D1CA76A9 /* Tikkuu_Focus_Live_Activity.swift in Sources */,
+				33C84A6FC297BC9A474E5CDA /* FocusTimerActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BFC103862F386994005DE4F6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -257,6 +357,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		34F6C4839E789BC40238BFFB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "Tikkuu Focus Live Activity";
+			target = ADD069ED43A11889FB706B38 /* Tikkuu Focus Live Activity */;
+			targetProxy = 1FEBDD6E66B2511BCB01B7DC /* PBXContainerItemProxy */;
+		};
 		BFC1039B2F386996005DE4F6 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = BFC103892F386994005DE4F6 /* Tikkuu Focus */;
@@ -270,6 +376,63 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		2C672282AAFF399619F332BA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AJD7NPWNRX;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Tikkuu Focus Live Activity/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.liuwanzhu.Tikkuu-Focus.LiveActivity";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		64D0311ACA029DFFAC32B42C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AJD7NPWNRX;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Tikkuu Focus Live Activity/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.liuwanzhu.Tikkuu-Focus.LiveActivity";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		BFC103AB2F386996005DE4F6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -406,9 +569,10 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Tikkuu Focus needs your location to create virtual journeys based on real places and discover nearby landmarks during your focus sessions.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tikkuu Focus saves your journey summary image to your photo library when you tap Save.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
@@ -416,7 +580,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.liuwanzhu.Tikkuu-Focus";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -448,9 +612,10 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Tikkuu Focus needs your location to create virtual journeys based on real places and discover nearby landmarks during your focus sessions.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Tikkuu Focus saves your journey summary image to your photo library when you tap Save.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
@@ -458,7 +623,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.liuwanzhu.Tikkuu-Focus";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -562,6 +727,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		31175556C1601739F1706985 /* Build configuration list for PBXNativeTarget "Tikkuu Focus Live Activity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				64D0311ACA029DFFAC32B42C /* Release */,
+				2C672282AAFF399619F332BA /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		BFC103852F386994005DE4F6 /* Build configuration list for PBXProject "Tikkuu Focus" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

@@ -9,6 +9,7 @@ import SwiftUI
 import CoreLocation
 import SwiftData
 import MapKit
+import WidgetKit
 
 struct SetupView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -157,6 +158,13 @@ struct SetupView: View {
         .onChange(of: selectedLocation) { _, _ in
             fetchWeatherForSelectedLocation(force: true)
             prewarmMapIfPossible()
+        }
+        .onContinueUserActivity(NSUserActivityTypeLiveActivity) { _ in
+            showHistory = false
+            showTrophies = false
+            showSettings = false
+            showLocationPicker = false
+            showWeatherDetail = false
         }
         .onChange(of: selectedTransport) { _, _ in
             scheduleJourneyPreparation()
