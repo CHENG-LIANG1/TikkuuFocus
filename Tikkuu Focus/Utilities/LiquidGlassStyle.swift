@@ -133,50 +133,79 @@ struct GlassCardModifier: ViewModifier {
     private var cardBackground: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
-        ZStack {
-            shape
-                .fill(.ultraThinMaterial)
-                .opacity(LiquidGlassStyle.glassMaterialOpacity(for: colorScheme))
-
-            shape
-                .fill(LiquidGlassStyle.glassLayerFill(for: colorScheme))
-
-            if let tintColor = tintColor {
+        if PerformanceConfig.shouldReduceVisualEffects {
+            ZStack {
                 shape
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                tintColor.opacity(colorScheme == .dark ? 0.24 : 0.14),
-                                tintColor.opacity(0.03)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                    .fill(lightweightFill)
+
+                if let tintColor {
+                    shape.fill(tintColor.opacity(colorScheme == .dark ? 0.10 : 0.06))
+                }
+
+                shape.strokeBorder(
+                    colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.06),
+                    lineWidth: 0.7
+                )
+            }
+            .shadow(
+                color: colorScheme == .dark ? Color.black.opacity(0.18) : Color.black.opacity(0.06),
+                radius: 8,
+                x: 0,
+                y: 4
+            )
+        } else {
+            ZStack {
+                shape
+                    .fill(.ultraThinMaterial)
+                    .opacity(LiquidGlassStyle.glassMaterialOpacity(for: colorScheme))
+
+                shape
+                    .fill(LiquidGlassStyle.glassLayerFill(for: colorScheme))
+
+                if let tintColor = tintColor {
+                    shape
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    tintColor.opacity(colorScheme == .dark ? 0.24 : 0.14),
+                                    tintColor.opacity(0.03)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
+                }
+
+                shape.strokeBorder(LiquidGlassStyle.glassEdgeStroke(for: colorScheme), lineWidth: 1)
+
+                shape
+                    .strokeBorder(
+                        colorScheme == .dark
+                            ? Color.white.opacity(0.08)
+                            : Color.white.opacity(0.24),
+                        lineWidth: 0.5
                     )
             }
-
-            shape.strokeBorder(LiquidGlassStyle.glassEdgeStroke(for: colorScheme), lineWidth: 1)
-
-            shape
-                .strokeBorder(
-                    colorScheme == .dark
-                        ? Color.white.opacity(0.08)
-                        : Color.white.opacity(0.24),
-                    lineWidth: 0.5
-                )
+            .shadow(
+                color: colorScheme == .dark ? Color.black.opacity(0.32) : Color.black.opacity(0.10),
+                radius: 24,
+                x: 0,
+                y: 12
+            )
+            .shadow(
+                color: colorScheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.22),
+                radius: 1,
+                x: 0,
+                y: 1
+            )
         }
-        .shadow(
-            color: colorScheme == .dark ? Color.black.opacity(0.32) : Color.black.opacity(0.10),
-            radius: 24,
-            x: 0,
-            y: 12
-        )
-        .shadow(
-            color: colorScheme == .dark ? Color.white.opacity(0.04) : Color.white.opacity(0.22),
-            radius: 1,
-            x: 0,
-            y: 1
-        )
+    }
+
+    private var lightweightFill: Color {
+        if colorScheme == .dark {
+            return Color(red: 0.10, green: 0.12, blue: 0.18).opacity(0.86)
+        }
+        return Color.white.opacity(0.82)
     }
 }
 
@@ -372,16 +401,57 @@ struct GlassBadge: View {
 
 struct AnimatedGradientBackground: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isAnimated = false
 
     var body: some View {
+        backgroundContent
+        .ignoresSafeArea()
+        .onAppear {
+            guard shouldAnimate else { return }
+            withAnimation(.easeInOut(duration: 12.0).repeatForever(autoreverses: true)) {
+                isAnimated = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var backgroundContent: some View {
+        if shouldAnimate {
+            animatedBackground
+        } else {
+            staticBackground
+        }
+    }
+
+    private var shouldAnimate: Bool {
+        PerformanceConfig.enableAmbientAnimations && !reduceMotion
+    }
+
+    private var staticBackground: some View {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color(red: 0.045, green: 0.055, blue: 0.080),
+                    Color(red: 0.080, green: 0.095, blue: 0.135)
+                ]
+                : [
+                    Color(red: 0.96, green: 0.975, blue: 0.99),
+                    Color(red: 0.90, green: 0.93, blue: 0.96)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var animatedBackground: some View {
         ZStack {
             baseColor
-            
+
             GeometryReader { proxy in
                 let width = proxy.size.width
                 let height = proxy.size.height
-                
+
                 ZStack {
                     Circle()
                         .fill(orb1Color)
@@ -392,7 +462,7 @@ struct AnimatedGradientBackground: View {
                             y: isAnimated ? -height * 0.2 : height * 0.1
                         )
                         .hueRotation(.degrees(isAnimated ? 30 : 0))
-                    
+
                     Circle()
                         .fill(orb2Color)
                         .blur(radius: 140)
@@ -404,13 +474,6 @@ struct AnimatedGradientBackground: View {
                         .hueRotation(.degrees(isAnimated ? -30 : 0))
                 }
                 .opacity(colorScheme == .dark ? 0.6 : 0.8)
-            }
-        }
-        .ignoresSafeArea()
-        .onAppear {
-            guard !PerformanceOptimizer.shared.isEnergySavingMode else { return }
-            withAnimation(.easeInOut(duration: 12.0).repeatForever(autoreverses: true)) {
-                isAnimated = true
             }
         }
     }

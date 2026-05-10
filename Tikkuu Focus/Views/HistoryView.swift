@@ -25,6 +25,7 @@ struct HistoryView: View {
     @State private var deletingRecordIDs: Set<UUID> = []
     @State private var tabRenderID = UUID()
     @State private var displayedRecordCount = PerformanceConfig.maxDisplayRecords
+    @State private var statsUpdateTask: Task<Void, Never>?
     
     // MARK: - Cached Computed Properties (Performance Optimization)
     
@@ -395,13 +396,17 @@ struct HistoryView: View {
         }
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
-            updateCachedStats()
+            scheduleCachedStatsUpdate()
         }
         .onChange(of: recordsChangeToken) { _, newHash in
-            updateCachedStats(usingHash: newHash)
+            scheduleCachedStatsUpdate(usingHash: newHash)
         }
         .onChange(of: records.count) { _, _ in
             displayedRecordCount = PerformanceConfig.maxDisplayRecords
+        }
+        .onDisappear {
+            statsUpdateTask?.cancel()
+            statsUpdateTask = nil
         }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
@@ -473,6 +478,15 @@ struct HistoryView: View {
             Text(L("history.delete.single.message"))
         }
     }
+
+    private func scheduleCachedStatsUpdate(usingHash hash: Int? = nil) {
+        statsUpdateTask?.cancel()
+        statsUpdateTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            updateCachedStats(usingHash: hash)
+        }
+    }
     
     // MARK: - Delete Functions
     
@@ -494,7 +508,7 @@ struct HistoryView: View {
                 }
                 selectedRecords.removeAll()
                 isEditMode = false
-                updateCachedStats()
+                scheduleCachedStatsUpdate()
             }
         }
     }
@@ -515,7 +529,7 @@ struct HistoryView: View {
                 if expandedRecordID == record.id {
                     expandedRecordID = nil
                 }
-                updateCachedStats()
+                scheduleCachedStatsUpdate()
             }
         }
     }

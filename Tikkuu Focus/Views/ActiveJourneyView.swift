@@ -185,115 +185,22 @@ struct ActiveJourneyView: View {
         VStack(spacing: 12) {
             // Time remaining (large)
             if let position = journeyManager.currentPosition {
-                VStack(spacing: 12) {
-                    // Time and progress combined
-                    HStack(alignment: .center, spacing: 16) {
-                        // Time - 更显眼
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(L("label.timeRemaining"))
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
-                            
-                            Text(FormatUtilities.formatTimeDigital(position.remainingTime))
-                                .font(.system(size: 48, weight: .semibold, design: .rounded))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 0.3, green: 0.6, blue: 1.0),
-                                            Color(red: 0.5, green: 0.4, blue: 0.95)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                        }
-                        
-                        Spacer()
-                        
-                        // Progress circle - 缩小
-                        ZStack {
-                            Circle()
-                                .stroke(Color.gray.opacity(0.2), lineWidth: 4)
-                                .frame(width: 44, height: 44)
-                            
-                            Circle()
-                                .trim(from: 0, to: position.progress)
-                                .stroke(
-                                    LiquidGlassStyle.primaryGradient,
-                                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                                )
-                                .frame(width: 44, height: 44)
-                                .rotationEffect(.degrees(-90))
-                            
-                            Text(FormatUtilities.formatProgress(position.progress))
-                                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    
-
-                    // Stats grid - more compact
-                    HStack(spacing: 10) {
-                        CompactStatCard(
-                            icon: "location.fill",
-                            label: L("label.distanceTraveled"),
-                            value: FormatUtilities.formatDistance(position.distanceTraveled)
-                        )
-                        
-                        CompactStatCard(
-                            icon: "speedometer",
-                            label: L("label.currentSpeed"),
-                            value: String(format: "%.1f km/h", currentSpeed)
-                        )
-                    }
-                }
+                ActiveJourneyStatsPanel(position: position, currentSpeed: currentSpeed)
+                    .equatable()
             } else if case .completed(let session) = journeyManager.state {
-                VStack(spacing: 16) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 56))
-                        .foregroundStyle(Color.green)
-                        .shadow(color: Color.green.opacity(0.3), radius: 10, x: 0, y: 5)
-                    
-                    Text(L("journey.completed"))
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    Text(FormatUtilities.formatDistance(session.totalDistance))
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    Text(String(format: L("journey.completed.duration"), FormatUtilities.formatTime(Date().timeIntervalSince(session.startTime))))
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    Text(String(format: L("journey.completed.pois"), journeyManager.discoveredPOIs.count))
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    Button {
-                        HapticManager.success()
-                        saveCompletedJourney(session: session)
-                        presentSummary(
-                            session: session,
-                            progress: 1.0,
-                            isCompleted: true,
-                            actualDuration: Date().timeIntervalSince(session.startTime),
-                            discoveredPOIs: journeyManager.discoveredPOIs
-                        )
-                    } label: {
-                        Text(L("journey.viewSummary"))
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .fill(LiquidGlassStyle.primaryGradient)
-                                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-                            )
-                    }
-                    .padding(.top, 8)
+                CompletedJourneyStatsPanel(
+                    session: session,
+                    poiCount: journeyManager.discoveredPOIs.count
+                ) {
+                    HapticManager.success()
+                    saveCompletedJourney(session: session)
+                    presentSummary(
+                        session: session,
+                        progress: 1.0,
+                        isCompleted: true,
+                        actualDuration: Date().timeIntervalSince(session.startTime),
+                        discoveredPOIs: journeyManager.discoveredPOIs
+                    )
                 }
             }
         }
@@ -637,6 +544,109 @@ struct ActiveJourneyView: View {
     
 }
 
+private struct ActiveJourneyStatsPanel: View, Equatable {
+    let position: VirtualPosition
+    let currentSpeed: Double
+
+    static func == (lhs: ActiveJourneyStatsPanel, rhs: ActiveJourneyStatsPanel) -> Bool {
+        lhs.position == rhs.position && lhs.currentSpeed == rhs.currentSpeed
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("label.timeRemaining"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+
+                    Text(FormatUtilities.formatTimeDigital(position.remainingTime))
+                        .font(.system(size: 48, weight: .semibold, design: .rounded))
+                        .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 4)
+                        .frame(width: 44, height: 44)
+
+                    Circle()
+                        .trim(from: 0, to: position.progress)
+                        .stroke(
+                            LiquidGlassStyle.primaryGradient,
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        )
+                        .frame(width: 44, height: 44)
+                        .rotationEffect(.degrees(-90))
+
+                    Text(FormatUtilities.formatProgress(position.progress))
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                }
+            }
+
+            HStack(spacing: 10) {
+                CompactStatCard(
+                    icon: "location.fill",
+                    label: L("label.distanceTraveled"),
+                    value: FormatUtilities.formatDistance(position.distanceTraveled)
+                )
+
+                CompactStatCard(
+                    icon: "speedometer",
+                    label: L("label.currentSpeed"),
+                    value: String(format: "%.1f km/h", currentSpeed)
+                )
+            }
+        }
+    }
+}
+
+private struct CompletedJourneyStatsPanel: View {
+    let session: JourneySession
+    let poiCount: Int
+    let onShowSummary: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(Color.green)
+
+            Text(L("journey.completed"))
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.primary)
+
+            Text(FormatUtilities.formatDistance(session.totalDistance))
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Text(String(format: L("journey.completed.duration"), FormatUtilities.formatTime(Date().timeIntervalSince(session.startTime))))
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Text(String(format: L("journey.completed.pois"), poiCount))
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Button(action: onShowSummary) {
+                Text(L("journey.viewSummary"))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(LiquidGlassStyle.primaryGradient)
+                    )
+            }
+            .padding(.top, 8)
+        }
+    }
+}
+
 // MARK: - Guide Feature Row
 
 struct GuideFeatureRow: View {
@@ -672,9 +682,6 @@ struct GuideFeatureRow: View {
 // MARK: - Compact Stat Card
 
 struct CompactStatCard: View {
-    @ObservedObject private var settings = AppSettings.shared
-    @Environment(\.colorScheme) private var colorScheme
-    
     let icon: String
     let label: String
     let value: String
@@ -721,8 +728,11 @@ struct CompactStatCard: View {
     @ViewBuilder
     private var backgroundView: some View {
         RoundedRectangle(cornerRadius: 20)
-            .fill(Color.clear)
-            .glassCard(cornerRadius: 20, tintColor: Color(red: 0.13, green: 0.18, blue: 0.28))
+            .fill(Color.white.opacity(0.07))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.7)
+            )
     }
 }
 

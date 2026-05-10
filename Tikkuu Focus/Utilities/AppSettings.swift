@@ -50,11 +50,11 @@ extension AppMapMode {
     var style: MapStyle {
         switch self {
         case .explore:
-            return .standard(elevation: .realistic)
+            return .standard(elevation: PerformanceConfig.shouldReduceVisualEffects ? .flat : .realistic)
         case .transit:
-            return .hybrid(elevation: .realistic)
+            return .hybrid(elevation: PerformanceConfig.shouldReduceVisualEffects ? .flat : .realistic)
         case .satellite:
-            return .imagery(elevation: .realistic)
+            return .imagery(elevation: PerformanceConfig.shouldReduceVisualEffects ? .flat : .realistic)
         case .simple:
             return .standard(elevation: .flat)
         }

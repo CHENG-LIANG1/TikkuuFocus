@@ -30,8 +30,9 @@ struct ExplorationMapView: View {
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var settings = AppSettings.shared
 
-    private let traveledPathMaxPoints = 600
-    private let traveledPathTargetPoints = 400
+    private let traveledPathMaxPoints = 180
+    private let traveledPathTargetPoints = 120
+    private let displayedRouteTargetPoints = 140
 
     init(
         session: JourneySession,
@@ -105,11 +106,11 @@ struct ExplorationMapView: View {
     private var cameraFollowDistanceThreshold: CLLocationDistance {
         switch session.transportMode {
         case .walking:
-            return 18
+            return 35
         case .cycling, .skateboard:
-            return 26
+            return 60
         case .driving:
-            return 40
+            return 110
         }
     }
 
@@ -117,11 +118,11 @@ struct ExplorationMapView: View {
         let base: TimeInterval
         switch session.transportMode {
         case .walking:
-            base = 1.1
+            base = 2.5
         case .cycling, .skateboard:
-            base = 1.3
+            base = 3.0
         case .driving:
-            base = 1.6
+            base = 3.5
         }
 
         return PerformanceOptimizer.shared.isEnergySavingMode ? base * 1.8 : base
@@ -137,8 +138,7 @@ struct ExplorationMapView: View {
     
     var body: some View {
         ZStack {
-            MapReader { proxy in
-                Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
+            Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
             // Start marker (no label to avoid flickering)
             Marker(coordinate: session.startLocation) {
                 StartMarker()
@@ -146,8 +146,8 @@ struct ExplorationMapView: View {
             .tint(.green)
             
             // Traveled path (trail behind avatar) - Bright and visible
-            if traveledPath.count >= 2 {
-                MapPolyline(coordinates: traveledPath)
+            if displayedTraveledPath.count >= 2 {
+                MapPolyline(coordinates: displayedTraveledPath)
                     .stroke(
                         LinearGradient(
                             colors: [
@@ -162,8 +162,8 @@ struct ExplorationMapView: View {
             }
             
             // Revealed route (dimmed, shows where you can go)
-            if currentPosition != nil, revealedRouteCoordinates.count >= 2 {
-                MapPolyline(coordinates: revealedRouteCoordinates)
+            if currentPosition != nil, displayedRevealedRoute.count >= 2 {
+                MapPolyline(coordinates: displayedRevealedRoute)
                     .stroke(
                         Color.gray.opacity(0.3),
                         style: StrokeStyle(
@@ -217,7 +217,6 @@ struct ExplorationMapView: View {
                 }
             }
         }
-            } // Close MapReader
         .onAppear {
             if !hasInitialized {
                 hasInitialized = true
@@ -302,7 +301,7 @@ struct ExplorationMapView: View {
     @State private var pulseScale: CGFloat = 1.0
     
     private func startPulseAnimation() {
-        guard !PerformanceOptimizer.shared.isEnergySavingMode else { return }
+        guard PerformanceConfig.enableAmbientAnimations else { return }
         withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
             pulseScale = 1.3
         }
@@ -364,6 +363,11 @@ struct ExplorationMapView: View {
     // MARK: - Helper Functions
     
     private func animateToPosition(_ newCoordinate: CLLocationCoordinate2D) {
+        guard PerformanceConfig.enableMapCameraAnimations else {
+            animatedPosition = newCoordinate
+            return
+        }
+
         withAnimation(.linear(duration: positionAnimationDuration)) {
             animatedPosition = newCoordinate
         }
@@ -376,8 +380,10 @@ struct ExplorationMapView: View {
         
         let zoom = zoomLevel(for: session.transportMode.speedMps)
 
-        // Use linear animation for smooth continuous movement.
-        setCamera(center: coordinate, zoom: zoom, animation: .linear(duration: cameraAnimationDuration))
+        let animation: Animation? = PerformanceConfig.enableMapCameraAnimations
+            ? .linear(duration: cameraAnimationDuration)
+            : nil
+        setCamera(center: coordinate, zoom: zoom, animation: animation)
     }
     
     private func recenterCamera() {
@@ -392,7 +398,10 @@ struct ExplorationMapView: View {
             showRecenterButton = false
         }
 
-        setCamera(center: position, zoom: zoom, animation: .spring(response: 0.5, dampingFraction: 0.7))
+        let animation: Animation? = PerformanceConfig.enableMapCameraAnimations
+            ? .spring(response: 0.5, dampingFraction: 0.7)
+            : nil
+        setCamera(center: position, zoom: zoom, animation: animation)
     }
 
     private func setCamera(center: CLLocationCoordinate2D, zoom: Double, animation: Animation?) {
@@ -473,8 +482,15 @@ struct ExplorationMapView: View {
 
         if targetCount > revealedRouteCoordinates.count {
             let startIndex = revealedRouteCoordinates.count
-            withAnimation(.linear(duration: 0.25)) {
+            let update = {
                 revealedRouteCoordinates.append(contentsOf: session.route[startIndex..<targetCount])
+            }
+            if PerformanceConfig.enableMapCameraAnimations {
+                withAnimation(.linear(duration: 0.2)) {
+                    update()
+                }
+            } else {
+                update()
             }
             return
         }
@@ -488,17 +504,25 @@ struct ExplorationMapView: View {
     private func traveledPathMinDistance(for mode: TransportMode) -> CLLocationDistance {
         switch mode {
         case .walking:
-            return 8
+            return 15
         case .cycling, .skateboard:
-            return 12
+            return 28
         case .driving:
-            return 20
+            return 60
         }
     }
 
     private func compactTraveledPathIfNeeded() {
         guard traveledPath.count > traveledPathMaxPoints else { return }
         traveledPath = downsample(path: traveledPath, targetCount: traveledPathTargetPoints)
+    }
+
+    private var displayedTraveledPath: [CLLocationCoordinate2D] {
+        downsample(path: traveledPath, targetCount: traveledPathTargetPoints)
+    }
+
+    private var displayedRevealedRoute: [CLLocationCoordinate2D] {
+        downsample(path: revealedRouteCoordinates, targetCount: displayedRouteTargetPoints)
     }
 
     private func downsample(path: [CLLocationCoordinate2D], targetCount: Int) -> [CLLocationCoordinate2D] {

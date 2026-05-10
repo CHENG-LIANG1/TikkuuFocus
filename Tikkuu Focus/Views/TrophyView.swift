@@ -24,6 +24,7 @@ struct TrophyView: View {
     @State private var hasCapturedInitialOffset = false
     @State private var cachedFilteredTrophies: [Trophy] = []
     @State private var gridRenderID = UUID()
+    @State private var trophyLoadTask: Task<Void, Never>?
     
     var body: some View {
         NavigationStack {
@@ -135,18 +136,22 @@ struct TrophyView: View {
         }
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
-            loadTrophies()
+            scheduleTrophyLoad()
         }
         .onChange(of: records.count) { _, _ in
-            Task {
-                await updateTrophiesAsync()
-                refreshFilteredTrophies()
-            }
+            scheduleTrophyLoad()
         }
         .onChange(of: selectedCategory) { _, _ in
             refreshFilteredTrophies()
-            withAnimation(AnimationConfig.tabSwitch) {
+            let update = {
                 gridRenderID = UUID()
+            }
+            if PerformanceConfig.shouldReduceVisualEffects {
+                update()
+            } else {
+                withAnimation(AnimationConfig.tabSwitch) {
+                    update()
+                }
             }
         }
         .onChange(of: trophyManager.trophies.count) { _, _ in
@@ -206,20 +211,36 @@ struct TrophyView: View {
                 }
             }
         }
+        .onDisappear {
+            trophyLoadTask?.cancel()
+            trophyLoadTask = nil
+        }
     }
     
     // MARK: - Loading
     
+    private func scheduleTrophyLoad() {
+        trophyLoadTask?.cancel()
+        trophyLoadTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            loadTrophies()
+        }
+    }
+
     private func loadTrophies() {
         trophyManager.updateProgress(with: records)
         refreshFilteredTrophies()
-        withAnimation(AnimationConfig.standardEase) {
+        let update = {
             isLoading = false
         }
-    }
-    
-    private func updateTrophiesAsync() async {
-        trophyManager.updateProgress(with: records)
+        if PerformanceConfig.shouldReduceVisualEffects {
+            update()
+        } else {
+            withAnimation(AnimationConfig.standardEase) {
+                update()
+            }
+        }
     }
     
     // MARK: - Progress Overview
@@ -284,7 +305,10 @@ struct TrophyView: View {
         }
         .padding(isProgressCollapsed ? 12 : 16)
         .glassCard(cornerRadius: 24)
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: isProgressCollapsed)
+        .animation(
+            PerformanceConfig.shouldReduceVisualEffects ? nil : .spring(response: 0.3, dampingFraction: 0.85),
+            value: isProgressCollapsed
+        )
     }
     
     // MARK: - Category Filter
@@ -407,7 +431,12 @@ struct TrophyCard: View {
                     .foregroundColor(trophy.isUnlocked ? .white : .gray)
             }
             .frame(height: 60) // Fixed height
-            .shadow(color: trophy.isUnlocked ? trophy.color.opacity(0.3) : Color.clear, radius: 10, x: 0, y: 5)
+            .shadow(
+                color: !PerformanceConfig.shouldReduceVisualEffects && trophy.isUnlocked ? trophy.color.opacity(0.3) : Color.clear,
+                radius: 10,
+                x: 0,
+                y: 5
+            )
             
             // Trophy info - fixed size
             VStack(spacing: 4) {

@@ -6,21 +6,45 @@
 //
 
 import Foundation
+import UIKit
 
 /// Performance configuration and constants
 enum PerformanceConfig {
+    // MARK: - Global Performance Mode
+
+    /// Rich visuals are opt-in. TestFlight/Release defaults to the lightweight path for smoother scrolling and maps.
+    static var enableRichVisualEffects: Bool {
+        UserDefaults.standard.bool(forKey: "enableRichVisualEffects")
+    }
+
+    static var shouldReduceVisualEffects: Bool {
+        !enableRichVisualEffects ||
+        ProcessInfo.processInfo.isLowPowerModeEnabled ||
+        UIAccessibility.isReduceMotionEnabled
+    }
+
+    static var enableAmbientAnimations: Bool {
+        enableRichVisualEffects &&
+        !ProcessInfo.processInfo.isLowPowerModeEnabled &&
+        !UIAccessibility.isReduceMotionEnabled
+    }
+
+    static var enableMapCameraAnimations: Bool {
+        enableRichVisualEffects &&
+        !ProcessInfo.processInfo.isLowPowerModeEnabled &&
+        !UIAccessibility.isReduceMotionEnabled
+    }
     
     // MARK: - Animation Performance
     
     /// Enable/disable complex animations on low-end devices
     static var enableComplexAnimations: Bool {
-        // Disable on older devices
-        return ProcessInfo.processInfo.processorCount >= 4
+        !shouldReduceVisualEffects && ProcessInfo.processInfo.processorCount >= 4
     }
     
     /// Enable/disable blur effects
     static var enableBlurEffects: Bool {
-        return ProcessInfo.processInfo.physicalMemory >= 2_000_000_000 // 2GB+
+        !shouldReduceVisualEffects && ProcessInfo.processInfo.physicalMemory >= 2_000_000_000 // 2GB+
     }
     
     /// Maximum number of simultaneous animations
@@ -64,10 +88,10 @@ enum PerformanceConfig {
     // MARK: - Map Performance
     
     /// Maximum POI markers to display
-    static let maxPOIMarkers = 20
+    static let maxPOIMarkers = 8
     
     /// Map update throttle interval (seconds)
-    static let mapUpdateThrottle: TimeInterval = 0.5
+    static let mapUpdateThrottle: TimeInterval = 1.5
     
     /// Enable map clustering
     static let enableMapClustering = true

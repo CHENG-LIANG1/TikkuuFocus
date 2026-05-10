@@ -8,7 +8,6 @@
 import SwiftUI
 import CoreLocation
 import SwiftData
-import MapKit
 import WidgetKit
 
 struct SetupView: View {
@@ -38,7 +37,6 @@ struct SetupView: View {
     @State private var preparingPulse: CGFloat = 1.0
     @State private var showFirstJourneyGuide = false
     @State private var showWeatherDetail = false
-    @State private var mapPreloadCoordinate: CLLocationCoordinate2D?
     @State private var journeyPreparationTask: Task<Void, Never>?
     @State private var weatherUpdateTask: Task<Void, Never>?
     @State private var lastWeatherFetchAt: Date = .distantPast
@@ -122,14 +120,6 @@ struct SetupView: View {
                     .padding(.bottom, 8)
             }
 
-            if let preloadCoordinate = mapPreloadCoordinate {
-                MapPreloadView(
-                    center: preloadCoordinate,
-                    destination: journeyManager.preparedDestination
-                )
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
         }
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
@@ -215,7 +205,7 @@ struct SetupView: View {
         }
         .onChange(of: isStarting) { _, newValue in
             if newValue {
-                if isEnergySavingMode {
+                if isEnergySavingMode || PerformanceConfig.shouldReduceVisualEffects {
                     preparingRotation = 0
                     withAnimation(.easeOut(duration: 0.2)) {
                         preparingPulse = 1.05
@@ -373,7 +363,6 @@ struct SetupView: View {
 
     private func prewarmMapIfPossible() {
         let coordinate = currentCoordinate
-        mapPreloadCoordinate = coordinate
         journeyManager.prewarmMapServices(near: coordinate)
         scheduleJourneyPreparation(immediate: true)
     }
@@ -855,7 +844,9 @@ struct SetupView: View {
     }
 
     private func updateButtonGlowAnimation() {
-        guard scenePhase == .active, !isEnergySavingMode else {
+        guard scenePhase == .active,
+              !isEnergySavingMode,
+              PerformanceConfig.enableAmbientAnimations else {
             buttonGlow = 0
             return
         }
@@ -1061,71 +1052,6 @@ struct SetupView: View {
         }
 
         return elapsed >= minInterval
-    }
-}
-
-private struct MapPreloadView: View {
-    @ObservedObject private var settings = AppSettings.shared
-    let center: CLLocationCoordinate2D
-    var destination: CLLocationCoordinate2D?
-    @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var destCameraPosition: MapCameraPosition = .automatic
-
-    var body: some View {
-        ZStack {
-            // Preload start region
-            Map(position: $cameraPosition) {}
-                .mapStyle(settings.selectedMapMode.style)
-                .frame(width: 1, height: 1)
-                .opacity(0.01)
-            
-            // Preload destination region if available
-            if destination != nil {
-                Map(position: $destCameraPosition) {}
-                    .mapStyle(settings.selectedMapMode.style)
-                    .frame(width: 1, height: 1)
-                    .opacity(0.01)
-            }
-        }
-        .onAppear {
-            updateCameraPositions()
-        }
-        .onChange(of: center.latitude) { _, _ in
-            updateStartCamera()
-        }
-        .onChange(of: center.longitude) { _, _ in
-            updateStartCamera()
-        }
-        .onChange(of: destination?.latitude) { _, _ in
-            updateDestCamera()
-        }
-        .onChange(of: destination?.longitude) { _, _ in
-            updateDestCamera()
-        }
-    }
-    
-    private func updateCameraPositions() {
-        updateStartCamera()
-        updateDestCamera()
-    }
-    
-    private func updateStartCamera() {
-        cameraPosition = .region(
-            MKCoordinateRegion(
-                center: center,
-                span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
-            )
-        )
-    }
-    
-    private func updateDestCamera() {
-        guard let dest = destination else { return }
-        destCameraPosition = .region(
-            MKCoordinateRegion(
-                center: dest,
-                span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
-            )
-        )
     }
 }
 

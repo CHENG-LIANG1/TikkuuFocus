@@ -61,13 +61,17 @@ struct JourneySession: Equatable, Identifiable {
         self.id = id
         self.startLocation = startLocation
         self.destinationLocation = destinationLocation
-        self.route = route
+        self.route = JourneySession.normalizedRoute(
+            route,
+            startLocation: startLocation,
+            destinationLocation: destinationLocation
+        )
         self.totalDistance = totalDistance
         self.duration = duration
         self.transportMode = transportMode
         self.startTime = startTime
 
-        let cumulative = JourneySession.buildCumulativeRouteDistances(route)
+        let cumulative = JourneySession.buildCumulativeRouteDistances(self.route)
         self.cumulativeRouteDistances = cumulative
         self.routeDistanceForInterpolation = cumulative.last ?? totalDistance
     }
@@ -90,6 +94,41 @@ struct JourneySession: Equatable, Identifiable {
             distanceTraveled: distanceTraveled,
             remainingTime: max(duration - elapsed, 0)
         )
+    }
+
+    /// Returns the coordinate on the route for a given progress value.
+    func coordinate(atProgress progress: Double) -> CLLocationCoordinate2D {
+        interpolatePosition(progress: min(max(progress, 0), 1.0))
+    }
+
+    /// Returns the traveled portion of the route through the given progress value.
+    func route(upToProgress progress: Double) -> [CLLocationCoordinate2D] {
+        let safeProgress = min(max(progress, 0), 1.0)
+        let source = route.isEmpty ? [startLocation, destinationLocation] : route
+
+        guard source.count >= 2 else {
+            return source.isEmpty ? [startLocation] : source
+        }
+
+        guard safeProgress > 0 else {
+            return [source[0]]
+        }
+
+        guard safeProgress < 1 else {
+            return source
+        }
+
+        guard cumulativeRouteDistances.count >= 2, routeDistanceForInterpolation > 0 else {
+            let endCoordinate = coordinate(atProgress: safeProgress)
+            return JourneySession.appendingCoordinateIfNeeded(to: [source[0]], coordinate: endCoordinate)
+        }
+
+        let targetDistance = routeDistanceForInterpolation * safeProgress
+        let index = segmentIndex(for: targetDistance)
+        let endCoordinate = coordinate(atProgress: safeProgress)
+        let prefix = Array(source.prefix(index))
+
+        return JourneySession.appendingCoordinateIfNeeded(to: prefix, coordinate: endCoordinate)
     }
     
     /// Interpolate position along the route based on progress (0.0 to 1.0)
@@ -132,6 +171,36 @@ struct JourneySession: Equatable, Identifiable {
         }
 
         return cumulative
+    }
+
+    private static func normalizedRoute(
+        _ route: [CLLocationCoordinate2D],
+        startLocation: CLLocationCoordinate2D,
+        destinationLocation: CLLocationCoordinate2D
+    ) -> [CLLocationCoordinate2D] {
+        var normalized = route
+        if normalized.isEmpty {
+            normalized = [startLocation, destinationLocation]
+        }
+
+        if let first = normalized.first, first.distance(to: startLocation) > 1 {
+            normalized.insert(startLocation, at: 0)
+        }
+
+        if let last = normalized.last, last.distance(to: destinationLocation) > 1 {
+            normalized.append(destinationLocation)
+        }
+
+        return normalized
+    }
+
+    private static func appendingCoordinateIfNeeded(
+        to route: [CLLocationCoordinate2D],
+        coordinate: CLLocationCoordinate2D
+    ) -> [CLLocationCoordinate2D] {
+        guard let last = route.last else { return [coordinate] }
+        guard last.distance(to: coordinate) > 0.5 else { return route }
+        return route + [coordinate]
     }
 
     private func segmentIndex(for targetDistance: Double) -> Int {

@@ -333,22 +333,26 @@ struct JourneySummaryView: View {
 
     private var routeMap: some View {
         Map(initialPosition: .region(mapRegion)) {
-            MapPolyline(coordinates: session.route)
-                .stroke(
-                    LinearGradient(
-                        colors: [Color.green, Color.blue, Color.purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                )
+            if displayRoute.count >= 2 {
+                MapPolyline(coordinates: displayRoute)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.green, Color.blue, Color.purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                    )
+            }
 
             Annotation("", coordinate: session.startLocation) {
                 routePoint(color: .green)
             }
 
-            Annotation("", coordinate: session.destinationLocation) {
-                routePoint(color: .red)
+            if shouldShowEndPoint {
+                Annotation("", coordinate: displayEndCoordinate) {
+                    routePoint(color: endPointColor)
+                }
             }
         }
         .mapStyle(summaryMapStyle)
@@ -448,11 +452,13 @@ struct JourneySummaryView: View {
 
     private var backgroundMapLayer: some View {
         Map(initialPosition: .region(mapRegion)) {
-            MapPolyline(coordinates: session.route)
-                .stroke(
-                    Color.green.opacity(0.85),
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                )
+            if displayRoute.count >= 2 {
+                MapPolyline(coordinates: displayRoute)
+                    .stroke(
+                        Color.green.opacity(0.85),
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                    )
+            }
 
             Annotation("", coordinate: session.startLocation) {
                 Circle()
@@ -461,11 +467,13 @@ struct JourneySummaryView: View {
                     .overlay(Circle().stroke(Color.white, lineWidth: 2))
             }
 
-            Annotation("", coordinate: session.destinationLocation) {
-                Circle()
-                    .fill(Color.red)
-                    .frame(width: 12, height: 12)
-                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+            if shouldShowEndPoint {
+                Annotation("", coordinate: displayEndCoordinate) {
+                    Circle()
+                        .fill(endPointColor)
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                }
             }
         }
         .mapStyle(summaryMapStyle)
@@ -497,12 +505,35 @@ struct JourneySummaryView: View {
         Array(discoveredPOIs.prefix(3))
     }
 
-    private var mapRegion: MKCoordinateRegion {
-        let centerLat = (session.startLocation.latitude + session.destinationLocation.latitude) / 2
-        let centerLon = (session.startLocation.longitude + session.destinationLocation.longitude) / 2
+    private var displayRoute: [CLLocationCoordinate2D] {
+        session.route(upToProgress: progress)
+    }
 
-        let latDelta = abs(session.startLocation.latitude - session.destinationLocation.latitude) * 1.5
-        let lonDelta = abs(session.startLocation.longitude - session.destinationLocation.longitude) * 1.5
+    private var displayEndCoordinate: CLLocationCoordinate2D {
+        displayRoute.last ?? session.coordinate(atProgress: progress)
+    }
+
+    private var shouldShowEndPoint: Bool {
+        session.startLocation.distance(to: displayEndCoordinate) > 1
+    }
+
+    private var endPointColor: Color {
+        isCompleted ? .red : .orange
+    }
+
+    private var mapRegion: MKCoordinateRegion {
+        let coordinates = displayRoute.isEmpty ? [session.startLocation, displayEndCoordinate] : displayRoute
+        let latitudes = coordinates.map(\.latitude)
+        let longitudes = coordinates.map(\.longitude)
+        let minLat = latitudes.min() ?? session.startLocation.latitude
+        let maxLat = latitudes.max() ?? session.startLocation.latitude
+        let minLon = longitudes.min() ?? session.startLocation.longitude
+        let maxLon = longitudes.max() ?? session.startLocation.longitude
+        let centerLat = (minLat + maxLat) / 2
+        let centerLon = (minLon + maxLon) / 2
+
+        let latDelta = (maxLat - minLat) * 1.5
+        let lonDelta = (maxLon - minLon) * 1.5
 
         return MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
@@ -685,9 +716,10 @@ struct JourneySummaryView: View {
                     .clipped()
             } else {
                 StaticRoutePreview(
-                    route: session.route,
+                    route: displayRoute,
                     start: session.startLocation,
-                    end: session.destinationLocation
+                    end: displayEndCoordinate,
+                    endColor: endPointColor
                 )
             }
         }
@@ -730,7 +762,7 @@ struct JourneySummaryView: View {
             return nil
         }
 
-        let routeCoordinates = session.route.isEmpty ? [session.startLocation, session.destinationLocation] : session.route
+        let routeCoordinates = displayRoute
         let renderer = UIGraphicsImageRenderer(size: size)
         let image = renderer.image { context in
             snapshot.image.draw(at: .zero)
@@ -752,7 +784,7 @@ struct JourneySummaryView: View {
             cgContext.strokePath()
 
             let startPoint = snapshot.point(for: session.startLocation)
-            let endPoint = snapshot.point(for: session.destinationLocation)
+            let endPoint = snapshot.point(for: displayEndCoordinate)
             let startRect = CGRect(x: startPoint.x - 6, y: startPoint.y - 6, width: 12, height: 12)
             let endRect = CGRect(x: endPoint.x - 6, y: endPoint.y - 6, width: 12, height: 12)
 
@@ -762,11 +794,13 @@ struct JourneySummaryView: View {
             cgContext.setLineWidth(2)
             cgContext.strokeEllipse(in: startRect)
 
-            cgContext.setFillColor(UIColor.systemRed.cgColor)
-            cgContext.fillEllipse(in: endRect)
-            cgContext.setStrokeColor(UIColor.white.cgColor)
-            cgContext.setLineWidth(2)
-            cgContext.strokeEllipse(in: endRect)
+            if shouldShowEndPoint {
+                cgContext.setFillColor((isCompleted ? UIColor.systemRed : UIColor.systemOrange).cgColor)
+                cgContext.fillEllipse(in: endRect)
+                cgContext.setStrokeColor(UIColor.white.cgColor)
+                cgContext.setLineWidth(2)
+                cgContext.strokeEllipse(in: endRect)
+            }
         }
 
         return image
@@ -894,6 +928,7 @@ private struct StaticRoutePreview: View {
     let route: [CLLocationCoordinate2D]
     let start: CLLocationCoordinate2D
     let end: CLLocationCoordinate2D
+    let endColor: Color
 
     @ObservedObject private var settings = AppSettings.shared
 
@@ -939,7 +974,7 @@ private struct StaticRoutePreview: View {
                 // End Point
                 if let last = points.last {
                     Circle()
-                        .fill(Color.red)
+                        .fill(endColor)
                         .frame(width: 10, height: 10)
                         .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
                         .position(last)
