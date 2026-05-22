@@ -175,9 +175,11 @@
 "settings.data.clear.confirm1.action" = "Continue";
 "settings.data.clear.confirm2.title" = "Final Confirmation";
 "settings.data.clear.confirm2.message" = "This action cannot be undone. All history and progress data will be permanently deleted.";
-"settings.data.clear.confirm2.guide" = "Type %@ to confirm (no quotation marks).";
+"settings.data.clear.confirm2.guide" = "Type %@ to confirm.";
 "settings.data.clear.confirm2.action" = "Delete Permanently";
 "settings.data.clear.inputPlaceholder" = "Type confirmation phrase";
+"settings.data.clear.error.title" = "Verification Failed";
+"settings.data.clear.error.message" = "The confirmation phrase does not match. Data was not cleared.";
 "settings.data.clear.confirmPhrase" = "CONFIRM CLEAR";
 
 // About
@@ -260,6 +262,16 @@
 "onboarding.v2.page4.feature3.title" = "Localized by design";
 "onboarding.v2.page4.feature3.desc" = "Language and formatting follow your in-app settings.";
 
+// Onboarding Animated (Latest)
+"onboarding.animated.page1.title" = "Set your start and time";
+"onboarding.animated.page1.subtitle" = "Start your focus journey on real maps. Walk, bike, or drive at your own pace.";
+"onboarding.animated.page2.title" = "Stay focused, roam the world";
+"onboarding.animated.page2.subtitle" = "As time passes, your route automatically extends on the map, discovering landmarks along the way.";
+"onboarding.animated.page3.title" = "Review stats, unlock trophies";
+"onboarding.animated.page3.subtitle" = "Every session is saved. Build your mileage and collect exclusive achievements.";
+"onboarding.animated.start" = "Start Roaming";
+"onboarding.animated.next" = "Next";
+
 // Onboarding New (Simplified)
 "onboarding.new.page1.title" = "Focus as a Journey";
 "onboarding.new.page1.subtitle" = "Transform your focus time into virtual adventures across real-world maps";
@@ -276,6 +288,44 @@
 "onboarding.new.tag.stats" = "Session Stats";
 "onboarding.new.tag.history" = "History";
 "onboarding.new.tag.achievements" = "Achievements";
+"onboarding.real.page1.title" = "Start Your First Focus in 3 Steps";
+"onboarding.real.page1.subtitle" = "This walkthrough uses the app's real start components, so you always know what to tap next.";
+"onboarding.real.page1.tag1" = "Real Start View";
+"onboarding.real.page1.tag2" = "3 Steps";
+"onboarding.real.page1.tag3" = "Launch Fast";
+"onboarding.real.page1.callout.title" = "Follow this the first time";
+"onboarding.real.page1.callout.subtitle" = "After these three steps, you go straight into the live map focus screen.";
+"onboarding.real.page1.step1.title" = "Choose a start point";
+"onboarding.real.page1.step1.subtitle" = "Use your current location or pick a preset city.";
+"onboarding.real.page1.step2.title" = "Pick transport and duration";
+"onboarding.real.page1.step2.subtitle" = "Walk, bike, or drive based on the pace you want right now.";
+"onboarding.real.page1.step3.title" = "Tap Start Roaming";
+"onboarding.real.page1.step3.subtitle" = "The journey begins immediately and the route is created for you.";
+"onboarding.real.page1.footnote" = "This is the real start flow, not just concept artwork.";
+"onboarding.real.page2.title" = "During Focus, Watch These Areas";
+"onboarding.real.page2.subtitle" = "The real in-session panel is shown here, so time, progress, and distance are easy to learn at a glance.";
+"onboarding.real.page2.tag1" = "Time Left";
+"onboarding.real.page2.tag2" = "Route Progress";
+"onboarding.real.page2.tag3" = "Free Map View";
+"onboarding.real.page2.row1" = "Check the remaining time and completion progress first.";
+"onboarding.real.page2.row2" = "Drag the map freely, then follow again only when you choose to.";
+"onboarding.real.page2.row3" = "Distance and current speed stay visible without switching screens.";
+"onboarding.real.page3.title" = "Go Here to Review Records";
+"onboarding.real.page3.subtitle" = "After each session, time, distance, completions, and discoveries are saved into your history.";
+"onboarding.real.page3.tag1" = "History";
+"onboarding.real.page3.tag2" = "Session Data";
+"onboarding.real.page3.tag3" = "Review Results";
+"onboarding.real.page3.callout.title" = "Open History to revisit every focus session";
+"onboarding.real.page3.callout.subtitle" = "Start with the overview cards, then open a journey to see its saved route and result.";
+"onboarding.real.page4.title" = "Achievements and Trophies Grow Here";
+"onboarding.real.page4.subtitle" = "Your progress does not disappear after one session. Every focus journey pushes streaks, trophies, and milestones forward.";
+"onboarding.real.page4.tag1" = "Trophies";
+"onboarding.real.page4.tag2" = "Streaks";
+"onboarding.real.page4.tag3" = "Milestones";
+"onboarding.real.page4.streak.title" = "Focus Streak";
+"onboarding.real.page4.streak.value" = "7 days";
+"onboarding.real.page4.callout.title" = "Open the achievements/trophies view to track growth";
+"onboarding.real.page4.callout.subtitle" = "It shows what you have already unlocked and how close you are to the next trophy.";
 
 // History
 "history.title" = "Roaming History";
@@ -321,6 +371,7 @@
 "common.edit" = "Edit";
 "common.category" = "Category";
 "common.cancel" = "Cancel";
+"common.ok" = "OK";
 "common.delete" = "Delete";
 
 // Stats
@@ -342,7 +393,7 @@
 "history.stats.saturday" = "Saturday";
 "history.showMore" = "Show more";
 "history.stats.milestones" = "Milestones";
-"history.stats.totalDays" = "Active Days";
+"history.stats.totalDays" = "Active";
 "history.stats.totalSteps" = "Estimated Steps";
 "history.stats.caloriesBurned" = "Calories Burned";
 "history.stats.co2Saved" = "CO₂ Saved";
@@ -765,6 +816,7 @@
 "journey.summary.photoPermission.openSettings" = "Open Settings";
 "journey.summary.photoPermission.cancel" = "Cancel";
 "journey.summary.saved" = "Saved to Photos";
+"journey.summary.timeRange" = "Time Range";
 
 // Activity Heatmap
 "heatmap.less" = "Less";

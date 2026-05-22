@@ -13,6 +13,7 @@ struct ExplorationMapView: View {
     let session: JourneySession
     let currentPosition: VirtualPosition?
     let discoveredPOIs: [DiscoveredPOI]
+    let isPaused: Bool
     @Binding var currentSpeed: Double
     
     @State private var cameraPosition: MapCameraPosition
@@ -22,12 +23,17 @@ struct ExplorationMapView: View {
     @State private var hasInitialized = false
     @State private var isFollowingUser = true
     @State private var isProgrammaticCameraChange = false
-    @State private var displaySpeed: Double = 0.0
+    @State private var speedState: JourneySpeedState
     @State private var showRecenterButton = false
     @State private var speedTimer: Timer?
     @State private var lastCameraFollowCoordinate: CLLocationCoordinate2D?
     @State private var lastCameraFollowUpdateTime: Date?
+    @State private var lastKnownCameraRegion: MKCoordinateRegion
+    @State private var cameraAnimationTask: Task<Void, Never>?
+    @State private var cameraGuardToken = UUID()
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var settings = AppSettings.shared
 
     private let traveledPathMaxPoints = 180
@@ -38,22 +44,27 @@ struct ExplorationMapView: View {
         session: JourneySession,
         currentPosition: VirtualPosition?,
         discoveredPOIs: [DiscoveredPOI],
+        isPaused: Bool,
         currentSpeed: Binding<Double>
     ) {
         self.session = session
         self.currentPosition = currentPosition
         self.discoveredPOIs = discoveredPOIs
+        self.isPaused = isPaused
         self._currentSpeed = currentSpeed
 
         let initialCenter = currentPosition?.coordinate ?? session.startLocation
         let initialZoom = Self.defaultZoom(for: session.transportMode)
+        let initialRegion = MKCoordinateRegion(
+            center: initialCenter,
+            latitudinalMeters: initialZoom,
+            longitudinalMeters: initialZoom
+        )
         _cameraPosition = State(initialValue: .region(
-            MKCoordinateRegion(
-                center: initialCenter,
-                latitudinalMeters: initialZoom,
-                longitudinalMeters: initialZoom
-            )
+            initialRegion
         ))
+        _lastKnownCameraRegion = State(initialValue: initialRegion)
+        _speedState = State(initialValue: JourneySpeedState(transportMode: session.transportMode))
     }
     
     // Speed range for each transport mode (in km/h)
@@ -135,6 +146,16 @@ struct ExplorationMapView: View {
     private var cameraAnimationDuration: TimeInterval {
         max(0.45, PerformanceOptimizer.shared.journeyUpdateInterval * 0.95)
     }
+
+    private var recenterAnimationDuration: TimeInterval {
+        guard PerformanceConfig.enableMapCameraAnimations, !reduceMotion else { return 0 }
+        return PerformanceOptimizer.shared.isEnergySavingMode ? 0.42 : 0.62
+    }
+
+    private var recenterAnimationStepCount: Int {
+        guard recenterAnimationDuration > 0 else { return 1 }
+        return PerformanceOptimizer.shared.isEnergySavingMode ? 12 : 20
+    }
     
     var body: some View {
         ZStack {
@@ -202,7 +223,9 @@ struct ExplorationMapView: View {
             }
         }
         .mapStyle(settings.selectedMapMode.style)
-        .onMapCameraChange { context in
+        .onMapCameraChange(frequency: .continuous) { context in
+            lastKnownCameraRegion = context.region
+
             // Only show recenter when user manually pans (drags) the map, not on zoom
             guard !isProgrammaticCameraChange, let currentPos = currentPosition?.coordinate else { return }
 
@@ -212,8 +235,10 @@ struct ExplorationMapView: View {
             // Only trigger on significant pan (drag), ignore zoom-only changes
             if distance > 50 {
                 isFollowingUser = false
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    showRecenterButton = true
+                if !showRecenterButton {
+                    withAnimation(AnimationConfig.quickSpring) {
+                        showRecenterButton = true
+                    }
                 }
             }
         }
@@ -221,12 +246,7 @@ struct ExplorationMapView: View {
             if !hasInitialized {
                 hasInitialized = true
                 startPulseAnimation()
-                
-                // Initialize speed
-                displaySpeed = randomSpeed(for: session.transportMode)
-                
-                // Start speed update timer
-                startSpeedUpdateTimer()
+                syncSpeedState()
 
                 if let position = currentPosition {
                     updateRevealedRoute(progress: position.progress)
@@ -235,17 +255,26 @@ struct ExplorationMapView: View {
             }
         }
         .onDisappear {
+            cameraAnimationTask?.cancel()
+            cameraAnimationTask = nil
+            isProgrammaticCameraChange = false
             stopSpeedUpdateTimer()
             stopPulseAnimation()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                startSpeedUpdateTimer()
+                syncSpeedState()
                 startPulseAnimation()
             } else {
+                cameraAnimationTask?.cancel()
+                cameraAnimationTask = nil
+                isProgrammaticCameraChange = false
                 stopSpeedUpdateTimer()
                 stopPulseAnimation()
             }
+        }
+        .onChange(of: isPaused) { _, _ in
+            syncSpeedState()
         }
         .onChange(of: currentPosition) { oldPosition, newPosition in
             guard hasInitialized else { return }
@@ -273,23 +302,14 @@ struct ExplorationMapView: View {
                     HapticManager.light()
                     recenterCamera()
                 } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                        
-                        Text(L("map.recenter"))
-                            .font(.system(size: 15, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(
-                        Capsule()
-                            .fill(Color.blue)
-                            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
+                    MapRecenterButtonLabel(
+                        title: L("map.recenter"),
+                        colorScheme: colorScheme
                     )
                 }
-                .padding(.bottom, 280) // 增加底部间距，避免被 statsPanel 挡住
+                .buttonStyle(MapOverlayButtonStyle())
+                .padding(.horizontal, 24)
+                .padding(.bottom, 360) // Increased padding to clear the new bottom controls
             }
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
@@ -317,7 +337,9 @@ struct ExplorationMapView: View {
     
     // 性能优化：降低速度更新频率从 3s 到 5s
     private func startSpeedUpdateTimer() {
-        guard speedTimer == nil else { return }
+        stopSpeedUpdateTimer()
+        guard scenePhase == .active else { return }
+        guard !isPaused else { return }
         guard !PerformanceOptimizer.shared.isEnergySavingMode else { return }
         let interval = PerformanceOptimizer.shared.secondaryUpdateInterval
         speedTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
@@ -330,34 +352,43 @@ struct ExplorationMapView: View {
         speedTimer = nil
     }
     
-    private func updateSpeed() {
-        let newSpeed: Double
-        
-        // For driving, make speed changes more gradual
-        if session.transportMode == .driving {
-            let range = speedRange(for: session.transportMode)
-            let targetSpeed = Double.random(in: range.min...range.max)
-            
-            // Smooth transition: only change speed by max 20 km/h at a time
-            let maxChange: Double = 20.0
-            let speedDiff = targetSpeed - displaySpeed
-            
-            if abs(speedDiff) > maxChange {
-                newSpeed = displaySpeed + (speedDiff > 0 ? maxChange : -maxChange)
-            } else {
-                newSpeed = targetSpeed
-            }
+    private func syncSpeedState() {
+        let stableSpeed = speedState.ensureInitialized(using: randomSpeed(for:))
+        publishCurrentSpeed(stableSpeed)
+
+        if isPaused {
+            stopSpeedUpdateTimer()
         } else {
-            newSpeed = randomSpeed(for: session.transportMode)
+            startSpeedUpdateTimer()
         }
-        
-        // Update display speed without animation to avoid visual glitches
-        displaySpeed = newSpeed
-        
-        // Update binding on main thread without animation
-        DispatchQueue.main.async {
-            currentSpeed = newSpeed
+    }
+
+    private func updateSpeed() {
+        let newSpeed = speedState.tickIfNeeded(isPaused: isPaused) { mode, currentSpeed in
+            // For driving, make speed changes more gradual
+            if mode == .driving {
+                let range = speedRange(for: mode)
+                let targetSpeed = Double.random(in: range.min...range.max)
+
+                // Smooth transition: only change speed by max 20 km/h at a time
+                let maxChange: Double = 20.0
+                let speedDiff = targetSpeed - currentSpeed
+
+                if abs(speedDiff) > maxChange {
+                    return currentSpeed + (speedDiff > 0 ? maxChange : -maxChange)
+                }
+
+                return targetSpeed
+            }
+
+            return randomSpeed(for: mode)
         }
+
+        publishCurrentSpeed(newSpeed)
+    }
+
+    private func publishCurrentSpeed(_ speed: Double) {
+        currentSpeed = speed
     }
     
     // MARK: - Helper Functions
@@ -387,34 +418,38 @@ struct ExplorationMapView: View {
     }
     
     private func recenterCamera() {
-        guard let position = currentPosition?.coordinate else { return }
+        let position = currentPosition?.coordinate ?? session.route.first ?? session.startLocation
 
         isFollowingUser = true
-        lastCameraFollowCoordinate = nil
-        lastCameraFollowUpdateTime = nil
+        lastCameraFollowCoordinate = position
+        lastCameraFollowUpdateTime = Date()
         let zoom = zoomLevel(for: session.transportMode.speedMps)
 
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+        withAnimation(AnimationConfig.smoothSpring) {
             showRecenterButton = false
+            cameraPosition = .region(MKCoordinateRegion(
+                center: position,
+                latitudinalMeters: zoom,
+                longitudinalMeters: zoom
+            ))
         }
-
-        let animation: Animation? = PerformanceConfig.enableMapCameraAnimations
-            ? .spring(response: 0.5, dampingFraction: 0.7)
-            : nil
-        setCamera(center: position, zoom: zoom, animation: animation)
     }
 
     private func setCamera(center: CLLocationCoordinate2D, zoom: Double, animation: Animation?) {
+        cameraAnimationTask?.cancel()
+        cameraAnimationTask = nil
+        let guardToken = UUID()
+        cameraGuardToken = guardToken
         isProgrammaticCameraChange = true
+        let region = MKCoordinateRegion(
+            center: center,
+            latitudinalMeters: zoom,
+            longitudinalMeters: zoom
+        )
 
         let update = {
-            cameraPosition = .region(
-                MKCoordinateRegion(
-                    center: center,
-                    latitudinalMeters: zoom,
-                    longitudinalMeters: zoom
-                )
-            )
+            cameraPosition = .region(region)
+            lastKnownCameraRegion = region
         }
 
         if let animation {
@@ -427,8 +462,98 @@ struct ExplorationMapView: View {
 
         // Release the guard shortly after the camera update settles.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            guard cameraGuardToken == guardToken else { return }
             isProgrammaticCameraChange = false
         }
+    }
+
+    private func animateCameraTransition(to center: CLLocationCoordinate2D, zoom: Double) {
+        guard recenterAnimationDuration > 0 else {
+            setCamera(center: center, zoom: zoom, animation: nil)
+            return
+        }
+
+        cameraAnimationTask?.cancel()
+
+        let startRegion = lastKnownCameraRegion
+        let targetRegion = MKCoordinateRegion(
+            center: center,
+            latitudinalMeters: zoom,
+            longitudinalMeters: zoom
+        )
+        let stepDuration = recenterAnimationDuration / Double(recenterAnimationStepCount)
+        let guardToken = UUID()
+
+        cameraGuardToken = guardToken
+        isProgrammaticCameraChange = true
+        cameraAnimationTask = Task { @MainActor in
+            for step in 1...recenterAnimationStepCount {
+                if Task.isCancelled {
+                    if cameraGuardToken == guardToken {
+                        isProgrammaticCameraChange = false
+                    }
+                    cameraAnimationTask = nil
+                    return
+                }
+
+                let progress = smoothStep(Double(step) / Double(recenterAnimationStepCount))
+                let region = MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(
+                        latitude: interpolate(
+                            from: startRegion.center.latitude,
+                            to: targetRegion.center.latitude,
+                            progress: progress
+                        ),
+                        longitude: interpolate(
+                            from: startRegion.center.longitude,
+                            to: targetRegion.center.longitude,
+                            progress: progress
+                        )
+                    ),
+                    latitudinalMeters: interpolate(
+                        from: startRegion.latitudinalMeters,
+                        to: targetRegion.latitudinalMeters,
+                        progress: progress
+                    ),
+                    longitudinalMeters: interpolate(
+                        from: startRegion.longitudinalMeters,
+                        to: targetRegion.longitudinalMeters,
+                        progress: progress
+                    )
+                )
+
+                cameraPosition = .region(region)
+                lastKnownCameraRegion = region
+
+                if step < recenterAnimationStepCount {
+                    do {
+                        try await Task.sleep(for: .seconds(stepDuration))
+                    } catch {
+                        if cameraGuardToken == guardToken {
+                            isProgrammaticCameraChange = false
+                        }
+                        cameraAnimationTask = nil
+                        return
+                    }
+                }
+            }
+
+            cameraPosition = .region(targetRegion)
+            lastKnownCameraRegion = targetRegion
+            if cameraGuardToken == guardToken {
+                isProgrammaticCameraChange = false
+            }
+            cameraAnimationTask = nil
+        }
+    }
+
+    private func interpolate(from start: Double, to end: Double, progress: Double) -> Double {
+        start + (end - start) * progress
+    }
+
+    private func smoothStep(_ value: Double) -> Double {
+        let clamped = min(max(value, 0), 1)
+        return clamped * clamped * (3 - 2 * clamped)
     }
 
     private func shouldUpdateFollowCamera(to coordinate: CLLocationCoordinate2D) -> Bool {
@@ -647,6 +772,132 @@ struct POIBubbleMarker: View {
     }
 }
 
+private struct MapRecenterButtonLabel: View {
+    let title: String
+    let colorScheme: ColorScheme
+
+    private var baseFill: LinearGradient {
+        if PerformanceConfig.shouldReduceVisualEffects {
+            return LinearGradient(
+                colors: [
+                    Color(red: 0.13, green: 0.18, blue: 0.28).opacity(0.94),
+                    Color(red: 0.09, green: 0.13, blue: 0.21).opacity(0.92)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+
+        return LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color(red: 0.14, green: 0.19, blue: 0.29).opacity(0.86),
+                    Color(red: 0.10, green: 0.14, blue: 0.22).opacity(0.78)
+                ]
+                : [
+                    Color.white.opacity(0.90),
+                    Color(red: 0.92, green: 0.96, blue: 1.0).opacity(0.84)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var accentGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                LiquidGlassStyle.accentBlueLight.opacity(colorScheme == .dark ? 0.95 : 0.90),
+                Color(red: 0.32, green: 0.72, blue: 0.96).opacity(colorScheme == .dark ? 0.88 : 0.82)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var titleColor: Color {
+        colorScheme == .dark ? .white : Color(red: 0.12, green: 0.18, blue: 0.28)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(accentGradient)
+                    .frame(width: 34, height: 34)
+
+                Circle()
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                    .frame(width: 34, height: 34)
+
+                Image(systemName: "location.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(titleColor)
+                .padding(.trailing, 4)
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(baseFill)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .opacity(PerformanceConfig.shouldReduceVisualEffects ? 0 : 0.42)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(
+                            Color.white.opacity(colorScheme == .dark ? 0.14 : 0.36),
+                            lineWidth: 1
+                        )
+                }
+        )
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.24 : 0.12),
+            radius: 18,
+            x: 0,
+            y: 10
+        )
+        .shadow(
+            color: LiquidGlassStyle.accentBlueLight.opacity(colorScheme == .dark ? 0.22 : 0.14),
+            radius: 10,
+            x: 0,
+            y: 4
+        )
+    }
+}
+
+private struct MapOverlayButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .brightness(configuration.isPressed ? -0.02 : 0)
+            .animation(AnimationConfig.pressDown, value: configuration.isPressed)
+    }
+}
+
+private extension MKCoordinateRegion {
+    var latitudinalMeters: CLLocationDistance {
+        let halfDelta = span.latitudeDelta / 2
+        let north = CLLocation(latitude: center.latitude + halfDelta, longitude: center.longitude)
+        let south = CLLocation(latitude: center.latitude - halfDelta, longitude: center.longitude)
+        return max(north.distance(from: south), 1)
+    }
+
+    var longitudinalMeters: CLLocationDistance {
+        let halfDelta = span.longitudeDelta / 2
+        let east = CLLocation(latitude: center.latitude, longitude: center.longitude + halfDelta)
+        let west = CLLocation(latitude: center.latitude, longitude: center.longitude - halfDelta)
+        return max(east.distance(from: west), 1)
+    }
+}
+
 #Preview {
     @Previewable @State var speed: Double = 20.0
     
@@ -679,6 +930,7 @@ struct POIBubbleMarker: View {
                 coordinate: CLLocationCoordinate2D(latitude: 37.7694, longitude: -122.4862)
             )
         ],
+        isPaused: false,
         currentSpeed: $speed
     )
 }

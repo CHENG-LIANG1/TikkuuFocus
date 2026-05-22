@@ -22,6 +22,11 @@ enum JourneyState: Equatable {
         if case .active = self { return true }
         return false
     }
+
+    var isPaused: Bool {
+        if case .paused = self { return true }
+        return false
+    }
     
     var session: JourneySession? {
         switch self {

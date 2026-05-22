@@ -18,6 +18,7 @@ struct JourneySummaryView: View {
     let session: JourneySession
     let discoveredPOIs: [DiscoveredPOI]
     let weatherCondition: String
+    let temperature: String
     let isDaytime: Bool
     let progress: Double
     let isCompleted: Bool
@@ -36,6 +37,7 @@ struct JourneySummaryView: View {
         session: JourneySession,
         discoveredPOIs: [DiscoveredPOI],
         weatherCondition: String,
+        temperature: String = "",
         isDaytime: Bool,
         progress: Double,
         isCompleted: Bool,
@@ -46,6 +48,7 @@ struct JourneySummaryView: View {
         self.session = session
         self.discoveredPOIs = discoveredPOIs
         self.weatherCondition = weatherCondition
+        self.temperature = temperature
         self.isDaytime = isDaytime
         self.progress = progress
         self.isCompleted = isCompleted
@@ -246,47 +249,39 @@ struct JourneySummaryView: View {
 
     private var metricsSection: some View {
         VStack(spacing: 10) {
-            // Row 1: Time & Weather
+            // Row 1: Time Range & Duration
             HStack(spacing: 10) {
+                MetricCell(
+                    icon: "clock.arrow.circlepath",
+                    title: L("journey.summary.timeRange"),
+                    value: timeRangeString,
+                    gradient: LinearGradient(colors: [Color.purple, Color.pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+
                 MetricCell(
                     icon: "clock.fill",
                     title: L("journey.summary.focusTime"),
                     value: FormatUtilities.formatTime(actualDuration),
                     gradient: LinearGradient(colors: [Color.blue, Color.cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
+            }
 
+            // Row 2: Weather & Distance
+            HStack(spacing: 10) {
                 MetricCell(
                     icon: weatherIcon,
                     title: isDaytime ? L("journey.summary.day") : L("journey.summary.night"),
-                    value: weatherCondition,
+                    value: temperature.isEmpty ? weatherCondition : "\(weatherCondition) \(temperature)",
                     gradient: LinearGradient(colors: [Color.cyan, Color.indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
-            }
-
-            // Row 2: Distance & Transport
-            HStack(spacing: 10) {
+                
                 MetricCell(
                     icon: "location.fill",
                     title: L("journey.summary.distance"),
                     value: FormatUtilities.formatDistance(displayDistance),
                     gradient: LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
-
-                MetricCell(
-                    icon: session.transportMode.iconName,
-                    title: L("history.detail.transport"),
-                    value: transportDisplayText,
-                    gradient: LinearGradient(colors: [Color.green, Color.teal], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
             }
-
-            // Row 3: POI Count (Full Width)
-            MetricCell(
-                icon: "star.fill",
-                title: L("journey.summary.pois"),
-                value: "\(discoveredPOIs.count)",
-                gradient: LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
         }
     }
 
@@ -400,15 +395,6 @@ struct JourneySummaryView: View {
             ) {
                 shareImage()
             }
-
-            ActionButton(
-                title: L("journey.summary.done"),
-                icon: "checkmark",
-                style: .success
-            ) {
-                onDismiss()
-                dismiss()
-            }
         }
         .opacity(animateIn ? 1 : 0)
         .offset(y: animateIn ? 0 : 15)
@@ -503,6 +489,14 @@ struct JourneySummaryView: View {
 
     private var topPOIs: [DiscoveredPOI] {
         Array(discoveredPOIs.prefix(3))
+    }
+
+    private var timeRangeString: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let startString = formatter.string(from: session.startTime)
+        let endString = formatter.string(from: session.startTime.addingTimeInterval(actualDuration))
+        return "\(startString) - \(endString)"
     }
 
     private var displayRoute: [CLLocationCoordinate2D] {

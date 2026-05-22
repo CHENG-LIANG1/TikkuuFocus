@@ -13,6 +13,7 @@ struct JourneySummaryPayload: Identifiable {
     let session: JourneySession
     let discoveredPOIs: [DiscoveredPOI]
     let weatherCondition: String
+    let temperature: String
     let isDaytime: Bool
     let progress: Double
     let isCompleted: Bool
@@ -24,6 +25,7 @@ struct JourneySummaryPayload: Identifiable {
         session: JourneySession,
         discoveredPOIs: [DiscoveredPOI],
         weatherCondition: String,
+        temperature: String = "",
         isDaytime: Bool,
         progress: Double,
         isCompleted: Bool,
@@ -34,6 +36,7 @@ struct JourneySummaryPayload: Identifiable {
         self.session = session
         self.discoveredPOIs = discoveredPOIs
         self.weatherCondition = weatherCondition
+        self.temperature = temperature
         self.isDaytime = isDaytime
         self.progress = progress
         self.isCompleted = isCompleted

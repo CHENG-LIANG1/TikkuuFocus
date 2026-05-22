@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 struct OnboardingView: View {
     @StateObject private var settings = AppSettings.shared
@@ -36,7 +37,8 @@ struct OnboardingView: View {
                             OnboardingSlideView(
                                 slide: slide,
                                 isCompact: isCompact,
-                                cardLift: cardLift
+                                cardLift: cardLift,
+                                isVisible: currentPage == index
                             )
                             .tag(index)
                             .padding(.horizontal, 20)
@@ -72,40 +74,31 @@ struct OnboardingView: View {
     private var pages: [OnboardingSlide] {
         [
             OnboardingSlide(
-                artwork: .route,
-                titleKey: "onboarding.new.page1.title",
-                subtitleKey: "onboarding.new.page1.subtitle",
-                chips: [
-                    "onboarding.new.tag.realMap",
-                    "onboarding.new.tag.transport",
-                    "onboarding.new.tag.discover"
-                ],
-                gradient: [Color(red: 0.20, green: 0.55, blue: 0.98), Color(red: 0.18, green: 0.79, blue: 0.81)],
-                backgroundAccent: Color(red: 0.12, green: 0.29, blue: 0.60)
+                kind: .plan,
+                titleKey: "onboarding.animated.page1.title",
+                subtitleKey: "onboarding.animated.page1.subtitle",
+                gradient: [Color(red: 0.25, green: 0.54, blue: 0.98), Color(red: 0.20, green: 0.80, blue: 0.84)],
+                backgroundAccent: Color(red: 0.12, green: 0.24, blue: 0.52),
+                symbol: "map.fill",
+                symbolColor: .blue
             ),
             OnboardingSlide(
-                artwork: .compass,
-                titleKey: "onboarding.new.page2.title",
-                subtitleKey: "onboarding.new.page2.subtitle",
-                chips: [
-                    "onboarding.new.tag.liveProgress",
-                    "onboarding.new.tag.freeExplore",
-                    "onboarding.new.tag.pois"
-                ],
-                gradient: [Color(red: 0.98, green: 0.55, blue: 0.30), Color(red: 0.93, green: 0.29, blue: 0.48)],
-                backgroundAccent: Color(red: 0.50, green: 0.19, blue: 0.34)
+                kind: .focus,
+                titleKey: "onboarding.animated.page2.title",
+                subtitleKey: "onboarding.animated.page2.subtitle",
+                gradient: [Color(red: 0.97, green: 0.53, blue: 0.32), Color(red: 0.90, green: 0.27, blue: 0.56)],
+                backgroundAccent: Color(red: 0.44, green: 0.16, blue: 0.30),
+                symbol: "location.north.line.fill",
+                symbolColor: .orange
             ),
             OnboardingSlide(
-                artwork: .stats,
-                titleKey: "onboarding.new.page3.title",
-                subtitleKey: "onboarding.new.page3.subtitle",
-                chips: [
-                    "onboarding.new.tag.stats",
-                    "onboarding.new.tag.history",
-                    "onboarding.new.tag.achievements"
-                ],
-                gradient: [Color(red: 0.31, green: 0.83, blue: 0.56), Color(red: 0.18, green: 0.64, blue: 0.93)],
-                backgroundAccent: Color(red: 0.09, green: 0.35, blue: 0.42)
+                kind: .grow,
+                titleKey: "onboarding.animated.page3.title",
+                subtitleKey: "onboarding.animated.page3.subtitle",
+                gradient: [Color(red: 0.99, green: 0.77, blue: 0.25), Color(red: 0.97, green: 0.46, blue: 0.25)],
+                backgroundAccent: Color(red: 0.38, green: 0.22, blue: 0.09),
+                symbol: "trophy.fill",
+                symbolColor: .yellow
             )
         ]
     }
@@ -115,7 +108,7 @@ struct OnboardingView: View {
             LinearGradient(
                 colors: [
                     Color(red: 0.03, green: 0.05, blue: 0.10),
-                    activeSlide.backgroundAccent.opacity(0.85),
+                    activeSlide.backgroundAccent.opacity(0.88),
                     Color(red: 0.06, green: 0.07, blue: 0.14)
                 ],
                 startPoint: .topLeading,
@@ -123,22 +116,22 @@ struct OnboardingView: View {
             )
 
             Circle()
-                .fill(activeSlide.gradient[0].opacity(0.32))
-                .frame(width: 350, height: 350)
+                .fill(activeSlide.gradient[0].opacity(0.30))
+                .frame(width: 360, height: 360)
                 .blur(radius: 92)
-                .offset(x: -120, y: -250 + orbDrift * 22)
+                .offset(x: -110, y: -250 + orbDrift * 22)
 
             Circle()
-                .fill(activeSlide.gradient[1].opacity(0.30))
+                .fill(activeSlide.gradient[1].opacity(0.28))
                 .frame(width: 280, height: 280)
                 .blur(radius: 84)
-                .offset(x: 130, y: 110 - orbDrift * 18)
+                .offset(x: 130, y: 100 - orbDrift * 18)
 
             Circle()
-                .fill(Color.white.opacity(0.07))
+                .fill(Color.white.opacity(0.08))
                 .frame(width: 180, height: 180)
                 .blur(radius: 60)
-                .offset(x: 32, y: 330 + orbDrift * 14)
+                .offset(x: 26, y: 330 + orbDrift * 14)
         }
         .animation(.easeInOut(duration: 0.75), value: currentPage)
     }
@@ -149,6 +142,7 @@ struct OnboardingView: View {
                 Circle()
                     .fill(activeSlide.gradient[0])
                     .frame(width: 8, height: 8)
+
                 Text(progressText)
                     .font(.system(size: isCompact ? 12 : 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.9))
@@ -224,9 +218,9 @@ struct OnboardingView: View {
 
     private var primaryButtonTitle: String {
         if currentPage < pages.count - 1 {
-            return L("onboarding.next")
+            return L("onboarding.animated.next")
         }
-        return canDismiss ? L("common.done") : L("onboarding.getStarted")
+        return canDismiss ? L("common.done") : L("onboarding.animated.start")
     }
 
     private func handlePrimaryAction() {
@@ -237,6 +231,7 @@ struct OnboardingView: View {
             }
             return
         }
+
         if canDismiss {
             dismiss()
         } else {
@@ -271,240 +266,90 @@ private struct OnboardingSlideView: View {
     let slide: OnboardingSlide
     let isCompact: Bool
     let cardLift: CGFloat
+    let isVisible: Bool
 
     var body: some View {
-        VStack(spacing: isCompact ? 22 : 30) {
-            Spacer(minLength: isCompact ? 16 : 24)
-            heroCard
-            textSection
-            chipSection
-            Spacer(minLength: 10)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: isCompact ? 32 : 48) {
+                Spacer().frame(height: isCompact ? 20 : 40)
+                symbolSection
+                textSection
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, isCompact ? 10 : 18)
+            .padding(.bottom, 8)
         }
     }
 
-    private var heroCard: some View {
+    private var symbolSection: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
+            Circle()
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.26),
-                            Color.white.opacity(0.10)
+                            Color.white.opacity(0.15),
+                            Color.white.opacity(0.05)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
+                .frame(width: isCompact ? 160 : 200, height: isCompact ? 160 : 200)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                    Circle()
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 18)
-
-            OnboardingArtworkView(
-                artwork: slide.artwork,
-                gradient: slide.gradient,
-                cardLift: cardLift
-            )
-            .padding(20)
+                .shadow(color: slide.symbolColor.opacity(0.3), radius: 20, x: 0, y: 10)
+            
+            if #available(iOS 17.0, *) {
+                Image(systemName: slide.symbol)
+                    .font(.system(size: isCompact ? 70 : 90, weight: .semibold))
+                    .foregroundStyle(slide.symbolColor)
+                    .symbolEffect(.bounce.up, options: .repeating, isActive: isVisible)
+            } else {
+                Image(systemName: slide.symbol)
+                    .font(.system(size: isCompact ? 70 : 90, weight: .semibold))
+                    .foregroundStyle(slide.symbolColor)
+                    .scaleEffect(isVisible ? 1.05 : 1.0)
+                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isVisible)
+            }
         }
-        .frame(height: isCompact ? 250 : 305)
+        .offset(y: -cardLift * 8)
     }
 
     private var textSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Text(L(slide.titleKey))
-                .font(.system(size: isCompact ? 30 : 36, weight: .bold, design: .rounded))
+                .font(.system(size: isCompact ? 28 : 34, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 10)
 
             Text(L(slide.subtitleKey))
-                .font(.system(size: isCompact ? 15 : 17, weight: .medium))
-                .foregroundStyle(.white.opacity(0.78))
+                .font(.system(size: isCompact ? 16 : 18, weight: .regular))
+                .foregroundStyle(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
-                .lineSpacing(4)
-        }
-        .padding(.horizontal, 10)
-    }
-
-    private var chipSection: some View {
-        HStack(spacing: 10) {
-            ForEach(slide.chips, id: \.self) { key in
-                Text(L(key))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.92))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.16))
-                    )
-            }
-        }
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
-    }
-}
-
-private struct OnboardingArtworkView: View {
-    let artwork: OnboardingArtwork
-    let gradient: [Color]
-    let cardLift: CGFloat
-
-    var body: some View {
-        artworkContent
-            .offset(y: -cardLift * 8)
-    }
-
-    @ViewBuilder
-    private var artworkContent: some View {
-        switch artwork {
-        case .route:
-            routeArtwork
-        case .compass:
-            compassArtwork
-        case .stats:
-            statsArtwork
-        }
-    }
-
-    private var routeArtwork: some View {
-        ZStack {
-            Path { path in
-                path.move(to: CGPoint(x: 40, y: 178))
-                path.addCurve(
-                    to: CGPoint(x: 256, y: 58),
-                    control1: CGPoint(x: 95, y: 90),
-                    control2: CGPoint(x: 188, y: 140)
-                )
-            }
-            .stroke(
-                LinearGradient(colors: gradient, startPoint: .leading, endPoint: .trailing),
-                style: StrokeStyle(lineWidth: 6, lineCap: .round, dash: [9, 7])
-            )
-            .frame(width: 300, height: 220)
-
-            Circle()
-                .fill(gradient[0])
-                .frame(width: 18, height: 18)
-                .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                .offset(x: -108, y: 64)
-
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(gradient[1], .white)
-                .offset(x: 110, y: -60)
-
-            Image(systemName: "map.fill")
-                .font(.system(size: 74, weight: .light))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.white.opacity(0.96), .white.opacity(0.58)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .offset(y: -6)
-        }
-    }
-
-    private var compassArtwork: some View {
-        ZStack {
-            ForEach(0..<3) { row in
-                ForEach(0..<3) { col in
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
-                        .frame(width: 58, height: 58)
-                        .offset(
-                            x: CGFloat(col - 1) * 66,
-                            y: CGFloat(row - 1) * 66
-                        )
-                }
-            }
-
-            Image(systemName: "cup.and.saucer.fill")
-                .font(.system(size: 18))
-                .foregroundColor(gradient[0])
-                .offset(x: -56, y: -46)
-
-            Image(systemName: "leaf.fill")
-                .font(.system(size: 18))
-                .foregroundColor(.green)
-                .offset(x: 62, y: 34)
-
-            Image(systemName: "building.2.fill")
-                .font(.system(size: 18))
-                .foregroundColor(gradient[1])
-                .offset(x: 16, y: -72)
-
-            Image(systemName: "location.north.fill")
-                .font(.system(size: 56, weight: .bold))
-                .foregroundStyle(
-                    LinearGradient(colors: gradient, startPoint: .top, endPoint: .bottom)
-                )
-                .rotationEffect(.degrees(Double(cardLift) * 12))
-        }
-    }
-
-    private var statsArtwork: some View {
-        ZStack {
-            HStack(spacing: 12) {
-                ForEach(0..<4) { index in
-                    VStack {
-                        Spacer()
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [gradient[0].opacity(0.8), gradient[1].opacity(0.6)],
-                                    startPoint: .bottom,
-                                    endPoint: .top
-                                )
-                            )
-                            .frame(width: 20, height: CGFloat([48, 70, 52, 92][index]) + cardLift * 6)
-                    }
-                    .frame(height: 110)
-                }
-            }
-            .offset(y: 56)
-
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 64, weight: .semibold))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(red: 1.0, green: 0.85, blue: 0.35), Color(red: 1.0, green: 0.65, blue: 0.2)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .shadow(color: Color.orange.opacity(0.4), radius: 15, x: 0, y: 8)
-                .offset(y: -40 + cardLift * 8)
-
-            Image(systemName: "sparkle")
-                .font(.system(size: 14))
-                .foregroundColor(.yellow)
-                .offset(x: -88, y: -72)
-
-            Image(systemName: "sparkle")
-                .font(.system(size: 10))
-                .foregroundColor(.yellow.opacity(0.7))
-                .offset(x: 92, y: -52)
+                .lineSpacing(6)
+                .padding(.horizontal, 20)
         }
     }
 }
 
-private enum OnboardingArtwork {
-    case route
-    case compass
-    case stats
+private enum OnboardingPageKind {
+    case plan
+    case focus
+    case grow
 }
 
 private struct OnboardingSlide {
-    let artwork: OnboardingArtwork
+    let kind: OnboardingPageKind
     let titleKey: String
     let subtitleKey: String
-    let chips: [String]
     let gradient: [Color]
     let backgroundAccent: Color
+    let symbol: String
+    let symbolColor: Color
 }
 
 #Preview {

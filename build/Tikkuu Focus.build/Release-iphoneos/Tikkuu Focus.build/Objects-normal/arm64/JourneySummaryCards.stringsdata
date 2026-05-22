@@ -1,0 +1,16 @@
+{
+  "source": "/Users/louis/Desktop/Tikkuu Focus/Tikkuu Focus/Views/JourneySummary/JourneySummaryCards.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 315
+        }
+      }
+    ]
+  },
+  "version": 1
+}

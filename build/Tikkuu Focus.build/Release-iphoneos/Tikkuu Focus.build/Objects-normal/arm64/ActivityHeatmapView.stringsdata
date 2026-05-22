@@ -1,0 +1,16 @@
+{
+  "source": "/Users/louis/Desktop/Tikkuu Focus/Tikkuu Focus/Views/Components/ActivityHeatmapView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "%lld %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 67
+        }
+      }
+    ]
+  },
+  "version": 1
+}

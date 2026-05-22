@@ -1,0 +1,21 @@
+{
+  "" : {
+    "const-values" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu Focus Live Activity-primary.swiftconstvalues",
+    "dependencies" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu Focus Live Activity-primary.d",
+    "diagnostics" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu Focus Live Activity-primary.dia",
+    "emit-module-dependencies" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu Focus Live Activity-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu Focus Live Activity-primary-emit-module.dia",
+    "pch" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu Focus Live Activity-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu Focus Live Activity-primary.swiftdeps"
+  },
+  "/Users/louis/Desktop/Tikkuu Focus/Tikkuu Focus Live Activity/Tikkuu_Focus_Live_Activity.swift" : {
+    "index-unit-output-path" : "/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu_Focus_Live_Activity.o",
+    "llvm-bc" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu_Focus_Live_Activity.bc",
+    "object" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/Tikkuu_Focus_Live_Activity.o"
+  },
+  "/Users/louis/Desktop/Tikkuu Focus/Tikkuu Focus/LiveActivity/FocusTimerActivityAttributes.swift" : {
+    "index-unit-output-path" : "/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/FocusTimerActivityAttributes.o",
+    "llvm-bc" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/FocusTimerActivityAttributes.bc",
+    "object" : "/Users/louis/Desktop/Tikkuu Focus/build/Tikkuu Focus.build/Release-iphoneos/Tikkuu Focus Live Activity.build/Objects-normal/arm64/FocusTimerActivityAttributes.o"
+  }
+}

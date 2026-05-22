@@ -8,6 +8,8 @@
 import SwiftUI
 import MapKit
 import SwiftData
+import WeatherKit
+import Combine
 
 struct ActiveJourneyView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -22,6 +24,7 @@ struct ActiveJourneyView: View {
     @State private var showCustomStopDialog = false
     @State private var currentSpeed: Double = 0.0
     @StateObject private var weatherManager = WeatherManager()
+    private let weatherRefreshTimer = Timer.publish(every: 600, on: .main, in: .common).autoconnect()
     
     var body: some View {
         ZStack {
@@ -31,23 +34,28 @@ struct ActiveJourneyView: View {
                     session: session,
                     currentPosition: journeyManager.currentPosition,
                     discoveredPOIs: journeyManager.discoveredPOIs,
+                    isPaused: journeyManager.state.isPaused,
                     currentSpeed: $currentSpeed
                 )
                 .ignoresSafeArea()
             }
             
             // Overlay UI
-            VStack {
-                // Top bar
-                topBar
+            VStack(spacing: 0) {
+                topOverlay
                     .padding(.top, 60)
-                    .padding(.horizontal, 24)
                 
                 Spacer()
 
                 // Bottom stats panel
-                statsPanel
-                    .padding(24)
+                VStack(spacing: 12) {
+                    controlsPanel
+                        .padding(.horizontal, 24)
+                    
+                    statsPanel
+                        .padding(.horizontal, 24)
+                }
+                .padding(.bottom, 32)
             }
         }
         .preferredColorScheme(settings.currentColorScheme)
@@ -61,136 +69,297 @@ struct ActiveJourneyView: View {
             HistoryView()
         }
         .task {
-            // Fetch weather when view appears
-            if let session = journeyManager.state.session {
-                await weatherManager.fetchWeather(for: session.startLocation)
+            await refreshWeather()
+        }
+        .onReceive(weatherRefreshTimer) { _ in
+            Task {
+                await refreshWeather()
             }
         }
     }
     
-    // MARK: - Top Bar
+    // MARK: - Top Overlay
     
-    private var topBar: some View {
+    private var topOverlay: some View {
+        unifiedTopPill
+            .padding(.top, 8)
+    }
+    
+    private var isJourneyActive: Bool {
+        if case .active = journeyManager.state { return true }
+        return false
+    }
+    
+    // MARK: - Unified Top Pill
+    
+    private var unifiedTopPill: some View {
         HStack(spacing: 12) {
-            // Stop button (with confirmation)
-            Button {
-                HapticManager.light()
-                showCustomStopDialog = true
-            } label: {
-                Image(systemName: "stop.fill")
-                    .font(.system(size: 15, weight: .semibold))
+            // Journey state
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(isJourneyActive ? Color.green : Color.orange)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: (isJourneyActive ? Color.green : Color.orange).opacity(0.6), radius: 3, x: 0, y: 0)
+                Text(isJourneyActive ? L("journey.state.active") : L("journey.state.paused"))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(Color.red.opacity(0.8))
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-            }
-
-            
-            Spacer()
-            
-            // Journey state badge
-            if case .active = journeyManager.state {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 8, height: 8)
-                    Text(L("journey.state.active"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Capsule().fill(Color.black.opacity(0.4)))
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-            } else if case .paused = journeyManager.state {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 8, height: 8)
-                    Text(L("journey.state.paused"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Capsule().fill(Color.black.opacity(0.4)))
-                .overlay(
-                    Capsule()
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
             }
             
-            Spacer()
+            // Divider
+            if !weatherManager.isLoading {
+                Rectangle()
+                    .fill(Color.white.opacity(0.25))
+                    .frame(width: 1, height: 14)
+            }
             
-            HStack(spacing: 10) {
-                // Pause/Resume button
-                if case .active = journeyManager.state {
-                    Button {
-                        HapticManager.medium()
-                        journeyManager.pauseJourney()
-                    } label: {
-                        Image(systemName: "pause.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(Color.black.opacity(0.4))
-                            )
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                            )
-                            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-                    }
-                } else if case .paused = journeyManager.state {
-                    Button {
-                        HapticManager.medium()
-                        journeyManager.resumeJourney()
-                    } label: {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(Color.black.opacity(0.4))
-                            )
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                            )
-                            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-                    }
+            // Weather
+            HStack(spacing: 6) {
+                if weatherManager.isLoading {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(0.7)
+                        .frame(width: 14, height: 14)
+                } else {
+                    Image(systemName: weatherManager.weatherIcon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .symbolRenderingMode(.hierarchical)
+                    
+                    Text(weatherManager.temperatureString)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
                 }
             }
         }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(unifiedTopPillBackground)
+        .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
+    }
+    
+    @ViewBuilder
+    private var unifiedTopPillBackground: some View {
+        ZStack {
+            Capsule()
+                .fill(.ultraThinMaterial)
+            
+            Capsule()
+                .fill(Color.black.opacity(colorScheme == .dark ? 0.4 : 0.2))
+            
+            if !weatherManager.isLoading {
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: weatherPalette.backgroundGradient,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            
+            Capsule()
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.3), lineWidth: 1)
+        }
+    }
+    
+    private var weatherPalette: WeatherBannerPalette {
+        let hour = Calendar.current.component(.hour, from: Date())
+        
+        if let condition = weatherManager.weatherCondition {
+            switch condition {
+            case .rain, .drizzle, .heavyRain, .freezingDrizzle, .freezingRain:
+                return WeatherBannerPalette(
+                    backgroundGradient: [
+                        Color(red: 0.18, green: 0.31, blue: 0.50).opacity(0.34),
+                        Color(red: 0.11, green: 0.20, blue: 0.33).opacity(0.24),
+                        Color.black.opacity(0.14)
+                    ],
+                    iconGradient: [
+                        Color(red: 0.35, green: 0.61, blue: 0.95),
+                        Color(red: 0.19, green: 0.42, blue: 0.82)
+                    ]
+                )
+            case .thunderstorms, .tropicalStorm, .hurricane:
+                return WeatherBannerPalette(
+                    backgroundGradient: [
+                        Color(red: 0.34, green: 0.25, blue: 0.58).opacity(0.34),
+                        Color(red: 0.13, green: 0.17, blue: 0.33).opacity(0.24),
+                        Color.black.opacity(0.16)
+                    ],
+                    iconGradient: [
+                        Color(red: 0.49, green: 0.43, blue: 0.94),
+                        Color(red: 0.28, green: 0.37, blue: 0.83)
+                    ]
+                )
+            case .snow, .sleet, .hail, .blizzard, .blowingSnow, .flurries:
+                return WeatherBannerPalette(
+                    backgroundGradient: [
+                        Color(red: 0.62, green: 0.78, blue: 0.95).opacity(0.24),
+                        Color(red: 0.32, green: 0.46, blue: 0.66).opacity(0.18),
+                        Color.black.opacity(0.12)
+                    ],
+                    iconGradient: [
+                        Color(red: 0.83, green: 0.92, blue: 1.0),
+                        Color(red: 0.53, green: 0.72, blue: 0.93)
+                    ]
+                )
+            case .cloudy, .mostlyCloudy, .partlyCloudy, .mostlyClear, .foggy, .haze, .smoky, .blowingDust:
+                return hour >= 17 && hour < 20
+                    ? WeatherBannerPalette(
+                        backgroundGradient: [
+                            Color(red: 0.67, green: 0.44, blue: 0.34).opacity(0.28),
+                            Color(red: 0.33, green: 0.30, blue: 0.46).opacity(0.20),
+                            Color.black.opacity(0.13)
+                        ],
+                        iconGradient: [
+                            Color(red: 0.98, green: 0.69, blue: 0.45),
+                            Color(red: 0.73, green: 0.54, blue: 0.82)
+                        ]
+                    )
+                    : WeatherBannerPalette(
+                        backgroundGradient: [
+                            Color(red: 0.44, green: 0.54, blue: 0.66).opacity(0.24),
+                            Color(red: 0.23, green: 0.30, blue: 0.40).opacity(0.18),
+                            Color.black.opacity(0.12)
+                        ],
+                        iconGradient: [
+                            Color(red: 0.73, green: 0.80, blue: 0.90),
+                            Color(red: 0.46, green: 0.58, blue: 0.74)
+                        ]
+                    )
+            case .clear:
+                if hour >= 11 && hour < 16 {
+                    return WeatherBannerPalette(
+                        backgroundGradient: [
+                            Color(red: 0.93, green: 0.72, blue: 0.25).opacity(0.30),
+                            Color(red: 0.43, green: 0.32, blue: 0.11).opacity(0.18),
+                            Color.black.opacity(0.12)
+                        ],
+                        iconGradient: [
+                            Color(red: 1.0, green: 0.86, blue: 0.37),
+                            Color(red: 0.98, green: 0.62, blue: 0.22)
+                        ]
+                    )
+                } else if hour >= 17 && hour < 20 {
+                    return WeatherBannerPalette(
+                        backgroundGradient: [
+                            Color(red: 0.95, green: 0.49, blue: 0.34).opacity(0.30),
+                            Color(red: 0.56, green: 0.31, blue: 0.58).opacity(0.22),
+                            Color.black.opacity(0.13)
+                        ],
+                        iconGradient: [
+                            Color(red: 1.0, green: 0.72, blue: 0.41),
+                            Color(red: 0.97, green: 0.43, blue: 0.48)
+                        ]
+                    )
+                } else if hour >= 6 && hour < 11 {
+                    return WeatherBannerPalette(
+                        backgroundGradient: [
+                            Color(red: 0.48, green: 0.68, blue: 0.94).opacity(0.28),
+                            Color(red: 0.92, green: 0.65, blue: 0.31).opacity(0.18),
+                            Color.black.opacity(0.12)
+                        ],
+                        iconGradient: [
+                            Color(red: 0.76, green: 0.88, blue: 1.0),
+                            Color(red: 1.0, green: 0.74, blue: 0.35)
+                        ]
+                    )
+                } else {
+                    return WeatherBannerPalette(
+                        backgroundGradient: [
+                            Color(red: 0.27, green: 0.34, blue: 0.66).opacity(0.28),
+                            Color(red: 0.38, green: 0.29, blue: 0.62).opacity(0.20),
+                            Color.black.opacity(0.14)
+                        ],
+                        iconGradient: [
+                            Color(red: 0.64, green: 0.72, blue: 0.98),
+                            Color(red: 0.47, green: 0.55, blue: 0.90)
+                        ]
+                    )
+                }
+            case .breezy, .windy:
+                return WeatherBannerPalette(
+                    backgroundGradient: [
+                        Color(red: 0.86, green: 0.64, blue: 0.23).opacity(0.28),
+                        Color(red: 0.32, green: 0.37, blue: 0.18).opacity(0.16),
+                        Color.black.opacity(0.12)
+                    ],
+                    iconGradient: [
+                        Color(red: 1.0, green: 0.83, blue: 0.33),
+                        Color(red: 0.98, green: 0.67, blue: 0.22)
+                    ]
+                )
+            default:
+                break
+            }
+        }
+        
+        return WeatherBannerPalette(
+            backgroundGradient: [
+                Color(red: 0.37, green: 0.53, blue: 0.82).opacity(0.26),
+                Color(red: 0.42, green: 0.35, blue: 0.74).opacity(0.18),
+                Color.black.opacity(0.12)
+            ],
+            iconGradient: [
+                Color(red: 0.59, green: 0.77, blue: 0.97),
+                Color(red: 0.58, green: 0.52, blue: 0.93)
+            ]
+        )
+    }
+    
+    private var weatherCaption: String {
+        weatherManager.isLoading ? L("common.loading") : L("label.weather")
+    }
+    
+    private var weatherSubtitle: String {
+        if weatherManager.isLoading {
+            return L("common.loading")
+        }
+        
+        if !weatherManager.weatherDescription.isEmpty {
+            return weatherManager.weatherDescription
+        }
+        
+        return L("label.weather")
+    }
+    
+    private func refreshWeather() async {
+        guard let session = journeyManager.state.session else { return }
+        let coordinate = journeyManager.currentPosition?.coordinate ?? session.startLocation
+        await weatherManager.fetchWeather(for: coordinate)
+    }
+    
+    private struct WeatherBannerPalette {
+        let backgroundGradient: [Color]
+        let iconGradient: [Color]
     }
     
     // MARK: - Stats Panel
     
     private var statsPanel: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 20) {
             // Time remaining (large)
             if let position = journeyManager.currentPosition {
                 ActiveJourneyStatsPanel(position: position, currentSpeed: currentSpeed)
                     .equatable()
+                    .padding(20)
+                    .background(
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                            
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .fill(Color.black.opacity(colorScheme == .dark ? 0.35 : 0.1))
+                            
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.4), lineWidth: 1)
+                        }
+                    )
+                    .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
             } else if case .completed(let session) = journeyManager.state {
                 CompletedJourneyStatsPanel(
                     session: session,
-                    poiCount: journeyManager.discoveredPOIs.count
+                    discoveredPOIs: journeyManager.discoveredPOIs
                 ) {
                     HapticManager.success()
                     saveCompletedJourney(session: session)
@@ -202,10 +371,85 @@ struct ActiveJourneyView: View {
                         discoveredPOIs: journeyManager.discoveredPOIs
                     )
                 }
+                .padding(20)
+                .background(
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                        
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(Color.black.opacity(colorScheme == .dark ? 0.35 : 0.1))
+                        
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.4), lineWidth: 1)
+                    }
+                )
+                .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
             }
         }
-        .padding(16)
-        .glassCard(cornerRadius: 20, tintColor: Color(red: 0.10, green: 0.14, blue: 0.22))
+    }
+    
+    // MARK: - Controls Panel
+    
+    private var controlsPanel: some View {
+        HStack(spacing: 0) {
+            // Stop Button
+            Button {
+                HapticManager.light()
+                showCustomStopDialog = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 16, weight: .bold))
+                    Text(L("journey.stop.confirm"))
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(Color.red.opacity(colorScheme == .dark ? 0.8 : 0.9))
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(ScaleButtonStyle())
+            
+            Divider()
+                .frame(height: 24)
+                .background(Color.gray.opacity(0.4))
+            
+            // Pause / Resume Button
+            Button {
+                HapticManager.medium()
+                if isJourneyActive {
+                    journeyManager.pauseJourney()
+                } else {
+                    journeyManager.resumeJourney()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: isJourneyActive ? "pause.fill" : "play.fill")
+                        .font(.system(size: 16, weight: .bold))
+                    Text(isJourneyActive ? L("label.pauseJourney") : L("label.resumeJourney"))
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .foregroundColor(isJourneyActive ? .primary : Color.blue)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(ScaleButtonStyle())
+        }
+        .background(
+            ZStack {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                
+                Capsule()
+                    .fill(Color.black.opacity(colorScheme == .dark ? 0.4 : 0.1))
+                
+                Capsule()
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.4), lineWidth: 1)
+            }
+        )
+        .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
     }
     
     // MARK: - Custom Stop Dialog
@@ -296,87 +540,66 @@ struct ActiveJourneyView: View {
     private var stopDialogIcon: some View {
         ZStack {
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.red.opacity(0.25),
-                            Color.orange.opacity(0.2)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 90, height: 90)
-                .blur(radius: 20)
+                .fill(.ultraThinMaterial)
+                .frame(width: 80, height: 80)
             
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.red.opacity(0.15),
-                            Color.orange.opacity(0.1)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 70, height: 70)
+                .fill(Color.red.opacity(colorScheme == .dark ? 0.3 : 0.4))
+                .frame(width: 80, height: 80)
             
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 36, weight: .semibold))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.red, Color.orange],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            Circle()
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.2 : 0.4), lineWidth: 1)
+                .frame(width: 80, height: 80)
+            
+            Image(systemName: "stop.circle.fill")
+                .font(.system(size: 40, weight: .regular))
+                .foregroundColor(.white)
         }
-        .shadow(color: Color.red.opacity(0.4), radius: 25, x: 0, y: 12)
+        .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
     }
     
     @ViewBuilder
     private var stopConfirmButtonBackground: some View {
-        RoundedRectangle(cornerRadius: 24)
-            .fill(
-                LinearGradient(
-                    colors: [Color(red: 0.95, green: 0.45, blue: 0.40), Color(red: 0.90, green: 0.35, blue: 0.30)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-            )
-            .shadow(color: Color.red.opacity(0.3), radius: 12, x: 0, y: 6)
+        ZStack {
+            RoundedRectangle(cornerRadius: 24)
+                .fill(.ultraThinMaterial)
+            
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color.red.opacity(colorScheme == .dark ? 0.4 : 0.6))
+            
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.2 : 0.4), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 4)
     }
     
     @ViewBuilder
     private var stopCancelButtonBackground: some View {
-        Group {
-            ZStack {
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.95))
-                
-                RoundedRectangle(cornerRadius: 24)
-                    .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.02), lineWidth: 0.5)
-            }
+        ZStack {
+            RoundedRectangle(cornerRadius: 24)
+                .fill(.ultraThinMaterial)
+            
+            RoundedRectangle(cornerRadius: 24)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+            
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.2 : 0.4), lineWidth: 0.5)
         }
     }
     
     @ViewBuilder
     private var stopDialogContainerBackground: some View {
-        Group {
-            ZStack {
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(colorScheme == .dark ? Color(white: 0.1) : Color.white)
-                
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.02), lineWidth: 0.5)
-            }
-            .shadow(color: colorScheme == .dark ? Color.black.opacity(0.06) : Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
+        ZStack {
+            RoundedRectangle(cornerRadius: 24)
+                .fill(.ultraThinMaterial)
+            
+            RoundedRectangle(cornerRadius: 24)
+                .fill(colorScheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.6))
+            
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.2 : 0.5), lineWidth: 1)
         }
+        .shadow(color: Color.black.opacity(0.2), radius: 24, x: 0, y: 12)
     }
 
 
@@ -446,6 +669,7 @@ struct ActiveJourneyView: View {
             session: session,
             discoveredPOIs: discoveredPOIs,
             weatherCondition: weatherManager.weatherDescription.isEmpty ? L("weather.condition.clear") : weatherManager.weatherDescription,
+            temperature: weatherManager.temperatureString,
             isDaytime: weatherManager.isDaytime,
             progress: progress,
             isCompleted: isCompleted,
@@ -544,7 +768,7 @@ struct ActiveJourneyView: View {
     
 }
 
-private struct ActiveJourneyStatsPanel: View, Equatable {
+struct ActiveJourneyStatsPanel: View, Equatable {
     let position: VirtualPosition
     let currentSpeed: Double
 
@@ -606,8 +830,16 @@ private struct ActiveJourneyStatsPanel: View, Equatable {
 
 private struct CompletedJourneyStatsPanel: View {
     let session: JourneySession
-    let poiCount: Int
+    let discoveredPOIs: [DiscoveredPOI]
     let onShowSummary: () -> Void
+
+    private var timeRangeString: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let startString = formatter.string(from: session.startTime)
+        let endString = formatter.string(from: Date())
+        return "\(startString) - \(endString)"
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -619,17 +851,67 @@ private struct CompletedJourneyStatsPanel: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
 
-            Text(FormatUtilities.formatDistance(session.totalDistance))
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(.secondary)
+            // Basic Stats
+            HStack(spacing: 24) {
+                VStack(spacing: 4) {
+                    Text(L("journey.summary.distance"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Text(FormatUtilities.formatDistance(session.totalDistance))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                }
+                
+                Divider().frame(height: 30)
+                
+                VStack(spacing: 4) {
+                    Text(L("journey.summary.timeRange"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Text(timeRangeString)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                }
+            }
+            .padding(.vertical, 4)
 
-            Text(String(format: L("journey.completed.duration"), FormatUtilities.formatTime(Date().timeIntervalSince(session.startTime))))
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.secondary)
-
-            Text(String(format: L("journey.completed.pois"), poiCount))
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.secondary)
+            // POIs
+            if !discoveredPOIs.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.yellow)
+                        Text(String(format: L("journey.completed.pois"), discoveredPOIs.count))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(discoveredPOIs.prefix(3)) { poi in
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(Color.yellow.opacity(0.8))
+                                    .frame(width: 4, height: 4)
+                                Text(poi.name)
+                                    .font(.system(size: 13, weight: .regular))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .padding(.leading, 6)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.gray.opacity(0.1))
+                )
+            } else {
+                Text(String(format: L("journey.completed.pois"), 0))
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
 
             Button(action: onShowSummary) {
                 Text(L("journey.viewSummary"))
@@ -727,12 +1009,16 @@ struct CompactStatCard: View {
     
     @ViewBuilder
     private var backgroundView: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(Color.white.opacity(0.07))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.7)
-            )
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+            
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.05))
+            
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.7)
+        }
     }
 }
 

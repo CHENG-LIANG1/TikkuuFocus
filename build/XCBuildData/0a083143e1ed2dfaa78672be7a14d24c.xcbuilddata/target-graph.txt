@@ -1,0 +1,6 @@
+Target dependency graph (3 targets)
+Target 'Tikkuu FocusTests' in project 'Tikkuu Focus'
+➜ Explicit dependency on target 'Tikkuu Focus' in project 'Tikkuu Focus'
+Target 'Tikkuu Focus' in project 'Tikkuu Focus'
+➜ Explicit dependency on target 'Tikkuu Focus Live Activity' in project 'Tikkuu Focus'
+Target 'Tikkuu Focus Live Activity' in project 'Tikkuu Focus' (no dependencies)

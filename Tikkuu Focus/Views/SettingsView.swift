@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var showClearDataStep1 = false
     @State private var showClearDataStep2 = false
     @State private var clearDataConfirmationText = ""
+    @State private var showClearDataError = false
     
     private var requiredClearPhrase: String {
         L("settings.data.clear.confirmPhrase")
@@ -121,7 +122,7 @@ struct SettingsView: View {
             }
         }
         .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView(canDismiss: false)
+            OnboardingView(canDismiss: true)
         }
         .fullScreenCover(isPresented: $showPrivacyPolicy) {
             PrivacyPolicyView {
@@ -141,9 +142,14 @@ struct SettingsView: View {
             TextField(L("settings.data.clear.inputPlaceholder"), text: $clearDataConfirmationText)
             Button(L("common.cancel"), role: .cancel) {}
             Button(L("settings.data.clear.confirm2.action"), role: .destructive) {
-                clearAllData()
+                if clearDataConfirmationText.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(requiredClearPhrase) == .orderedSame {
+                    clearAllData()
+                } else {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        showClearDataError = true
+                    }
+                }
             }
-            .disabled(clearDataConfirmationText.trimmingCharacters(in: .whitespacesAndNewlines) != requiredClearPhrase)
         } message: {
             Text(
                 "\(L("settings.data.clear.confirm2.message"))\n\(String(format: L("settings.data.clear.confirm2.guide"), requiredClearPhrase))"
@@ -153,6 +159,11 @@ struct SettingsView: View {
             if !isPresented {
                 clearDataConfirmationText = ""
             }
+        }
+        .alert(L("settings.data.clear.error.title"), isPresented: $showClearDataError) {
+            Button(L("common.ok"), role: .cancel) {}
+        } message: {
+            Text(L("settings.data.clear.error.message"))
         }
     }
     

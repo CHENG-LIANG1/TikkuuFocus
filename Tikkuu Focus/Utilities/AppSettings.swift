@@ -130,6 +130,13 @@ class AppSettings: ObservableObject {
         }
         return selectedLanguage
     }
+
+    var appLocale: Locale {
+        if selectedLanguage == "system" {
+            return .autoupdatingCurrent
+        }
+        return Locale(identifier: selectedLanguage)
+    }
     
     // Always return dark mode
     var currentColorScheme: ColorScheme? {

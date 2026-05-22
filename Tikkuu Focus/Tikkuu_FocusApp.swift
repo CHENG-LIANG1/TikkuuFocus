@@ -50,6 +50,7 @@ struct Tikkuu_FocusApp: App {
                     .preferredColorScheme(settings.currentColorScheme)
             }
         }
+        .environment(\.locale, settings.appLocale)
         .modelContainer(sharedModelContainer)
     }
 }

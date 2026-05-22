@@ -1,0 +1,24 @@
+{
+  "source": "/Users/louis/Desktop/Tikkuu Focus/Tikkuu Focus/Views/JourneySummaryView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Roam Focus App",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "",
+        "key": "Roam Focus",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 668
+        }
+      }
+    ]
+  },
+  "version": 1
+}

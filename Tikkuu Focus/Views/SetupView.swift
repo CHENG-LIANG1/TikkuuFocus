@@ -291,6 +291,7 @@ struct SetupView: View {
                     session: payload.session,
                     discoveredPOIs: payload.discoveredPOIs,
                     weatherCondition: payload.weatherCondition,
+                    temperature: payload.temperature,
                     isDaytime: payload.isDaytime,
                     progress: payload.progress,
                     isCompleted: payload.isCompleted,
@@ -420,6 +421,8 @@ struct SetupView: View {
                 WeatherWidget(weatherManager: weatherManager)
             }
             .buttonStyle(ScaleButtonStyle())
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
             .scaleEffect(cardsAppeared ? 1 : 0.9)
             .opacity(cardsAppeared ? 1 : 0)
             .offset(x: cardsAppeared ? 0 : -15)
@@ -432,6 +435,8 @@ struct SetupView: View {
                 HistorySummaryWidget(records: monthRecords)
             }
             .buttonStyle(ScaleButtonStyle())
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
             .scaleEffect(cardsAppeared ? 1 : 0.9)
             .opacity(cardsAppeared ? 1 : 0)
             .offset(x: cardsAppeared ? 0 : 15)
@@ -1061,10 +1066,25 @@ struct OnboardingStepView: View {
     let number: String
     let icon: String
     let color: Color
+    let title: String?
+    let subtitle: String?
+
+    init(
+        number: String,
+        icon: String,
+        color: Color,
+        title: String? = nil,
+        subtitle: String? = nil
+    ) {
+        self.number = number
+        self.icon = icon
+        self.color = color
+        self.title = title
+        self.subtitle = subtitle
+    }
     
     var body: some View {
         HStack(spacing: 16) {
-            // 步骤编号
             ZStack {
                 Circle()
                     .fill(color.opacity(0.2))
@@ -1094,8 +1114,32 @@ struct OnboardingStepView: View {
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundColor(color)
             }
-            
-            Spacer()
+
+            if title != nil || subtitle != nil {
+                VStack(alignment: .leading, spacing: 4) {
+                    if let title {
+                        Text(title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white.opacity(0.72))
+                            .lineSpacing(2)
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(title == nil && subtitle == nil ? 0 : 14)
+        .background {
+            if title != nil || subtitle != nil {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+            }
         }
     }
 }
@@ -1182,10 +1226,55 @@ struct PremiumAnimatedGradientButtonBackground: View {
     }
 }
 
+// MARK: - Widget Shared Components
+
+struct WidgetHeader: View {
+    let icon: String
+    let title: String
+    let iconColor: Color
+    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.adaptiveTextColor) var adaptiveTextColor
+    @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                iconColor.opacity(colorScheme == .dark ? 0.3 : 0.2),
+                                iconColor.opacity(colorScheme == .dark ? 0.1 : 0.05)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 28, height: 28)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(iconColor)
+            }
+            
+            Text(title)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(adaptiveTextColor.opacity(0.9))
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(adaptiveSecondaryTextColor.opacity(0.5))
+        }
+    }
+}
+
 // MARK: - History Summary Widget
 
 struct HistorySummaryWidget: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.locale) private var locale
     @Environment(\.adaptiveTextColor) var adaptiveTextColor
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     let records: [JourneyRecord]
@@ -1193,84 +1282,94 @@ struct HistorySummaryWidget: View {
     private var totalTime: TimeInterval {
         records.reduce(0) { $0 + $1.duration }
     }
+
+    private var totalDistance: Double {
+        records.reduce(0) { $0 + $1.distanceTraveled }
+    }
     
     private var journeyCount: Int {
         records.count
     }
+
+    private var activeDayCount: Int {
+        let calendar = Calendar.current
+        return Set(records.map { calendar.startOfDay(for: $0.startTime) }).count
+    }
     
     private var currentMonthName: String {
-        let localeIdentifier = AppSettings.shared.selectedLanguage == "system"
-            ? Locale.autoupdatingCurrent.identifier
-            : AppSettings.shared.currentLanguage
-        return FormatUtilities.formatMonthLong(Date(), localeIdentifier: localeIdentifier)
+        FormatUtilities.formatMonthLong(Date(), localeIdentifier: locale.identifier)
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Icon and title with chevron
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.6, green: 0.4, blue: 0.9).opacity(colorScheme == .dark ? 0.2 : 0.3),
-                                    Color(red: 0.4, green: 0.6, blue: 1.0).opacity(colorScheme == .dark ? 0.08 : 0.15)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 36, height: 36)
-                    
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.6, green: 0.4, blue: 0.9),
-                                    Color(red: 0.4, green: 0.6, blue: 1.0)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                
-                Text(currentMonthName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(adaptiveTextColor.opacity(0.9))
-                
-                Spacer()
-                
-                // Chevron indicator
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(adaptiveSecondaryTextColor.opacity(0.6))
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            WidgetHeader(
+                icon: "clock.arrow.circlepath",
+                title: currentMonthName,
+                iconColor: Color(red: 0.6, green: 0.4, blue: 0.9)
+            )
             
-            // Stats
-            VStack(alignment: .leading, spacing: 6) {
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 2) {
                 Text(FormatUtilities.formatTime(totalTime))
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundColor(adaptiveTextColor)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
                 
-                HStack(spacing: 4) {
-                    Text("\(journeyCount)")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(adaptiveTextColor.opacity(0.8))
-                    
-                    Text(journeyCount == 1 ? L("common.journey") : L("common.journeys"))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(adaptiveSecondaryTextColor)
-                }
+                Text("\(journeyCount) \(journeyCount == 1 ? L("common.journey") : L("common.journeys"))")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(adaptiveSecondaryTextColor)
             }
-            // Match WeatherWidget height for consistent card sizing
-            .frame(height: 52, alignment: .leading)
+
+            Spacer()
+            
+            HStack(spacing: 8) {
+                compactMetric(
+                    icon: "calendar",
+                    label: L("history.stats.totalDays"),
+                    value: "\(FormatUtilities.formatNumber(activeDayCount)) \(L("history.stats.daysActive"))"
+                )
+                
+                compactMetric(
+                    icon: "location",
+                    label: L("history.totalDistance"),
+                    value: FormatUtilities.formatDistance(totalDistance)
+                )
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(20)
-        .glassCard(cornerRadius: 24, tintColor: Color.indigo)
+        .padding(18)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.3, green: 0.2, blue: 0.5))
+        .id(locale.identifier)
+    }
+
+    @ViewBuilder
+    private func compactMetric(icon: String, label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(adaptiveSecondaryTextColor.opacity(0.9))
+
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(adaptiveSecondaryTextColor.opacity(0.9))
+                    .lineLimit(1)
+            }
+
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(adaptiveTextColor.opacity(0.9))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
+        )
     }
 }
 
@@ -1278,79 +1377,58 @@ struct HistorySummaryWidget: View {
 
 struct WeatherWidget: View {
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.locale) private var locale
     @Environment(\.adaptiveTextColor) var adaptiveTextColor
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     @ObservedObject var weatherManager: WeatherManager
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Icon and title with chevron
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(colorScheme == .dark ? 0.15 : 0.35),
-                                    Color.white.opacity(colorScheme == .dark ? 0.05 : 0.15)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 36, height: 36)
+        VStack(alignment: .leading, spacing: 0) {
+            WidgetHeader(
+                icon: "cloud.sun.fill", 
+                title: L("label.weather"), 
+                iconColor: Color.blue
+            )
+            
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(weatherManager.temperatureString)
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundColor(adaptiveTextColor)
                     
                     if weatherManager.isLoading {
-                        ProgressView()
-                            .tint(adaptiveTextColor)
-                            .scaleEffect(0.8)
+                        ProgressView().tint(adaptiveTextColor)
                     } else {
                         Image(systemName: weatherManager.weatherIcon)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 22, weight: .semibold))
                             .foregroundColor(adaptiveTextColor)
                             .symbolRenderingMode(.hierarchical)
                     }
                 }
                 
-                Text(L("label.weather"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(adaptiveTextColor.opacity(0.9))
-                
-                Spacer()
-                
-                // Chevron indicator
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(adaptiveSecondaryTextColor.opacity(0.6))
-            }
-            
-            // Weather info
-            VStack(alignment: .leading, spacing: 6) {
-                Text(weatherManager.temperatureString)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
-                    .foregroundColor(adaptiveTextColor)
-
-                // Always show description to maintain consistent card height
                 Text(weatherManager.isLoading ? L("common.loading") : weatherManager.weatherDescription)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(adaptiveSecondaryTextColor)
                     .lineLimit(1)
-                    .opacity(weatherManager.isLoading || !weatherManager.weatherDescription.isEmpty ? 1 : 0)
             }
-            .frame(height: 52, alignment: .leading)
-            .padding(.bottom, 2) // Subtle gap before attribution
-
-            // Attribution
+            
+            Spacer()
+            
             AppleWeatherAttributionView(
                 textColor: adaptiveSecondaryTextColor,
-                fontSize: 8,
+                fontSize: 9,
                 attribution: weatherManager.attribution
             )
-            .opacity(0.8)
+            .opacity(0.6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(20)
-        .glassCard(cornerRadius: 24, tintColor: Color.blue)
+        .padding(18)
+        .glassCard(cornerRadius: 24, tintColor: Color(red: 0.1, green: 0.3, blue: 0.6))
+        .id(locale.identifier)
     }
 }
 
