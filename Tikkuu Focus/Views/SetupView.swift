@@ -1337,6 +1337,7 @@ struct HistorySummaryWidget: View {
                     value: FormatUtilities.formatDistance(totalDistance)
                 )
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(18)
@@ -1365,7 +1366,7 @@ struct HistorySummaryWidget: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))

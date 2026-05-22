@@ -31,6 +31,16 @@ enum TransportMode: String, CaseIterable, Identifiable {
         speedKmh * 1000.0 / 3600.0
     }
     
+    /// Max speed in kilometers per hour
+    var maxSpeedKmh: Double {
+        switch self {
+        case .walking: return 6.0
+        case .cycling: return 25.0
+        case .driving: return 100.0
+        case .skateboard: return 30.0
+        }
+    }
+    
     /// Localized display name
     var localizedName: String {
         switch self {

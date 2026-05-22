@@ -10,6 +10,11 @@ import MapKit
 import Photos
 import WeatherKit
 
+struct ShareImageItem: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
 struct JourneySummaryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
@@ -27,8 +32,7 @@ struct JourneySummaryView: View {
     let onDismiss: () -> Void
 
     @State private var animateIn = false
-    @State private var showShareSheet = false
-    @State private var renderedImage: UIImage?
+    @State private var shareItem: ShareImageItem?
     @State private var showPhotoPermissionAlert = false
     @State private var showConfetti = false
     @State private var showSaveToast = false
@@ -109,10 +113,8 @@ struct JourneySummaryView: View {
                 showConfetti = true
             }
         }
-        .sheet(isPresented: $showShareSheet) {
-            if let image = renderedImage {
-                ShareSheet(items: [image])
-            }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: [item.image])
         }
         .alert(L("journey.summary.photoPermission.title"), isPresented: $showPhotoPermissionAlert) {
             Button(L("journey.summary.photoPermission.openSettings")) {
@@ -160,14 +162,22 @@ struct JourneySummaryView: View {
 
     private var liquidGlassSummaryCard: some View {
         VStack(spacing: Layout.innerSpacing) {
-            // Brand Header
-            Text("Roam Focus App")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .tracking(0.5)
-
-            // Status Badge
-            statusBadge
+            // Header Row
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "leaf.fill")
+                        .foregroundColor(.mint)
+                        .font(.system(size: 15))
+                    Text("Roam Focus")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+                
+                Spacer()
+                
+                statusBadge
+            }
+            .padding(.bottom, 4)
 
             // Metrics Grid
             metricsSection
@@ -190,23 +200,45 @@ struct JourneySummaryView: View {
         }
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.12, green: 0.14, blue: 0.35),
-                            Color(red: 0.10, green: 0.12, blue: 0.28),
-                            Color(red: 0.14, green: 0.16, blue: 0.36)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+            ZStack {
+                RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.08, green: 0.11, blue: 0.18),
+                                Color(red: 0.05, green: 0.07, blue: 0.12)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: 12)
+                
+                // Ambient glow for depth
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: 200, height: 200)
+                    .blur(radius: 60)
+                    .offset(x: 100, y: -100)
+                
+                Circle()
+                    .fill(Color.purple.opacity(0.15))
+                    .frame(width: 150, height: 150)
+                    .blur(radius: 60)
+                    .offset(x: -100, y: 100)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.2), Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.4), radius: 25, x: 0, y: 15)
         )
         .scaleEffect(animateIn ? 1 : 0.96)
         .opacity(animateIn ? 1 : 0)
@@ -215,32 +247,29 @@ struct JourneySummaryView: View {
 
     private var statusBadge: some View {
         HStack(spacing: 6) {
-            Image(systemName: isCompleted ? "checkmark.circle.fill" : "pause.circle.fill")
-                .font(.system(size: 13, weight: .semibold))
+            Image(systemName: isCompleted ? "checkmark.seal.fill" : "pause.circle.fill")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(isCompleted ? Color.mint : Color.orange)
 
             Text(String(format: L("journey.summary.completed"), progress * 100))
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(.white.opacity(0.95))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         }
-        .foregroundColor(.white)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(
             Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: isCompleted
-                            ? [Color.green.opacity(0.5), Color.mint.opacity(0.4)]
-                            : [Color.orange.opacity(0.5), Color.red.opacity(0.4)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color.white.opacity(0.08))
                 .overlay(
                     Capsule()
-                        .stroke(
-                            isCompleted ? Color.green.opacity(0.6) : Color.orange.opacity(0.6),
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.25), Color.white.opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
                             lineWidth: 1
                         )
                 )
@@ -248,9 +277,9 @@ struct JourneySummaryView: View {
     }
 
     private var metricsSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             // Row 1: Time Range & Duration
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 MetricCell(
                     icon: "clock.arrow.circlepath",
                     title: L("journey.summary.timeRange"),
@@ -267,7 +296,7 @@ struct JourneySummaryView: View {
             }
 
             // Row 2: Weather & Distance
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 MetricCell(
                     icon: weatherIcon,
                     title: isDaytime ? L("journey.summary.day") : L("journey.summary.night"),
@@ -280,6 +309,23 @@ struct JourneySummaryView: View {
                     title: L("journey.summary.distance"),
                     value: FormatUtilities.formatDistance(displayDistance),
                     gradient: LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+            }
+            
+            // Row 3: Transport Mode & Avg Speed
+            HStack(spacing: 12) {
+                MetricCell(
+                    icon: session.transportMode.iconName,
+                    title: L("journey.summary.transport"),
+                    value: session.transportMode.localizedName,
+                    gradient: LinearGradient(colors: [Color.green, Color.mint], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                
+                MetricCell(
+                    icon: "speedometer",
+                    title: L("journey.summary.avgSpeed"),
+                    value: FormatUtilities.formatSpeed(actualDuration > 0 ? displayDistance / actualDuration : 0),
+                    gradient: LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
             }
         }
@@ -631,14 +677,7 @@ struct JourneySummaryView: View {
         HapticManager.medium()
         Task { @MainActor in
             guard let image = await renderAsImage() else { return }
-            // Use high quality for sharing, only compress if image is extremely large
-            let imageSizeKB = (image.pngData()?.count ?? 0) / 1024
-            if imageSizeKB > 2048 {  // Only compress if > 2MB
-                renderedImage = PerformanceOptimizer.shared.compressImage(image, maxSizeKB: 1500) ?? image
-            } else {
-                renderedImage = image
-            }
-            showShareSheet = true
+            shareItem = ShareImageItem(image: image)
         }
     }
 
@@ -647,7 +686,7 @@ struct JourneySummaryView: View {
         let snapshotSize = CGSize(width: 700, height: 380)
         let mapSnapshot = await generateRouteSnapshot(size: snapshotSize)
         let renderer = ImageRenderer(content: exportCard(snapshotImage: mapSnapshot))
-        renderer.scale = 2.0  // High resolution for crisp images
+        renderer.scale = 3.0  // High resolution for crisp images
         return renderer.uiImage
     }
 
@@ -657,47 +696,81 @@ struct JourneySummaryView: View {
     }
 
     private func liquidGlassExportCard(snapshotImage: UIImage?) -> some View {
-        VStack(spacing: 20) {
-            // App Name Header
-            Text("Roam Focus")
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .padding(.top, 32)
-            
-            statusBadge
+        VStack(spacing: Layout.innerSpacing) {
+            // Header Row
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "leaf.fill")
+                        .foregroundColor(.mint)
+                        .font(.system(size: 15))
+                    Text("Roam Focus")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+                
+                Spacer()
+                
+                statusBadge
+            }
+            .padding(.bottom, 4)
 
+            // Metrics Grid
             metricsSection
-                .padding(.horizontal, 20)
 
-            AppleWeatherAttributionView(
-                textColor: .white,
-                fontSize: 9,
-                attribution: attribution
-            )
-            .padding(.horizontal, 20)
-            .opacity(0.8)
+            // POI Highlights
+            if !topPOIs.isEmpty {
+                poiHighlights
+            }
 
+            // Route Map
             exportRouteCard(snapshotImage: snapshotImage)
-                .frame(height: 200)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                .frame(height: 160)
         }
-        .frame(width: 390, height: 720)
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.12, green: 0.14, blue: 0.35),
-                            Color(red: 0.10, green: 0.12, blue: 0.28),
-                            Color(red: 0.14, green: 0.16, blue: 0.36)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+            ZStack {
+                RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.08, green: 0.11, blue: 0.18),
+                                Color(red: 0.05, green: 0.07, blue: 0.12)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
+                
+                // Ambient glow for depth
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: 200, height: 200)
+                    .blur(radius: 60)
+                    .offset(x: 100, y: -100)
+                
+                Circle()
+                    .fill(Color.purple.opacity(0.15))
+                    .frame(width: 150, height: 150)
+                    .blur(radius: 60)
+                    .offset(x: -100, y: 100)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.2), Color.white.opacity(0.05)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.4), radius: 25, x: 0, y: 15)
         )
-        .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius, style: .continuous))
+        .frame(width: 390)
+        .padding(32) // Add outer padding so the shadow isn't clipped
+        .background(Color(red: 0.05, green: 0.05, blue: 0.07)) // Deep premium background for the canvas
     }
 
     private func exportRouteCard(snapshotImage: UIImage?) -> some View {
@@ -801,6 +874,7 @@ struct JourneySummaryView: View {
     }
 }
 
+
 // MARK: - Metric Cell (Liquid Glass)
 
 private struct MetricCell: View {
@@ -813,32 +887,48 @@ private struct MetricCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(gradient)
+            ZStack {
+                Circle()
+                    .fill(gradient.opacity(0.2))
+                    .frame(width: 32, height: 32)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(gradient)
+            }
 
             Spacer(minLength: 0)
 
-            Text(value)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
 
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
-                .lineLimit(1)
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.65))
+                    .lineLimit(1)
+            }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 100, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 110, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white.opacity(0.10))
+                .fill(Color.white.opacity(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.3), Color.white.opacity(0.05)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
                 )
+                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
         )
     }
 }

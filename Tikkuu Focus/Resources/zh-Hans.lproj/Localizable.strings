@@ -260,6 +260,16 @@
 "onboarding.v2.page4.feature3.title" = "全局本地化";
 "onboarding.v2.page4.feature3.desc" = "语言与时间格式跟随应用设置。";
 
+// Onboarding Demo (V3)
+"onboarding.demo.page1.title" = "第一步：规划路线";
+"onboarding.demo.page1.subtitle" = "告别枯燥的倒计时。选定起点、交通方式与时长，准备出发。";
+"onboarding.demo.page2.title" = "第二步：专注即漫游";
+"onboarding.demo.page2.subtitle" = "放下手机保持专注。你的足迹将在真实地图上延伸，沿途自动收集地标景点。";
+"onboarding.demo.page3.title" = "第三步：沉淀与成就";
+"onboarding.demo.page3.subtitle" = "专注结束后，查看你的专属旅行日志。累积里程，点亮世界，赢取奖杯。";
+"onboarding.demo.start" = "开始漫游";
+"onboarding.demo.next" = "下一步";
+
 // Onboarding Animated (Latest)
 "onboarding.animated.page1.title" = "选择起点，设定时间";
 "onboarding.animated.page1.subtitle" = "用真实地图开启你的专注旅程，步行、骑行或驾车，随心所欲。";
@@ -332,7 +342,7 @@
 "history.records" = "记录";
 "history.stats" = "统计";
 "history.totalTime" = "总时长";
-"history.totalDistance" = "总距离";
+"history.totalDistance" = "距离";
 "history.completed" = "已完成";
 "history.poisFound" = "发现的景点";
 "history.topLocations" = "常去地点";
@@ -839,6 +849,9 @@
 "journey.summary.photoPermission.cancel" = "取消";
 "journey.summary.saved" = "已保存到相册";
 "journey.summary.timeRange" = "时间段";
+"journey.summary.transport" = "交通方式";
+"journey.summary.maxSpeed" = "最高时速";
+"journey.summary.avgSpeed" = "平均时速";
 
 // Activity Heatmap
 "heatmap.less" = "少";

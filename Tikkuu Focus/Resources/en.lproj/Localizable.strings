@@ -262,6 +262,16 @@
 "onboarding.v2.page4.feature3.title" = "Localized by design";
 "onboarding.v2.page4.feature3.desc" = "Language and formatting follow your in-app settings.";
 
+// Onboarding Demo (V3)
+"onboarding.demo.page1.title" = "Step 1: Plan Your Route";
+"onboarding.demo.page1.subtitle" = "No more boring countdowns. Pick a start point, transport, and duration.";
+"onboarding.demo.page2.title" = "Step 2: Focus is Roaming";
+"onboarding.demo.page2.subtitle" = "Stay focused. Your route extends on real maps, discovering landmarks along the way.";
+"onboarding.demo.page3.title" = "Step 3: Track & Achieve";
+"onboarding.demo.page3.subtitle" = "Review your travel log. Turn focus time into mileage, light up the world, and earn trophies.";
+"onboarding.demo.start" = "Start Roaming";
+"onboarding.demo.next" = "Next";
+
 // Onboarding Animated (Latest)
 "onboarding.animated.page1.title" = "Set your start and time";
 "onboarding.animated.page1.subtitle" = "Start your focus journey on real maps. Walk, bike, or drive at your own pace.";
@@ -334,7 +344,7 @@
 "history.records" = "Records";
 "history.stats" = "Stats";
 "history.totalTime" = "Total Time";
-"history.totalDistance" = "Total Distance";
+"history.totalDistance" = "Distance";
 "history.completed" = "Completed";
 "history.poisFound" = "POIs Found";
 "history.topLocations" = "Top Locations";
@@ -817,6 +827,9 @@
 "journey.summary.photoPermission.cancel" = "Cancel";
 "journey.summary.saved" = "Saved to Photos";
 "journey.summary.timeRange" = "Time Range";
+"journey.summary.transport" = "Transport";
+"journey.summary.maxSpeed" = "Max Speed";
+"journey.summary.avgSpeed" = "Avg Speed";
 
 // Activity Heatmap
 "heatmap.less" = "Less";

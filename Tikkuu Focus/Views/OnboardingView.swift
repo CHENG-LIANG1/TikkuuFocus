@@ -1,10 +1,3 @@
-//
-//  OnboardingView.swift
-//  Tikkuu Focus
-//
-//  Created by Tikkuu on 2026/2/8.
-//
-
 import SwiftUI
 import CoreLocation
 
@@ -75,30 +68,24 @@ struct OnboardingView: View {
         [
             OnboardingSlide(
                 kind: .plan,
-                titleKey: "onboarding.animated.page1.title",
-                subtitleKey: "onboarding.animated.page1.subtitle",
+                titleKey: "onboarding.demo.page1.title",
+                subtitleKey: "onboarding.demo.page1.subtitle",
                 gradient: [Color(red: 0.25, green: 0.54, blue: 0.98), Color(red: 0.20, green: 0.80, blue: 0.84)],
-                backgroundAccent: Color(red: 0.12, green: 0.24, blue: 0.52),
-                symbol: "map.fill",
-                symbolColor: .blue
+                backgroundAccent: Color(red: 0.12, green: 0.24, blue: 0.52)
             ),
             OnboardingSlide(
                 kind: .focus,
-                titleKey: "onboarding.animated.page2.title",
-                subtitleKey: "onboarding.animated.page2.subtitle",
+                titleKey: "onboarding.demo.page2.title",
+                subtitleKey: "onboarding.demo.page2.subtitle",
                 gradient: [Color(red: 0.97, green: 0.53, blue: 0.32), Color(red: 0.90, green: 0.27, blue: 0.56)],
-                backgroundAccent: Color(red: 0.44, green: 0.16, blue: 0.30),
-                symbol: "location.north.line.fill",
-                symbolColor: .orange
+                backgroundAccent: Color(red: 0.44, green: 0.16, blue: 0.30)
             ),
             OnboardingSlide(
                 kind: .grow,
-                titleKey: "onboarding.animated.page3.title",
-                subtitleKey: "onboarding.animated.page3.subtitle",
+                titleKey: "onboarding.demo.page3.title",
+                subtitleKey: "onboarding.demo.page3.subtitle",
                 gradient: [Color(red: 0.99, green: 0.77, blue: 0.25), Color(red: 0.97, green: 0.46, blue: 0.25)],
-                backgroundAccent: Color(red: 0.38, green: 0.22, blue: 0.09),
-                symbol: "trophy.fill",
-                symbolColor: .yellow
+                backgroundAccent: Color(red: 0.38, green: 0.22, blue: 0.09)
             )
         ]
     }
@@ -218,9 +205,9 @@ struct OnboardingView: View {
 
     private var primaryButtonTitle: String {
         if currentPage < pages.count - 1 {
-            return L("onboarding.animated.next")
+            return L("onboarding.demo.next")
         }
-        return canDismiss ? L("common.done") : L("onboarding.animated.start")
+        return canDismiss ? L("common.done") : L("onboarding.demo.start")
     }
 
     private func handlePrimaryAction() {
@@ -272,7 +259,7 @@ private struct OnboardingSlideView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: isCompact ? 32 : 48) {
                 Spacer().frame(height: isCompact ? 20 : 40)
-                symbolSection
+                visualSection
                 textSection
                 Spacer()
             }
@@ -282,37 +269,16 @@ private struct OnboardingSlideView: View {
         }
     }
 
-    private var symbolSection: some View {
+    @ViewBuilder
+    private var visualSection: some View {
         ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.15),
-                            Color.white.opacity(0.05)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: isCompact ? 160 : 200, height: isCompact ? 160 : 200)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: slide.symbolColor.opacity(0.3), radius: 20, x: 0, y: 10)
-            
-            if #available(iOS 17.0, *) {
-                Image(systemName: slide.symbol)
-                    .font(.system(size: isCompact ? 70 : 90, weight: .semibold))
-                    .foregroundStyle(slide.symbolColor)
-                    .symbolEffect(.bounce.up, options: .repeating, isActive: isVisible)
-            } else {
-                Image(systemName: slide.symbol)
-                    .font(.system(size: isCompact ? 70 : 90, weight: .semibold))
-                    .foregroundStyle(slide.symbolColor)
-                    .scaleEffect(isVisible ? 1.05 : 1.0)
-                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isVisible)
+            switch slide.kind {
+            case .plan:
+                SetupDemoVisual(isVisible: isVisible)
+            case .focus:
+                RoamingDemoVisual(isVisible: isVisible)
+            case .grow:
+                AchievementDemoVisual(isVisible: isVisible)
             }
         }
         .offset(y: -cardLift * 8)
@@ -336,6 +302,199 @@ private struct OnboardingSlideView: View {
     }
 }
 
+// MARK: - Animated Visual Components
+
+private struct SetupDemoVisual: View {
+    let isVisible: Bool
+    @State private var step1 = false
+    @State private var step2 = false
+    @State private var step3 = false
+
+    var body: some View {
+        HStack(spacing: 20) {
+            demoItem(icon: "mappin.and.ellipse", color: .blue, show: step1)
+            Image(systemName: "arrow.right").foregroundStyle(.white.opacity(0.3)).opacity(step1 ? 1 : 0)
+            
+            demoItem(icon: "figure.walk", color: .cyan, show: step2)
+            Image(systemName: "arrow.right").foregroundStyle(.white.opacity(0.3)).opacity(step2 ? 1 : 0)
+            
+            demoItem(icon: "timer", color: .mint, show: step3)
+        }
+        .frame(height: 160)
+        .onChange(of: isVisible) { _, visible in
+            if visible { startAnimation() } else { resetAnimation() }
+        }
+        .onAppear { if isVisible { startAnimation() } }
+    }
+
+    func demoItem(icon: String, color: Color, show: Bool) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 32, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 72, height: 72)
+            .background(Circle().fill(color.gradient))
+            .shadow(color: color.opacity(0.4), radius: 10, y: 5)
+            .scaleEffect(show ? 1 : 0.01)
+            .opacity(show ? 1 : 0)
+    }
+
+    func startAnimation() {
+        step1 = false; step2 = false; step3 = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { step1 = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { step2 = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { step3 = true }
+        }
+    }
+    
+    func resetAnimation() {
+        step1 = false; step2 = false; step3 = false
+    }
+}
+
+private struct RoamingDemoVisual: View {
+    let isVisible: Bool
+    @State private var progress: CGFloat = 0
+    @State private var showPOI1 = false
+    @State private var showPOI2 = false
+
+    var body: some View {
+        ZStack {
+            Image(systemName: "map.fill")
+                .font(.system(size: 110))
+                .foregroundStyle(.white.opacity(0.08))
+            
+            Path { p in
+                p.move(to: CGPoint(x: -70, y: 30))
+                p.addCurve(to: CGPoint(x: 70, y: -30), control1: CGPoint(x: -30, y: 70), control2: CGPoint(x: 30, y: -70))
+            }
+            .trim(from: 0, to: progress)
+            .stroke(
+                LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing),
+                style: StrokeStyle(lineWidth: 6, lineCap: .round)
+            )
+            .frame(width: 0, height: 0)
+
+            poiMarker(icon: "camera.fill", color: .orange, show: showPOI1)
+                .offset(x: -20, y: 35)
+
+            poiMarker(icon: "star.fill", color: .pink, show: showPOI2)
+                .offset(x: 70, y: -30)
+        }
+        .frame(height: 160)
+        .onChange(of: isVisible) { _, visible in
+            if visible { startAnimation() } else { resetAnimation() }
+        }
+        .onAppear { if isVisible { startAnimation() } }
+    }
+    
+    func poiMarker(icon: String, color: Color, show: Bool) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 36, height: 36)
+            .background(Circle().fill(color.gradient))
+            .shadow(color: color.opacity(0.4), radius: 6, y: 3)
+            .scaleEffect(show ? 1 : 0.01)
+            .opacity(show ? 1 : 0)
+    }
+
+    func startAnimation() {
+        progress = 0; showPOI1 = false; showPOI2 = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            withAnimation(.easeInOut(duration: 2.5)) { progress = 1 }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showPOI1 = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.7) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showPOI2 = true }
+        }
+    }
+    
+    func resetAnimation() {
+        progress = 0; showPOI1 = false; showPOI2 = false
+    }
+}
+
+private struct AchievementDemoVisual: View {
+    let isVisible: Bool
+    @State private var showTrophy = false
+    @State private var showStat1 = false
+    @State private var showStat2 = false
+    @State private var floatOffset: CGFloat = 0
+
+    var body: some View {
+        ZStack {
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 90))
+                .foregroundStyle(
+                    LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .shadow(color: .orange.opacity(0.5), radius: 20, y: 10)
+                .scaleEffect(showTrophy ? 1 : 0.01)
+                .rotationEffect(.degrees(showTrophy ? 0 : -20))
+                .offset(y: floatOffset)
+
+            statPill(icon: "map.fill", text: "25 km", color: .blue)
+                .offset(x: -80, y: -40 + floatOffset * 0.5)
+                .scaleEffect(showStat1 ? 1 : 0.01)
+                .opacity(showStat1 ? 1 : 0)
+
+            statPill(icon: "star.fill", text: "12 POIs", color: .pink)
+                .offset(x: 75, y: 50 + floatOffset * 0.8)
+                .scaleEffect(showStat2 ? 1 : 0.01)
+                .opacity(showStat2 ? 1 : 0)
+        }
+        .frame(height: 160)
+        .onChange(of: isVisible) { _, visible in
+            if visible { startAnimation() } else { resetAnimation() }
+        }
+        .onAppear { if isVisible { startAnimation() } }
+    }
+
+    func statPill(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).foregroundStyle(color)
+            Text(text).font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.15))
+                .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+        )
+        .shadow(radius: 10)
+    }
+
+    func startAnimation() {
+        showTrophy = false; showStat1 = false; showStat2 = false; floatOffset = 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.5)) { showTrophy = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showStat1 = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showStat2 = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                floatOffset = -10
+            }
+        }
+    }
+    
+    func resetAnimation() {
+        showTrophy = false; showStat1 = false; showStat2 = false; floatOffset = 0
+    }
+}
+
 private enum OnboardingPageKind {
     case plan
     case focus
@@ -348,8 +507,6 @@ private struct OnboardingSlide {
     let subtitleKey: String
     let gradient: [Color]
     let backgroundAccent: Color
-    let symbol: String
-    let symbolColor: Color
 }
 
 #Preview {
