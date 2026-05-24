@@ -185,8 +185,7 @@
 "icloud.status.local.data" = "本地数据";
 "icloud.status.journeys" = "条旅程";
 "icloud.status.locations" = "个地点";
-"icloud.status.last.sync" = "上次同步";
-"icloud.status.last.sync.never" = "从未同步";
+
 "settings.data.clear" = "清除所有数据";
 "settings.data.clear.subtitle" = "删除记录与进度（无法恢复）";
 "settings.data.clear.confirm1.title" = "清除所有数据？";

@@ -187,8 +187,7 @@
 "icloud.status.local.data" = "Local Data";
 "icloud.status.journeys" = "Journeys";
 "icloud.status.locations" = "Locations";
-"icloud.status.last.sync" = "Last Sync";
-"icloud.status.last.sync.never" = "Never";
+
 "settings.data.clear" = "Clear All Data";
 "settings.data.clear.subtitle" = "Delete records and progress (cannot be restored)";
 "settings.data.clear.confirm1.title" = "Clear All Data?";
