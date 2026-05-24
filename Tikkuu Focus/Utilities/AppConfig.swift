@@ -30,6 +30,6 @@ struct AppConfig {
     
     // MARK: - Feature Flags
     
-    /// Temporarily hide iCloud sync entry in Settings.
-    static let isICloudSyncEntryEnabled = false
+    /// Enable iCloud sync entry in Settings.
+    static let isICloudSyncEntryEnabled = true
 }

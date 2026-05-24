@@ -166,6 +166,27 @@
 "settings.data" = "数据管理";
 "settings.data.icloud" = "iCloud 同步";
 "settings.data.icloud.subtitle" = "即将支持";
+"settings.data.icloud.on" = "已开启";
+"settings.data.icloud.off" = "已关闭";
+"settings.data.icloud.restart.title" = "需要重启应用";
+"settings.data.icloud.restart.message.on" = "iCloud 同步已开启。请重启应用以在您的设备间同步数据。";
+"settings.data.icloud.restart.message.off" = "iCloud 同步已关闭。请重启应用以应用更改。";
+"settings.data.icloud.status" = "iCloud 状态";
+"settings.data.icloud.status.subtitle" = "查看同步和账户信息";
+"icloud.status.title" = "iCloud 状态";
+"icloud.status.sync" = "iCloud 同步";
+"icloud.status.on" = "已开启";
+"icloud.status.off" = "已关闭";
+"icloud.status.account" = "iCloud 账户";
+"icloud.status.available" = "可用";
+"icloud.status.noaccount" = "未登录";
+"icloud.status.restricted" = "受限制";
+"icloud.status.unknown" = "检测中...";
+"icloud.status.local.data" = "本地数据";
+"icloud.status.journeys" = "条旅程";
+"icloud.status.locations" = "个地点";
+"icloud.status.refresh" = "刷新状态";
+"icloud.status.hint" = "iCloud 同步需要您登录 iCloud 并开启 iCloud 云盘。数据在设备间同步可能需要一些时间。";
 "settings.data.clear" = "清除所有数据";
 "settings.data.clear.subtitle" = "删除记录与进度（无法恢复）";
 "settings.data.clear.confirm1.title" = "清除所有数据？";
@@ -173,12 +194,16 @@
 "settings.data.clear.confirm1.action" = "继续";
 "settings.data.clear.confirm2.title" = "最终确认";
 "settings.data.clear.confirm2.message" = "此操作不可撤销，所有历史记录与进度将被永久删除。";
+"settings.data.clear.confirm2.message.icloud" = "此操作不可撤销，所有本地和 iCloud 数据将被永久删除，且 iCloud 同步将被关闭。";
 "settings.data.clear.confirm2.guide" = "请输入 %@ 以确认";
 "settings.data.clear.confirm2.action" = "永久删除";
 "settings.data.clear.inputPlaceholder" = "请输入确认文字";
 "settings.data.clear.error.title" = "验证失败";
 "settings.data.clear.error.message" = "输入的确认文字不匹配，数据未清除。";
 "settings.data.clear.confirmPhrase" = "确认清除数据";
+"settings.data.clear.success.title" = "数据已清除";
+"settings.data.clear.success.message.local" = "所有本地数据已清除。";
+"settings.data.clear.success.message.icloud" = "所有本地和 iCloud 数据已清除。iCloud 同步已关闭。";
 
 // About
 "about.title" = "关于";

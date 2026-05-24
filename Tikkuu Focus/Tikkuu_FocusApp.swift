@@ -12,25 +12,48 @@ import SwiftData
 struct Tikkuu_FocusApp: App {
     @StateObject private var settings = AppSettings.shared
     
-    var sharedModelContainer: ModelContainer = {
+    var body: some Scene {
+        WindowGroup {
+            Group {
+                if settings.hasCompletedOnboarding {
+                    SetupView()
+                } else {
+                    OnboardingView()
+                }
+            }
+            .preferredColorScheme(settings.currentColorScheme)
+            .environment(\.locale, settings.appLocale)
+            .modelContainer(createModelContainer())
+        }
+    }
+
+    private func createModelContainer() -> ModelContainer {
         let schema = Schema([
             JourneyRecord.self,
             SavedLocation.self,
         ])
-        
-        // Get the app support directory and ensure it exists
-        let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
-        
-        let storeURL = appSupportURL.appendingPathComponent("TikkuuFocus.sqlite")
-        let modelConfiguration = ModelConfiguration(url: storeURL)
+
+        let modelConfiguration: ModelConfiguration
+        if AppSettings.shared.isICloudSyncEnabled {
+            modelConfiguration = ModelConfiguration(
+                schema: schema,
+                cloudKitDatabase: .automatic
+            )
+        } else {
+            let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+            let storeURL = appSupportURL.appendingPathComponent("TikkuuFocus.sqlite")
+            modelConfiguration = ModelConfiguration(url: storeURL)
+        }
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            // Recovery path for schema/load issues: recreate the local store.
-            // This avoids app launch crash after incompatible model updates.
-            removePersistentStoreFiles(at: storeURL)
+            if !AppSettings.shared.isICloudSyncEnabled {
+                let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+                let storeURL = appSupportURL.appendingPathComponent("TikkuuFocus.sqlite")
+                removePersistentStoreFiles(at: storeURL)
+            }
 
             do {
                 return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -38,20 +61,6 @@ struct Tikkuu_FocusApp: App {
                 fatalError("Could not create ModelContainer after recovery: \(error)")
             }
         }
-    }()
-
-    var body: some Scene {
-        WindowGroup {
-            if settings.hasCompletedOnboarding {
-                SetupView()
-                    .preferredColorScheme(settings.currentColorScheme)
-            } else {
-                OnboardingView()
-                    .preferredColorScheme(settings.currentColorScheme)
-            }
-        }
-        .environment(\.locale, settings.appLocale)
-        .modelContainer(sharedModelContainer)
     }
 }
 

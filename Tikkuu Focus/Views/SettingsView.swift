@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import CloudKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -19,6 +20,8 @@ struct SettingsView: View {
     @State private var showPrivacyPolicy = false
     @State private var showClearDataStep1 = false
     @State private var showClearDataStep2 = false
+    @State private var showClearDataSuccess = false
+    @State private var showICloudStatus = false
     
     var body: some View {
         NavigationStack {
@@ -134,10 +137,20 @@ struct SettingsView: View {
         .alert(L("settings.data.clear.confirm2.title"), isPresented: $showClearDataStep2) {
             Button(L("common.cancel"), role: .cancel) {}
             Button(L("settings.data.clear.confirm2.action"), role: .destructive) {
-                clearAllData()
+                Task {
+                    await clearAllData()
+                }
             }
         } message: {
-            Text(L("settings.data.clear.confirm2.message"))
+            Text(settings.isICloudSyncEnabled ? L("settings.data.clear.confirm2.message.icloud") : L("settings.data.clear.confirm2.message"))
+        }
+        .alert(L("settings.data.clear.success.title"), isPresented: $showClearDataSuccess) {
+            Button(L("common.ok")) {}
+        } message: {
+            Text(settings.isICloudSyncEnabled ? L("settings.data.clear.success.message.icloud") : L("settings.data.clear.success.message.local"))
+        }
+        .sheet(isPresented: $showICloudStatus) {
+            ICloudStatusView()
         }
     }
     
@@ -290,10 +303,12 @@ struct SettingsView: View {
             if AppConfig.isICloudSyncEntryEnabled {
                 ModernActionRow(
                     title: L("settings.data.icloud"),
-                    subtitle: L("settings.data.icloud.subtitle"),
-                    icon: "icloud"
+                    subtitle: settings.isICloudSyncEnabled ? L("settings.data.icloud.on") : L("settings.data.icloud.off"),
+                    icon: "icloud",
+                    showChevron: true
                 ) {
-                    // Reserved for future iCloud sync settings.
+                    HapticManager.light()
+                    showICloudStatus = true
                 }
             }
 
@@ -309,16 +324,75 @@ struct SettingsView: View {
         }
     }
 
-    private func clearAllData() {
+    private func clearAllData() async {
+        // 1. Delete local JourneyRecords
         for record in records {
             modelContext.delete(record)
         }
+        
+        // 2. Delete local SavedLocations
+        let savedLocationsDescriptor = FetchDescriptor<SavedLocation>()
+        if let savedLocations = try? modelContext.fetch(savedLocationsDescriptor) {
+            for location in savedLocations {
+                modelContext.delete(location)
+            }
+        }
+        
         try? modelContext.save()
 
         settings.hasCompletedFirstJourney = false
         settings.hasSeenFirstJourneyGuide = false
 
+        // 3. If iCloud sync is on, also clear CloudKit records
+        if settings.isICloudSyncEnabled {
+            await clearCloudKitData()
+            settings.isICloudSyncEnabled = false
+        }
+
         HapticManager.success()
+        showClearDataSuccess = true
+    }
+    
+    private func clearCloudKitData() async {
+        let container = CKContainer(identifier: "iCloud.roam_focus")
+        let database = container.privateCloudDatabase
+        let recordTypes = ["CD_JourneyRecord", "CD_SavedLocation"]
+        
+        for recordType in recordTypes {
+            await deleteAllCloudKitRecords(ofType: recordType, in: database)
+        }
+    }
+    
+    private func deleteAllCloudKitRecords(ofType recordType: String, in database: CKDatabase) async {
+        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
+        
+        do {
+            var cursor: CKQueryOperation.Cursor? = nil
+            repeat {
+                let (results, newCursor) = try await database.records(
+                    matching: query,
+                    inZoneWith: CKRecordZone.default().zoneID,
+                    resultsLimit: 400
+                )
+                
+                let recordIDs = results.compactMap { _, result -> CKRecord.ID? in
+                    switch result {
+                    case .success(let record):
+                        return record.recordID
+                    case .failure:
+                        return nil
+                    }
+                }
+                
+                if !recordIDs.isEmpty {
+                    _ = try? await database.modifyRecords(saving: [], deleting: recordIDs)
+                }
+                
+                cursor = newCursor
+            } while cursor != nil
+        } catch {
+            print("Failed to clear CloudKit records for type \(recordType): \(error)")
+        }
     }
 }
 
@@ -435,6 +509,53 @@ struct ModernActionRow: View {
 
     @ViewBuilder
     private var actionRowBackground: some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(Color.clear)
+            .insetSurface(cornerRadius: 20, isActive: false)
+    }
+}
+
+// MARK: - Modern Toggle Row
+
+struct ModernToggleRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let title: String
+    var subtitle: String? = nil
+    let icon: String
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(GradientStyles.primaryGradient)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(Color.green)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(toggleRowBackground)
+    }
+    
+    @ViewBuilder
+    private var toggleRowBackground: some View {
         RoundedRectangle(cornerRadius: 20, style: .continuous)
             .fill(Color.clear)
             .insetSurface(cornerRadius: 20, isActive: false)

@@ -168,6 +168,27 @@
 "settings.data" = "Data Management";
 "settings.data.icloud" = "iCloud Sync";
 "settings.data.icloud.subtitle" = "Coming soon";
+"settings.data.icloud.on" = "Enabled";
+"settings.data.icloud.off" = "Disabled";
+"settings.data.icloud.restart.title" = "Restart Required";
+"settings.data.icloud.restart.message.on" = "iCloud sync has been enabled. Please restart the app to sync data across your devices.";
+"settings.data.icloud.restart.message.off" = "iCloud sync has been disabled. Please restart the app to apply the change.";
+"settings.data.icloud.status" = "iCloud Status";
+"settings.data.icloud.status.subtitle" = "View sync and account info";
+"icloud.status.title" = "iCloud Status";
+"icloud.status.sync" = "iCloud Sync";
+"icloud.status.on" = "Enabled";
+"icloud.status.off" = "Disabled";
+"icloud.status.account" = "iCloud Account";
+"icloud.status.available" = "Available";
+"icloud.status.noaccount" = "Not Signed In";
+"icloud.status.restricted" = "Restricted";
+"icloud.status.unknown" = "Checking...";
+"icloud.status.local.data" = "Local Data";
+"icloud.status.journeys" = "Journeys";
+"icloud.status.locations" = "Locations";
+"icloud.status.refresh" = "Refresh Status";
+"icloud.status.hint" = "iCloud sync requires you to be signed in to iCloud with iCloud Drive enabled. Data may take a few moments to sync across devices.";
 "settings.data.clear" = "Clear All Data";
 "settings.data.clear.subtitle" = "Delete records and progress (cannot be restored)";
 "settings.data.clear.confirm1.title" = "Clear All Data?";
@@ -175,12 +196,16 @@
 "settings.data.clear.confirm1.action" = "Continue";
 "settings.data.clear.confirm2.title" = "Final Confirmation";
 "settings.data.clear.confirm2.message" = "This action cannot be undone. All history and progress data will be permanently deleted.";
+"settings.data.clear.confirm2.message.icloud" = "This action cannot be undone. All local and iCloud data will be permanently deleted, and iCloud sync will be turned off.";
 "settings.data.clear.confirm2.guide" = "Type %@ to confirm.";
 "settings.data.clear.confirm2.action" = "Delete Permanently";
 "settings.data.clear.inputPlaceholder" = "Type confirmation phrase";
 "settings.data.clear.error.title" = "Verification Failed";
 "settings.data.clear.error.message" = "The confirmation phrase does not match. Data was not cleared.";
 "settings.data.clear.confirmPhrase" = "CONFIRM CLEAR";
+"settings.data.clear.success.title" = "Data Cleared";
+"settings.data.clear.success.message.local" = "All local data has been cleared.";
+"settings.data.clear.success.message.icloud" = "All local and iCloud data has been cleared. iCloud sync has been turned off.";
 
 // About
 "about.title" = "About";

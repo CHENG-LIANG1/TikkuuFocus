@@ -12,24 +12,24 @@ import CoreLocation
 /// Journey record for history tracking
 @Model
 final class JourneyRecord {
-    var id: UUID
-    var startTime: Date
-    var endTime: Date?
-    var duration: TimeInterval // Actual duration (may be less than planned)
-    var plannedDuration: TimeInterval
-    var transportMode: String
-    var startLocationName: String
-    var startLatitude: Double
-    var startLongitude: Double
-    var destinationName: String
-    var destinationLatitude: Double
-    var destinationLongitude: Double
-    var totalDistance: Double
-    var distanceTraveled: Double
-    var progress: Double
-    var discoveredPOICount: Int
-    var discoveredPOIsJSON: String
-    var isCompleted: Bool
+    var id: UUID = UUID()
+    var startTime: Date = Date()
+    var endTime: Date? = nil
+    var duration: TimeInterval = 0 // Actual duration (may be less than planned)
+    var plannedDuration: TimeInterval = 0
+    var transportMode: String = ""
+    var startLocationName: String = ""
+    var startLatitude: Double = 0
+    var startLongitude: Double = 0
+    var destinationName: String = ""
+    var destinationLatitude: Double = 0
+    var destinationLongitude: Double = 0
+    var totalDistance: Double = 0
+    var distanceTraveled: Double = 0
+    var progress: Double = 0
+    var discoveredPOICount: Int = 0
+    var discoveredPOIsJSON: String = "[]"
+    var isCompleted: Bool = false
     
     init(
         id: UUID = UUID(),

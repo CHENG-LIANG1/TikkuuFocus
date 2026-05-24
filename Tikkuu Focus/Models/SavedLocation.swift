@@ -14,13 +14,13 @@ import Combine
 /// Represents a saved location that can be a favorite or history item
 @Model
 final class SavedLocation {
-    var id: UUID
-    var name: String
-    var latitude: Double
-    var longitude: Double
-    var timestamp: Date
-    var isFavorite: Bool
-    var emoji: String?
+    var id: UUID = UUID()
+    var name: String = ""
+    var latitude: Double = 0
+    var longitude: Double = 0
+    var timestamp: Date = Date()
+    var isFavorite: Bool = false
+    var emoji: String? = nil
     
     init(
         id: UUID = UUID(),

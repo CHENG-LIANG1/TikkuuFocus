@@ -129,6 +129,13 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var isICloudSyncEnabled: Bool {
+        didSet {
+            guard isICloudSyncEnabled != oldValue else { return }
+            UserDefaults.standard.set(isICloudSyncEnabled, forKey: "isICloudSyncEnabled")
+        }
+    }
+    
     private init() {
         self.selectedLanguage = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "system"
         self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
@@ -139,6 +146,7 @@ class AppSettings: ObservableObject {
         let storedTransport = UserDefaults.standard.string(forKey: "preferredTransportMode") ?? TransportMode.cycling.rawValue
         self.preferredTransportMode = TransportMode(rawValue: storedTransport) ?? .cycling
         self.preferredDuration = UserDefaults.standard.integer(forKey: "preferredDuration")
+        self.isICloudSyncEnabled = UserDefaults.standard.bool(forKey: "isICloudSyncEnabled")
         if self.preferredDuration == 0 {
             self.preferredDuration = 25
         }
