@@ -1,17 +1,23 @@
 import SwiftUI
 import CoreLocation
 
+// MARK: - Onboarding View
+
 struct OnboardingView: View {
     @StateObject private var settings = AppSettings.shared
     @State private var currentPage = 0
     @State private var refreshID = UUID()
     @State private var orbDrift: CGFloat = 0
-    @State private var cardLift: CGFloat = 0
+    @State private var selectedTransport: TransportMode = .cycling
+    @State private var selectedDuration: Int = 25
+    @State private var locationPermissionStatus: CLAuthorizationStatus = CLLocationManager().authorizationStatus
     let canDismiss: Bool
     @Environment(\.dismiss) private var dismiss
 
     init(canDismiss: Bool = false) {
         self.canDismiss = canDismiss
+        _selectedTransport = State(initialValue: AppSettings.shared.preferredTransportMode)
+        _selectedDuration = State(initialValue: AppSettings.shared.preferredDuration)
     }
 
     var body: some View {
@@ -26,16 +32,16 @@ struct OnboardingView: View {
                     topBar(isCompact: isCompact)
 
                     TabView(selection: $currentPage) {
-                        ForEach(Array(pages.enumerated()), id: \.offset) { index, slide in
-                            OnboardingSlideView(
-                                slide: slide,
-                                isCompact: isCompact,
-                                cardLift: cardLift,
-                                isVisible: currentPage == index
-                            )
-                            .tag(index)
-                            .padding(.horizontal, 20)
-                        }
+                        welcomePage(isCompact: isCompact)
+                            .tag(0)
+                        interactiveSetupPage(isCompact: isCompact)
+                            .tag(1)
+                        simulationPage(isCompact: isCompact)
+                            .tag(2)
+                        permissionsPage(isCompact: isCompact)
+                            .tag(3)
+                        readyPage(isCompact: isCompact)
+                            .tag(4)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .onChange(of: currentPage) { _, _ in
@@ -56,46 +62,468 @@ struct OnboardingView: View {
         }
     }
 
-    private var activeSlide: OnboardingSlide {
-        pages[min(max(currentPage, 0), pages.count - 1)]
+    // MARK: - Pages
+
+    private func welcomePage(isCompact: Bool) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: isCompact ? 28 : 44) {
+                Spacer().frame(height: isCompact ? 10 : 30)
+
+                // Immersive map visual
+                ZStack {
+                    Circle()
+                        .fill(Color.blue.opacity(0.15))
+                        .frame(width: 280, height: 280)
+                        .blur(radius: 60)
+
+                    Path { path in
+                        let w: CGFloat = 200
+                        let h: CGFloat = 160
+                        path.move(to: CGPoint(x: -w * 0.4, y: h * 0.3))
+                        path.addCurve(
+                            to: CGPoint(x: w * 0.45, y: -h * 0.25),
+                            control1: CGPoint(x: -w * 0.1, y: h * 0.55),
+                            control2: CGPoint(x: w * 0.15, y: -h * 0.45)
+                        )
+                    }
+                    .stroke(
+                        LinearGradient(colors: [.cyan, .blue, .purple], startPoint: .leading, endPoint: .trailing),
+                        style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: [12, 8])
+                    )
+                    .frame(width: 200, height: 160)
+
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                        .shadow(color: .cyan.opacity(0.5), radius: 12, y: 6)
+                    .offset(x: -60, y: 40)
+
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                        .shadow(color: .orange.opacity(0.5), radius: 10, y: 5)
+                    .offset(x: 55, y: -35)
+                }
+                .frame(height: isCompact ? 180 : 220)
+
+                VStack(spacing: 16) {
+                    Text(L("onboarding.welcome.title"))
+                        .font(.system(size: isCompact ? 32 : 38, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+
+                    Text(L("onboarding.welcome.subtitle"))
+                        .font(.system(size: isCompact ? 16 : 18, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(6)
+                        .padding(.horizontal, 32)
+                }
+
+                // Social proof / stats
+                HStack(spacing: 24) {
+                    statBadge(icon: "map.fill", value: "3", label: L("onboarding.welcome.stat.modes"))
+                    statBadge(icon: "timer", value: "25-90", label: L("onboarding.welcome.stat.minutes"))
+                    statBadge(icon: "trophy.fill", value: "129", label: L("onboarding.welcome.stat.trophies"))
+                }
+                .padding(.top, 8)
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, isCompact ? 10 : 18)
+        }
     }
 
-    private var progressText: String {
-        "\(currentPage + 1) / \(pages.count)"
+    private func statBadge(icon: String, value: String, label: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .frame(width: 80)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+        )
     }
 
-    private var pages: [OnboardingSlide] {
-        [
-            OnboardingSlide(
-                kind: .plan,
-                titleKey: "onboarding.demo.page1.title",
-                subtitleKey: "onboarding.demo.page1.subtitle",
-                gradient: [Color(red: 0.25, green: 0.54, blue: 0.98), Color(red: 0.20, green: 0.80, blue: 0.84)],
-                backgroundAccent: Color(red: 0.12, green: 0.24, blue: 0.52)
-            ),
-            OnboardingSlide(
-                kind: .focus,
-                titleKey: "onboarding.demo.page2.title",
-                subtitleKey: "onboarding.demo.page2.subtitle",
-                gradient: [Color(red: 0.97, green: 0.53, blue: 0.32), Color(red: 0.90, green: 0.27, blue: 0.56)],
-                backgroundAccent: Color(red: 0.44, green: 0.16, blue: 0.30)
-            ),
-            OnboardingSlide(
-                kind: .grow,
-                titleKey: "onboarding.demo.page3.title",
-                subtitleKey: "onboarding.demo.page3.subtitle",
-                gradient: [Color(red: 0.99, green: 0.77, blue: 0.25), Color(red: 0.97, green: 0.46, blue: 0.25)],
-                backgroundAccent: Color(red: 0.38, green: 0.22, blue: 0.09)
+    private func interactiveSetupPage(isCompact: Bool) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: isCompact ? 20 : 28) {
+                Spacer().frame(height: isCompact ? 8 : 16)
+
+                Text(L("onboarding.setup.title"))
+                    .font(.system(size: isCompact ? 26 : 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                Text(L("onboarding.setup.subtitle"))
+                    .font(.system(size: isCompact ? 15 : 16, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                // Transport mode selector
+                VStack(spacing: 12) {
+                    Text(L("onboarding.setup.transport.label"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+
+                    HStack(spacing: 12) {
+                        ForEach(TransportMode.allCases) { mode in
+                            transportButton(mode: mode, isSelected: selectedTransport == mode)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+
+                // Duration selector
+                VStack(spacing: 12) {
+                    Text(L("onboarding.setup.duration.label"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+
+                    HStack(spacing: 12) {
+                        ForEach([15, 25, 45], id: \.self) { duration in
+                            durationButton(duration: duration, isSelected: selectedDuration == duration)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+
+                // Live preview card
+                VStack(spacing: 10) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "eye.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.cyan)
+                        Text(L("onboarding.setup.preview.title"))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+
+                    HStack(spacing: 20) {
+                        previewItem(icon: selectedTransport.iconName, label: selectedTransport.localizedName, color: .cyan)
+                        Text("→")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.3))
+                        previewItem(icon: "timer", label: "\(selectedDuration) min", color: .orange)
+                        Text("→")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.3))
+                        previewItem(icon: "map.fill", label: estimatedDistance, color: .green)
+                    }
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color.white.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                            )
+                    )
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func transportButton(mode: TransportMode, isSelected: Bool) -> some View {
+        Button {
+            HapticManager.medium()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                selectedTransport = mode
+            }
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: mode.iconName)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
+                    .frame(width: 56, height: 56)
+                    .background(
+                        Circle()
+                            .fill(isSelected ? Color.cyan.opacity(0.25) : Color.white.opacity(0.08))
+                            .overlay(
+                                Circle()
+                                    .stroke(isSelected ? Color.cyan.opacity(0.5) : Color.white.opacity(0.1), lineWidth: isSelected ? 2 : 1)
+                            )
+                    )
+
+                Text(mode.localizedName)
+                    .font(.system(size: 12, weight: isSelected ? .bold : .medium))
+                    .foregroundStyle(isSelected ? .white : .white.opacity(0.6))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func durationButton(duration: Int, isSelected: Bool) -> some View {
+        Button {
+            HapticManager.medium()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                selectedDuration = duration
+            }
+        } label: {
+            Text("\(duration) min")
+                .font(.system(size: 15, weight: isSelected ? .bold : .semibold))
+                .foregroundStyle(isSelected ? .white : .white.opacity(0.7))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(isSelected ? Color.orange.opacity(0.25) : Color.white.opacity(0.08))
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .stroke(isSelected ? Color.orange.opacity(0.5) : Color.white.opacity(0.1), lineWidth: isSelected ? 2 : 1)
+                        )
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func previewItem(icon: String, label: String, color: Color) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(color)
+            Text(label)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white)
+        }
+    }
+
+    private var estimatedDistance: String {
+        let km = Double(selectedDuration) / 60.0 * selectedTransport.speedKmh
+        if km < 1 {
+            return String(format: "%.0f m", km * 1000)
+        }
+        return String(format: "%.1f km", km)
+    }
+
+    private func simulationPage(isCompact: Bool) -> some View {
+        VStack(spacing: isCompact ? 20 : 28) {
+            Spacer().frame(height: isCompact ? 8 : 16)
+
+            Text(L("onboarding.sim.title"))
+                .font(.system(size: isCompact ? 26 : 30, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+
+            Text(L("onboarding.sim.subtitle"))
+                .font(.system(size: isCompact ? 15 : 16, weight: .regular))
+                .foregroundStyle(.white.opacity(0.75))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            JourneySimulationView(transportMode: selectedTransport)
+                .frame(height: isCompact ? 200 : 260)
+                .padding(.horizontal, 20)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func permissionsPage(isCompact: Bool) -> some View {
+        VStack(spacing: isCompact ? 24 : 36) {
+            Spacer().frame(height: isCompact ? 20 : 40)
+
+            ZStack {
+                Circle()
+                    .fill(Color.green.opacity(0.15))
+                    .frame(width: 140, height: 140)
+                    .blur(radius: 40)
+
+                Image(systemName: "location.circle.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(
+                        LinearGradient(colors: [.green, .mint], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .shadow(color: .green.opacity(0.4), radius: 16, y: 8)
+            }
+            .frame(height: 140)
+
+            VStack(spacing: 14) {
+                Text(L("onboarding.perm.title"))
+                    .font(.system(size: isCompact ? 26 : 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                Text(L("onboarding.perm.subtitle"))
+                    .font(.system(size: isCompact ? 15 : 16, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(5)
+                    .padding(.horizontal, 36)
+            }
+
+            VStack(spacing: 14) {
+                permissionRow(icon: "location.fill", color: .green, title: L("onboarding.perm.location.title"), desc: L("onboarding.perm.location.desc"))
+                permissionRow(icon: "bell.fill", color: .orange, title: L("onboarding.perm.notif.title"), desc: L("onboarding.perm.notif.desc"))
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func permissionRow(icon: String, color: Color, title: String, desc: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(color.opacity(0.15))
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text(desc)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+        )
+    }
+
+    private func readyPage(isCompact: Bool) -> some View {
+        VStack(spacing: isCompact ? 24 : 36) {
+            Spacer().frame(height: isCompact ? 20 : 40)
+
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.15))
+                    .frame(width: 160, height: 160)
+                    .blur(radius: 50)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 72))
+                    .foregroundStyle(
+                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .shadow(color: .purple.opacity(0.4), radius: 18, y: 8)
+                    .scaleEffect(1.0)
+            }
+            .frame(height: 140)
+
+            VStack(spacing: 12) {
+                Text(L("onboarding.ready.title"))
+                    .font(.system(size: isCompact ? 28 : 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+
+                Text(L("onboarding.ready.subtitle"))
+                    .font(.system(size: isCompact ? 15 : 16, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 36)
+            }
+
+            // Summary card
+            VStack(spacing: 16) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.yellow)
+                    Text(L("onboarding.ready.config.title"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.8))
+                }
+
+                HStack(spacing: 16) {
+                    summaryPill(icon: selectedTransport.iconName, text: selectedTransport.localizedName, color: .cyan)
+                    summaryPill(icon: "timer", text: "\(selectedDuration) min", color: .orange)
+                    summaryPill(icon: "map.fill", text: estimatedDistance, color: .green)
+                }
+            }
+            .padding(.vertical, 18)
+            .padding(.horizontal, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    )
             )
-        ]
+            .padding(.horizontal, 24)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
     }
+
+    private func summaryPill(icon: String, text: String, color: Color) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(color)
+            Text(text)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 80)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+        )
+    }
+
+    // MARK: - Background
 
     private var backgroundView: some View {
         ZStack {
             LinearGradient(
                 colors: [
                     Color(red: 0.03, green: 0.05, blue: 0.10),
-                    activeSlide.backgroundAccent.opacity(0.88),
+                    pageAccentColor.opacity(0.7),
                     Color(red: 0.06, green: 0.07, blue: 0.14)
                 ],
                 startPoint: .topLeading,
@@ -103,19 +531,19 @@ struct OnboardingView: View {
             )
 
             Circle()
-                .fill(activeSlide.gradient[0].opacity(0.30))
+                .fill(pageGradient[0].opacity(0.25))
                 .frame(width: 360, height: 360)
                 .blur(radius: 92)
                 .offset(x: -110, y: -250 + orbDrift * 22)
 
             Circle()
-                .fill(activeSlide.gradient[1].opacity(0.28))
+                .fill(pageGradient[1].opacity(0.22))
                 .frame(width: 280, height: 280)
                 .blur(radius: 84)
                 .offset(x: 130, y: 100 - orbDrift * 18)
 
             Circle()
-                .fill(Color.white.opacity(0.08))
+                .fill(Color.white.opacity(0.06))
                 .frame(width: 180, height: 180)
                 .blur(radius: 60)
                 .offset(x: 26, y: 330 + orbDrift * 14)
@@ -123,14 +551,38 @@ struct OnboardingView: View {
         .animation(.easeInOut(duration: 0.75), value: currentPage)
     }
 
+    private var pageGradient: [Color] {
+        switch currentPage {
+        case 0: return [Color(red: 0.25, green: 0.54, blue: 0.98), Color(red: 0.20, green: 0.80, blue: 0.84)]
+        case 1: return [Color(red: 0.97, green: 0.53, blue: 0.32), Color(red: 0.90, green: 0.27, blue: 0.56)]
+        case 2: return [Color(red: 0.99, green: 0.77, blue: 0.25), Color(red: 0.97, green: 0.46, blue: 0.25)]
+        case 3: return [Color(red: 0.30, green: 0.85, blue: 0.50), Color(red: 0.20, green: 0.70, blue: 0.85)]
+        case 4: return [Color(red: 0.65, green: 0.35, blue: 0.95), Color(red: 0.95, green: 0.30, blue: 0.65)]
+        default: return [.blue, .cyan]
+        }
+    }
+
+    private var pageAccentColor: Color {
+        switch currentPage {
+        case 0: return Color(red: 0.12, green: 0.24, blue: 0.52)
+        case 1: return Color(red: 0.44, green: 0.16, blue: 0.30)
+        case 2: return Color(red: 0.38, green: 0.22, blue: 0.09)
+        case 3: return Color(red: 0.10, green: 0.30, blue: 0.20)
+        case 4: return Color(red: 0.25, green: 0.12, blue: 0.40)
+        default: return .black
+        }
+    }
+
+    // MARK: - Top Bar
+
     private func topBar(isCompact: Bool) -> some View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(activeSlide.gradient[0])
+                    .fill(pageGradient[0])
                     .frame(width: 8, height: 8)
 
-                Text(progressText)
+                Text("\(currentPage + 1) / 5")
                     .font(.system(size: isCompact ? 12 : 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.9))
             }
@@ -145,7 +597,7 @@ struct OnboardingView: View {
 
             if canDismiss {
                 ghostButton(title: L("common.done"), action: dismissAction)
-            } else if currentPage < pages.count - 1 {
+            } else if currentPage < 4 {
                 ghostButton(title: L("onboarding.skip"), action: completeOnboarding)
             }
         }
@@ -168,10 +620,12 @@ struct OnboardingView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Bottom Section
+
     private func bottomSection(isCompact: Bool) -> some View {
         VStack(spacing: isCompact ? 20 : 28) {
             HStack(spacing: 9) {
-                ForEach(0..<pages.count, id: \.self) { index in
+                ForEach(0..<5, id: \.self) { index in
                     Capsule(style: .continuous)
                         .fill(currentPage == index ? Color.white : Color.white.opacity(0.30))
                         .frame(width: currentPage == index ? 28 : 8, height: 8)
@@ -189,49 +643,102 @@ struct OnboardingView: View {
                         Capsule(style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: activeSlide.gradient,
+                                    colors: pageGradient,
                                     startPoint: .leading,
                                     endPoint: .trailing
                                 )
                             )
-                            .shadow(color: activeSlide.gradient[0].opacity(0.45), radius: 18, x: 0, y: 10)
+                            .shadow(color: pageGradient[0].opacity(0.45), radius: 18, x: 0, y: 10)
                     )
             }
             .buttonStyle(ScaleButtonStyle())
+            .disabled(isPrimaryButtonDisabled)
+            .opacity(isPrimaryButtonDisabled ? 0.6 : 1)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, isCompact ? 30 : 50)
     }
 
     private var primaryButtonTitle: String {
-        if currentPage < pages.count - 1 {
-            return L("onboarding.demo.next")
+        switch currentPage {
+        case 0: return L("onboarding.btn.start")
+        case 1: return L("onboarding.btn.next")
+        case 2: return L("onboarding.btn.gotit")
+        case 3:
+            if locationPermissionStatus == .notDetermined {
+                return L("onboarding.btn.allowlocation")
+            } else if locationPermissionStatus == .denied || locationPermissionStatus == .restricted {
+                return L("onboarding.btn.opensettings")
+            }
+            return L("onboarding.btn.next")
+        case 4: return canDismiss ? L("common.done") : L("onboarding.btn.begin")
+        default: return L("onboarding.btn.next")
         }
-        return canDismiss ? L("common.done") : L("onboarding.demo.start")
+    }
+
+    private var isPrimaryButtonDisabled: Bool {
+        false
     }
 
     private func handlePrimaryAction() {
         HapticManager.medium()
-        if currentPage < pages.count - 1 {
+
+        switch currentPage {
+        case 0, 1, 2:
             withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                 currentPage += 1
             }
-            return
+        case 3:
+            handlePermissionPageAction()
+        case 4:
+            if canDismiss {
+                dismiss()
+            } else {
+                completeOnboarding()
+            }
+        default:
+            break
         }
+    }
 
-        if canDismiss {
-            dismiss()
-        } else {
-            completeOnboarding()
+    private func handlePermissionPageAction() {
+        let status = CLLocationManager().authorizationStatus
+        locationPermissionStatus = status
+
+        switch status {
+        case .notDetermined:
+            let manager = CLLocationManager()
+            manager.requestWhenInUseAuthorization()
+            // Poll for change
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                locationPermissionStatus = CLLocationManager().authorizationStatus
+                if locationPermissionStatus != .notDetermined {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        currentPage += 1
+                    }
+                }
+            }
+        case .denied, .restricted:
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                currentPage += 1
+            }
+        case .authorizedWhenInUse, .authorizedAlways:
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                currentPage += 1
+            }
+        @unknown default:
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                currentPage += 1
+            }
         }
     }
 
     private func startAnimations() {
         withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
             orbDrift = 1
-        }
-        withAnimation(.easeInOut(duration: 2.3).repeatForever(autoreverses: true)) {
-            cardLift = 1
         }
     }
 
@@ -242,6 +749,8 @@ struct OnboardingView: View {
 
     private func completeOnboarding() {
         HapticManager.success()
+        settings.preferredTransportMode = selectedTransport
+        settings.preferredDuration = selectedDuration
         withAnimation {
             settings.hasCompletedOnboarding = true
         }
@@ -249,265 +758,173 @@ struct OnboardingView: View {
     }
 }
 
-private struct OnboardingSlideView: View {
-    let slide: OnboardingSlide
-    let isCompact: Bool
-    let cardLift: CGFloat
-    let isVisible: Bool
+// MARK: - Journey Simulation View
 
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: isCompact ? 32 : 48) {
-                Spacer().frame(height: isCompact ? 20 : 40)
-                visualSection
-                textSection
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, isCompact ? 10 : 18)
-            .padding(.bottom, 8)
-        }
-    }
-
-    @ViewBuilder
-    private var visualSection: some View {
-        ZStack {
-            switch slide.kind {
-            case .plan:
-                SetupDemoVisual(isVisible: isVisible)
-            case .focus:
-                RoamingDemoVisual(isVisible: isVisible)
-            case .grow:
-                AchievementDemoVisual(isVisible: isVisible)
-            }
-        }
-        .offset(y: -cardLift * 8)
-    }
-
-    private var textSection: some View {
-        VStack(spacing: 16) {
-            Text(L(slide.titleKey))
-                .font(.system(size: isCompact ? 28 : 34, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 10)
-
-            Text(L(slide.subtitleKey))
-                .font(.system(size: isCompact ? 16 : 18, weight: .regular))
-                .foregroundStyle(.white.opacity(0.85))
-                .multilineTextAlignment(.center)
-                .lineSpacing(6)
-                .padding(.horizontal, 20)
-        }
-    }
-}
-
-// MARK: - Animated Visual Components
-
-private struct SetupDemoVisual: View {
-    let isVisible: Bool
-    @State private var step1 = false
-    @State private var step2 = false
-    @State private var step3 = false
-
-    var body: some View {
-        HStack(spacing: 20) {
-            demoItem(icon: "mappin.and.ellipse", color: .blue, show: step1)
-            Image(systemName: "arrow.right").foregroundStyle(.white.opacity(0.3)).opacity(step1 ? 1 : 0)
-            
-            demoItem(icon: "figure.walk", color: .cyan, show: step2)
-            Image(systemName: "arrow.right").foregroundStyle(.white.opacity(0.3)).opacity(step2 ? 1 : 0)
-            
-            demoItem(icon: "timer", color: .mint, show: step3)
-        }
-        .frame(height: 160)
-        .onChange(of: isVisible) { _, visible in
-            if visible { startAnimation() } else { resetAnimation() }
-        }
-        .onAppear { if isVisible { startAnimation() } }
-    }
-
-    func demoItem(icon: String, color: Color, show: Bool) -> some View {
-        Image(systemName: icon)
-            .font(.system(size: 32, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: 72, height: 72)
-            .background(Circle().fill(color.gradient))
-            .shadow(color: color.opacity(0.4), radius: 10, y: 5)
-            .scaleEffect(show ? 1 : 0.01)
-            .opacity(show ? 1 : 0)
-    }
-
-    func startAnimation() {
-        step1 = false; step2 = false; step3 = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { step1 = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { step2 = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { step3 = true }
-        }
-    }
-    
-    func resetAnimation() {
-        step1 = false; step2 = false; step3 = false
-    }
-}
-
-private struct RoamingDemoVisual: View {
-    let isVisible: Bool
+private struct JourneySimulationView: View {
+    let transportMode: TransportMode
     @State private var progress: CGFloat = 0
     @State private var showPOI1 = false
     @State private var showPOI2 = false
+    @State private var showPOI3 = false
+    @State private var hasStarted = false
 
     var body: some View {
         ZStack {
+            // Background map hint
             Image(systemName: "map.fill")
-                .font(.system(size: 110))
-                .foregroundStyle(.white.opacity(0.08))
-            
-            Path { p in
-                p.move(to: CGPoint(x: -70, y: 30))
-                p.addCurve(to: CGPoint(x: 70, y: -30), control1: CGPoint(x: -30, y: 70), control2: CGPoint(x: 30, y: -70))
+                .font(.system(size: 140))
+                .foregroundStyle(.white.opacity(0.05))
+
+            // Route path
+            Path { path in
+                let w: CGFloat = 180
+                let h: CGFloat = 120
+                path.move(to: CGPoint(x: -w * 0.45, y: h * 0.35))
+                path.addCurve(
+                    to: CGPoint(x: w * 0.5, y: -h * 0.3),
+                    control1: CGPoint(x: -w * 0.15, y: h * 0.6),
+                    control2: CGPoint(x: w * 0.2, y: -h * 0.55)
+                )
             }
             .trim(from: 0, to: progress)
             .stroke(
-                LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing),
-                style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                LinearGradient(colors: [.orange, .pink, .purple], startPoint: .leading, endPoint: .trailing),
+                style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
             )
-            .frame(width: 0, height: 0)
+            .frame(width: 180, height: 120)
 
-            poiMarker(icon: "camera.fill", color: .orange, show: showPOI1)
-                .offset(x: -20, y: 35)
+            // POI markers
+            poiMarker(icon: "cup.and.saucer.fill", label: "Starbucks", color: .orange)
+                .offset(x: -30, y: 55)
+                .opacity(showPOI1 ? 1 : 0)
+                .scaleEffect(showPOI1 ? 1 : 0.01)
 
-            poiMarker(icon: "star.fill", color: .pink, show: showPOI2)
-                .offset(x: 70, y: -30)
-        }
-        .frame(height: 160)
-        .onChange(of: isVisible) { _, visible in
-            if visible { startAnimation() } else { resetAnimation() }
-        }
-        .onAppear { if isVisible { startAnimation() } }
-    }
-    
-    func poiMarker(icon: String, color: Color, show: Bool) -> some View {
-        Image(systemName: icon)
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(width: 36, height: 36)
-            .background(Circle().fill(color.gradient))
-            .shadow(color: color.opacity(0.4), radius: 6, y: 3)
-            .scaleEffect(show ? 1 : 0.01)
-            .opacity(show ? 1 : 0)
-    }
+            poiMarker(icon: "leaf.fill", label: "Park", color: .green)
+                .offset(x: 50, y: -10)
+                .opacity(showPOI2 ? 1 : 0)
+                .scaleEffect(showPOI2 ? 1 : 0.01)
 
-    func startAnimation() {
-        progress = 0; showPOI1 = false; showPOI2 = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.easeInOut(duration: 2.5)) { progress = 1 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showPOI1 = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.7) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showPOI2 = true }
-        }
-    }
-    
-    func resetAnimation() {
-        progress = 0; showPOI1 = false; showPOI2 = false
-    }
-}
+            poiMarker(icon: "building.columns.fill", label: "Museum", color: .purple)
+                .offset(x: -10, y: -55)
+                .opacity(showPOI3 ? 1 : 0)
+                .scaleEffect(showPOI3 ? 1 : 0.01)
 
-private struct AchievementDemoVisual: View {
-    let isVisible: Bool
-    @State private var showTrophy = false
-    @State private var showStat1 = false
-    @State private var showStat2 = false
-    @State private var floatOffset: CGFloat = 0
-
-    var body: some View {
-        ZStack {
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 90))
-                .foregroundStyle(
-                    LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .shadow(color: .orange.opacity(0.5), radius: 20, y: 10)
-                .scaleEffect(showTrophy ? 1 : 0.01)
-                .rotationEffect(.degrees(showTrophy ? 0 : -20))
-                .offset(y: floatOffset)
-
-            statPill(icon: "map.fill", text: "25 km", color: .blue)
-                .offset(x: -80, y: -40 + floatOffset * 0.5)
-                .scaleEffect(showStat1 ? 1 : 0.01)
-                .opacity(showStat1 ? 1 : 0)
-
-            statPill(icon: "star.fill", text: "12 POIs", color: .pink)
-                .offset(x: 75, y: 50 + floatOffset * 0.8)
-                .scaleEffect(showStat2 ? 1 : 0.01)
-                .opacity(showStat2 ? 1 : 0)
+            // Traveling avatar
+            if progress > 0 {
+                AvatarOnPath(progress: progress, icon: transportMode.iconName)
+                    .frame(width: 180, height: 120)
+            }
         }
-        .frame(height: 160)
-        .onChange(of: isVisible) { _, visible in
-            if visible { startAnimation() } else { resetAnimation() }
-        }
-        .onAppear { if isVisible { startAnimation() } }
-    }
-
-    func statPill(icon: String, text: String, color: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon).foregroundStyle(color)
-            Text(text).font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
         .background(
-            Capsule()
-                .fill(Color.white.opacity(0.15))
-                .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
         )
-        .shadow(radius: 10)
-    }
-
-    func startAnimation() {
-        showTrophy = false; showStat1 = false; showStat2 = false; floatOffset = 0
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.5)) { showTrophy = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showStat1 = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showStat2 = true }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
-                floatOffset = -10
+        .onAppear {
+            if !hasStarted {
+                hasStarted = true
+                startAnimation()
             }
         }
     }
-    
-    func resetAnimation() {
-        showTrophy = false; showStat1 = false; showStat2 = false; floatOffset = 0
+
+    private func poiMarker(icon: String, label: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(color.gradient))
+                .shadow(color: color.opacity(0.4), radius: 6, y: 3)
+
+            Text(label)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    Capsule()
+                        .fill(Color.black.opacity(0.5))
+                )
+        }
+    }
+
+    private func startAnimation() {
+        progress = 0; showPOI1 = false; showPOI2 = false; showPOI3 = false
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(.easeInOut(duration: 2.8)) { progress = 1 }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showPOI1 = true }
+            HapticManager.light()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showPOI2 = true }
+            HapticManager.light()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { showPOI3 = true }
+            HapticManager.success()
+        }
     }
 }
 
-private enum OnboardingPageKind {
-    case plan
-    case focus
-    case grow
+private struct AvatarOnPath: View {
+    let progress: CGFloat
+    let icon: String
+
+    var body: some View {
+        GeometryReader { geometry in
+            let w = geometry.size.width
+            let h = geometry.size.height
+            let point = cubicBezierPoint(
+                t: progress,
+                p0: CGPoint(x: -w * 0.45, y: h * 0.35),
+                p1: CGPoint(x: -w * 0.15, y: h * 0.6),
+                p2: CGPoint(x: w * 0.2, y: -h * 0.55),
+                p3: CGPoint(x: w * 0.5, y: -h * 0.3)
+            )
+
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 44, height: 44)
+                    .blur(radius: 8)
+
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle()
+                            .fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    )
+                    .shadow(color: .cyan.opacity(0.5), radius: 10, y: 5)
+            }
+            .position(x: point.x + w / 2, y: point.y + h / 2)
+        }
+    }
+
+    private func cubicBezierPoint(t: CGFloat, p0: CGPoint, p1: CGPoint, p2: CGPoint, p3: CGPoint) -> CGPoint {
+        let mt = 1 - t
+        let mt2 = mt * mt
+        let mt3 = mt2 * mt
+        let t2 = t * t
+        let t3 = t2 * t
+
+        let x = mt3 * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t3 * p3.x
+        let y = mt3 * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t3 * p3.y
+        return CGPoint(x: x, y: y)
+    }
 }
 
-private struct OnboardingSlide {
-    let kind: OnboardingPageKind
-    let titleKey: String
-    let subtitleKey: String
-    let gradient: [Color]
-    let backgroundAccent: Color
-}
+// MARK: - Preview
 
 #Preview {
     OnboardingView()

@@ -866,3 +866,37 @@
 "common.bullet" = "•";
 "common.slash" = "/";
 "common.dash" = "—";
+
+// Onboarding v3 - Interactive
+"onboarding.welcome.title" = "Focus, Roam, Discover";
+"onboarding.welcome.subtitle" = "Turn your focus time into real map adventures. Pick a mode, set a duration, and watch yourself explore.";
+"onboarding.welcome.stat.modes" = "Modes";
+"onboarding.welcome.stat.minutes" = "Minutes";
+"onboarding.welcome.stat.trophies" = "Trophies";
+
+"onboarding.setup.title" = "Choose Your Style";
+"onboarding.setup.subtitle" = "Select the transport and duration that fit your focus rhythm. You can change this anytime.";
+"onboarding.setup.transport.label" = "TRANSPORT";
+"onboarding.setup.duration.label" = "DURATION";
+"onboarding.setup.preview.title" = "Preview";
+
+"onboarding.sim.title" = "This Is How It Works";
+"onboarding.sim.subtitle" = "While you focus, your avatar roams the map, discovering interesting places along the way.";
+
+"onboarding.perm.title" = "Enable Location";
+"onboarding.perm.subtitle" = "We need your location to plan realistic roaming routes. Your data stays on your device.";
+"onboarding.perm.location.title" = "Location Services";
+"onboarding.perm.location.desc" = "Used to calculate routes and find nearby POIs.";
+"onboarding.perm.notif.title" = "Notifications";
+"onboarding.perm.notif.desc" = "Remind you when a focus session ends.";
+
+"onboarding.ready.title" = "All Set!";
+"onboarding.ready.subtitle" = "Your preferences are saved. Start your first focus roam whenever you're ready.";
+"onboarding.ready.config.title" = "Your Configuration";
+
+"onboarding.btn.start" = "Start Experience";
+"onboarding.btn.next" = "Next";
+"onboarding.btn.gotit" = "Got it";
+"onboarding.btn.allowlocation" = "Allow Location";
+"onboarding.btn.opensettings" = "Open Settings";
+"onboarding.btn.begin" = "Start First Roam";

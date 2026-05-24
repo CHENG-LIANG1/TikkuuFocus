@@ -888,3 +888,37 @@
 "common.bullet" = "•";
 "common.slash" = "/";
 "common.dash" = "—";
+
+// Onboarding v3 - Interactive
+"onboarding.welcome.title" = "专注、漫游、发现";
+"onboarding.welcome.subtitle" = "将专注时间变成真实的地图冒险。选择方式，设定时长，看着自己探索世界。";
+"onboarding.welcome.stat.modes" = "模式";
+"onboarding.welcome.stat.minutes" = "分钟";
+"onboarding.welcome.stat.trophies" = "奖杯";
+
+"onboarding.setup.title" = "选择你的风格";
+"onboarding.setup.subtitle" = "选择适合你专注节奏的交通方式和时长。随时可以在设置中更改。";
+"onboarding.setup.transport.label" = "交通方式";
+"onboarding.setup.duration.label" = "专注时长";
+"onboarding.setup.preview.title" = "预览";
+
+"onboarding.sim.title" = "专注是这样进行的";
+"onboarding.sim.subtitle" = "当你专注时，你的头像会在地图上漫游，沿途发现有趣的地方。";
+
+"onboarding.perm.title" = "开启定位服务";
+"onboarding.perm.subtitle" = "我们需要你的位置来规划真实的漫游路线。你的数据只会保存在设备上。";
+"onboarding.perm.location.title" = "定位服务";
+"onboarding.perm.location.desc" = "用于计算路线和发现附近的兴趣点。";
+"onboarding.perm.notif.title" = "通知";
+"onboarding.perm.notif.desc" = "在专注结束时提醒你。";
+
+"onboarding.ready.title" = "一切就绪！";
+"onboarding.ready.subtitle" = "你的偏好已保存。准备好后，开始你的第一次专注漫游吧。";
+"onboarding.ready.config.title" = "你的配置";
+
+"onboarding.btn.start" = "开始体验";
+"onboarding.btn.next" = "下一步";
+"onboarding.btn.gotit" = "明白了";
+"onboarding.btn.allowlocation" = "允许定位";
+"onboarding.btn.opensettings" = "打开设置";
+"onboarding.btn.begin" = "开始第一次漫游";

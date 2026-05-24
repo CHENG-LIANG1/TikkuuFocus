@@ -18,8 +18,8 @@ struct SetupView: View {
     @StateObject private var journeyManager = JourneyManager()
     @StateObject private var weatherManager = WeatherManager()
     
-    @State private var selectedTransport: TransportMode = .cycling
-    @State private var selectedDuration: Int = 25 // minutes
+    @State private var selectedTransport: TransportMode = AppSettings.shared.preferredTransportMode
+    @State private var selectedDuration: Int = AppSettings.shared.preferredDuration
     @State private var isStarting = false
     @State private var showPermissionAlert = false
     @State private var showErrorAlert = false

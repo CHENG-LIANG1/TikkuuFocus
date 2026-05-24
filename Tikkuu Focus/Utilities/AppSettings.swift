@@ -115,6 +115,20 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var preferredTransportMode: TransportMode {
+        didSet {
+            guard preferredTransportMode != oldValue else { return }
+            UserDefaults.standard.set(preferredTransportMode.rawValue, forKey: "preferredTransportMode")
+        }
+    }
+    
+    @Published var preferredDuration: Int {
+        didSet {
+            guard preferredDuration != oldValue else { return }
+            UserDefaults.standard.set(preferredDuration, forKey: "preferredDuration")
+        }
+    }
+    
     private init() {
         self.selectedLanguage = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "system"
         self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
@@ -122,6 +136,12 @@ class AppSettings: ObservableObject {
         self.hasSeenFirstJourneyGuide = UserDefaults.standard.bool(forKey: "hasSeenFirstJourneyGuide")
         let storedMapMode = UserDefaults.standard.string(forKey: "selectedMapMode") ?? AppMapMode.explore.rawValue
         self.selectedMapMode = AppMapMode(rawValue: storedMapMode) ?? .explore
+        let storedTransport = UserDefaults.standard.string(forKey: "preferredTransportMode") ?? TransportMode.cycling.rawValue
+        self.preferredTransportMode = TransportMode(rawValue: storedTransport) ?? .cycling
+        self.preferredDuration = UserDefaults.standard.integer(forKey: "preferredDuration")
+        if self.preferredDuration == 0 {
+            self.preferredDuration = 25
+        }
     }
     
     var currentLanguage: String {
