@@ -66,77 +66,83 @@ struct OnboardingView: View {
 
     private func welcomePage(isCompact: Bool) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: isCompact ? 28 : 44) {
-                Spacer().frame(height: isCompact ? 10 : 30)
+            VStack(spacing: isCompact ? 20 : 28) {
+                Spacer().frame(height: isCompact ? 16 : 28)
 
-                // Immersive map visual
+                // Immersive map visual — contained within safe margins
                 ZStack {
+                    // Ambient glow behind everything
                     Circle()
-                        .fill(Color.blue.opacity(0.15))
-                        .frame(width: 280, height: 280)
-                        .blur(radius: 60)
+                        .fill(Color.blue.opacity(0.12))
+                        .frame(width: 240, height: 240)
+                        .blur(radius: 50)
+                        .offset(y: 10)
 
+                    // Route arc — fully contained, no clipping
                     Path { path in
-                        let w: CGFloat = 200
-                        let h: CGFloat = 160
-                        path.move(to: CGPoint(x: -w * 0.4, y: h * 0.3))
+                        let w: CGFloat = 180
+                        let h: CGFloat = 90
+                        path.move(to: CGPoint(x: -w * 0.42, y: h * 0.15))
                         path.addCurve(
-                            to: CGPoint(x: w * 0.45, y: -h * 0.25),
-                            control1: CGPoint(x: -w * 0.1, y: h * 0.55),
-                            control2: CGPoint(x: w * 0.15, y: -h * 0.45)
+                            to: CGPoint(x: w * 0.42, y: -h * 0.1),
+                            control1: CGPoint(x: -w * 0.18, y: h * 0.55),
+                            control2: CGPoint(x: w * 0.18, y: -h * 0.45)
                         )
                     }
                     .stroke(
                         LinearGradient(colors: [.cyan, .blue, .purple], startPoint: .leading, endPoint: .trailing),
                         style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: [12, 8])
                     )
-                    .frame(width: 200, height: 160)
+                    .frame(width: 180, height: 90)
+                    .offset(y: -16)
 
+                    // Current location avatar
                     Image(systemName: "location.fill")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 56, height: 56)
-                        .background(Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                        .shadow(color: .cyan.opacity(0.5), radius: 12, y: 6)
-                    .offset(x: -60, y: 40)
-
-                    Image(systemName: "mappin.circle.fill")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                        .shadow(color: .orange.opacity(0.5), radius: 10, y: 5)
-                    .offset(x: 55, y: -35)
-                }
-                .frame(height: isCompact ? 180 : 220)
+                        .frame(width: 48, height: 48)
+                        .background(Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                        .shadow(color: .cyan.opacity(0.5), radius: 10, y: 4)
+                        .offset(x: -48, y: 28)
 
-                VStack(spacing: 16) {
+                    // Destination pin
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                        .shadow(color: .orange.opacity(0.5), radius: 8, y: 4)
+                        .offset(x: 50, y: -24)
+                }
+                .frame(height: isCompact ? 140 : 170)
+
+                VStack(spacing: 12) {
                     Text(L("onboarding.welcome.title"))
-                        .font(.system(size: isCompact ? 32 : 38, weight: .bold, design: .rounded))
+                        .font(.system(size: isCompact ? 28 : 34, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 20)
 
                     Text(L("onboarding.welcome.subtitle"))
-                        .font(.system(size: isCompact ? 16 : 18, weight: .regular))
+                        .font(.system(size: isCompact ? 15 : 17, weight: .regular))
                         .foregroundStyle(.white.opacity(0.8))
                         .multilineTextAlignment(.center)
-                        .lineSpacing(6)
+                        .lineSpacing(5)
                         .padding(.horizontal, 32)
                 }
 
                 // Social proof / stats
-                HStack(spacing: 24) {
+                HStack(spacing: 16) {
                     statBadge(icon: "map.fill", value: "3", label: L("onboarding.welcome.stat.modes"))
                     statBadge(icon: "timer", value: "25-90", label: L("onboarding.welcome.stat.minutes"))
                     statBadge(icon: "trophy.fill", value: "129", label: L("onboarding.welcome.stat.trophies"))
                 }
-                .padding(.top, 8)
+                .padding(.top, 4)
 
-                Spacer()
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity)
-            .padding(.top, isCompact ? 10 : 18)
+            .padding(.top, isCompact ? 8 : 12)
         }
     }
 
