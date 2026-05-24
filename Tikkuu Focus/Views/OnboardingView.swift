@@ -65,85 +65,80 @@ struct OnboardingView: View {
     // MARK: - Pages
 
     private func welcomePage(isCompact: Bool) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: isCompact ? 20 : 28) {
-                Spacer().frame(height: isCompact ? 16 : 28)
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
 
-                // Immersive map visual — contained within safe margins
-                ZStack {
-                    // Ambient glow behind everything
-                    Circle()
-                        .fill(Color.blue.opacity(0.12))
-                        .frame(width: 240, height: 240)
-                        .blur(radius: 50)
-                        .offset(y: 10)
+            // Immersive map visual — contained within safe margins
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.12))
+                    .frame(width: 220, height: 220)
+                    .blur(radius: 45)
+                    .offset(y: 8)
 
-                    // Route arc — fully contained, no clipping
-                    Path { path in
-                        let w: CGFloat = 180
-                        let h: CGFloat = 90
-                        path.move(to: CGPoint(x: -w * 0.42, y: h * 0.15))
-                        path.addCurve(
-                            to: CGPoint(x: w * 0.42, y: -h * 0.1),
-                            control1: CGPoint(x: -w * 0.18, y: h * 0.55),
-                            control2: CGPoint(x: w * 0.18, y: -h * 0.45)
-                        )
-                    }
-                    .stroke(
-                        LinearGradient(colors: [.cyan, .blue, .purple], startPoint: .leading, endPoint: .trailing),
-                        style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round, dash: [12, 8])
+                Path { path in
+                    let w: CGFloat = 170
+                    let h: CGFloat = 80
+                    path.move(to: CGPoint(x: -w * 0.42, y: h * 0.1))
+                    path.addCurve(
+                        to: CGPoint(x: w * 0.42, y: -h * 0.1),
+                        control1: CGPoint(x: -w * 0.18, y: h * 0.5),
+                        control2: CGPoint(x: w * 0.18, y: -h * 0.4)
                     )
-                    .frame(width: 180, height: 90)
-                    .offset(y: -16)
-
-                    // Current location avatar
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 48, height: 48)
-                        .background(Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                        .shadow(color: .cyan.opacity(0.5), radius: 10, y: 4)
-                        .offset(x: -48, y: 28)
-
-                    // Destination pin
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 40)
-                        .background(Circle().fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                        .shadow(color: .orange.opacity(0.5), radius: 8, y: 4)
-                        .offset(x: 50, y: -24)
                 }
-                .frame(height: isCompact ? 140 : 170)
+                .stroke(
+                    LinearGradient(colors: [.cyan, .blue, .purple], startPoint: .leading, endPoint: .trailing),
+                    style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [10, 7])
+                )
+                .frame(width: 170, height: 80)
+                .offset(y: -12)
 
-                VStack(spacing: 12) {
-                    Text(L("onboarding.welcome.title"))
-                        .font(.system(size: isCompact ? 28 : 34, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 20)
+                Image(systemName: "location.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    .shadow(color: .cyan.opacity(0.5), radius: 8, y: 3)
+                    .offset(x: -44, y: 22)
 
-                    Text(L("onboarding.welcome.subtitle"))
-                        .font(.system(size: isCompact ? 15 : 17, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(5)
-                        .padding(.horizontal, 32)
-                }
-
-                // Social proof / stats
-                HStack(spacing: 16) {
-                    statBadge(icon: "map.fill", value: "3", label: L("onboarding.welcome.stat.modes"))
-                    statBadge(icon: "timer", value: "25-90", label: L("onboarding.welcome.stat.minutes"))
-                    statBadge(icon: "trophy.fill", value: "129", label: L("onboarding.welcome.stat.trophies"))
-                }
-                .padding(.top, 4)
-
-                Spacer(minLength: 0)
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    .shadow(color: .orange.opacity(0.5), radius: 6, y: 3)
+                    .offset(x: 46, y: -20)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.top, isCompact ? 8 : 12)
+            .frame(height: isCompact ? 120 : 150)
+
+            Spacer().frame(height: isCompact ? 16 : 24)
+
+            VStack(spacing: 10) {
+                Text(L("onboarding.welcome.title"))
+                    .font(.system(size: isCompact ? 26 : 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                Text(L("onboarding.welcome.subtitle"))
+                    .font(.system(size: isCompact ? 14 : 16, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 32)
+            }
+
+            Spacer().frame(height: isCompact ? 16 : 22)
+
+            HStack(spacing: 14) {
+                statBadge(icon: "map.fill", value: "3", label: L("onboarding.welcome.stat.modes"))
+                statBadge(icon: "timer", value: "25-90", label: L("onboarding.welcome.stat.minutes"))
+                statBadge(icon: "trophy.fill", value: "129", label: L("onboarding.welcome.stat.trophies"))
+            }
+
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func statBadge(icon: String, value: String, label: String) -> some View {
@@ -171,94 +166,99 @@ struct OnboardingView: View {
     }
 
     private func interactiveSetupPage(isCompact: Bool) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: isCompact ? 20 : 28) {
-                Spacer().frame(height: isCompact ? 8 : 16)
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
 
-                Text(L("onboarding.setup.title"))
-                    .font(.system(size: isCompact ? 26 : 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
+            Text(L("onboarding.setup.title"))
+                .font(.system(size: isCompact ? 24 : 28, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
 
-                Text(L("onboarding.setup.subtitle"))
-                    .font(.system(size: isCompact ? 15 : 16, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.75))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+            Spacer().frame(height: isCompact ? 6 : 10)
 
-                // Transport mode selector
-                VStack(spacing: 12) {
-                    Text(L("onboarding.setup.transport.label"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
+            Text(L("onboarding.setup.subtitle"))
+                .font(.system(size: isCompact ? 14 : 15, weight: .regular))
+                .foregroundStyle(.white.opacity(0.75))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
 
-                    HStack(spacing: 12) {
-                        ForEach(TransportMode.allCases) { mode in
-                            transportButton(mode: mode, isSelected: selectedTransport == mode)
-                        }
+            Spacer().frame(height: isCompact ? 14 : 20)
+
+            // Transport mode selector
+            VStack(spacing: 8) {
+                Text(L("onboarding.setup.transport.label"))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+
+                HStack(spacing: 10) {
+                    ForEach(TransportMode.allCases) { mode in
+                        transportButton(mode: mode, isSelected: selectedTransport == mode)
                     }
-                    .padding(.horizontal, 20)
-                }
-
-                // Duration selector
-                VStack(spacing: 12) {
-                    Text(L("onboarding.setup.duration.label"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 24)
-
-                    HStack(spacing: 12) {
-                        ForEach([15, 25, 45], id: \.self) { duration in
-                            durationButton(duration: duration, isSelected: selectedDuration == duration)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                }
-
-                // Live preview card
-                VStack(spacing: 10) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "eye.fill")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.cyan)
-                        Text(L("onboarding.setup.preview.title"))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.8))
-                    }
-
-                    HStack(spacing: 20) {
-                        previewItem(icon: selectedTransport.iconName, label: selectedTransport.localizedName, color: .cyan)
-                        Text("→")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.3))
-                        previewItem(icon: "timer", label: "\(selectedDuration) min", color: .orange)
-                        Text("→")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.3))
-                        previewItem(icon: "map.fill", label: estimatedDistance, color: .green)
-                    }
-                    .padding(.vertical, 14)
-                    .padding(.horizontal, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                            )
-                    )
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 8)
-
-                Spacer()
             }
-            .frame(maxWidth: .infinity)
+
+            Spacer().frame(height: isCompact ? 12 : 16)
+
+            // Duration selector
+            VStack(spacing: 8) {
+                Text(L("onboarding.setup.duration.label"))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+
+                HStack(spacing: 10) {
+                    ForEach([15, 25, 45], id: \.self) { duration in
+                        durationButton(duration: duration, isSelected: selectedDuration == duration)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+
+            Spacer().frame(height: isCompact ? 14 : 18)
+
+            // Live preview card
+            VStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "eye.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.cyan)
+                    Text(L("onboarding.setup.preview.title"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.8))
+                }
+
+                HStack(spacing: 16) {
+                    previewItem(icon: selectedTransport.iconName, label: selectedTransport.localizedName, color: .cyan)
+                    Text("→")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.3))
+                    previewItem(icon: "timer", label: "\(selectedDuration) min", color: .orange)
+                    Text("→")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.3))
+                    previewItem(icon: "map.fill", label: estimatedDistance, color: .green)
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.08))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                )
+            }
+            .padding(.horizontal, 20)
+
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func transportButton(mode: TransportMode, isSelected: Bool) -> some View {
