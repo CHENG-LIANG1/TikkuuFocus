@@ -79,12 +79,13 @@ struct ICloudStatusView: View {
                             color: .blue
                         )
 
-                        // Hint
-                        Text(L("icloud.status.hint"))
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 8)
+                        // Last Sync Time
+                        statusCard(
+                            icon: "clock.arrow.circlepath",
+                            title: L("icloud.status.last.sync"),
+                            value: lastSyncTimeText,
+                            color: .purple
+                        )
                     }
                     .padding(.horizontal, 24)
                     .padding(.top, 20)
@@ -107,6 +108,16 @@ struct ICloudStatusView: View {
         .onAppear {
             refreshStatus()
         }
+    }
+
+    private var lastSyncTimeText: String {
+        guard let date = settings.lastCloudKitSyncTime else {
+            return L("icloud.status.last.sync.never")
+        }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = settings.appLocale
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 
     private var accountStatusText: String {

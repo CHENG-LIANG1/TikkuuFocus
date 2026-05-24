@@ -7,10 +7,21 @@
 
 import SwiftUI
 import SwiftData
+import CoreData
 
 @main
 struct Tikkuu_FocusApp: App {
     @StateObject private var settings = AppSettings.shared
+    
+    init() {
+        NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
+            object: nil,
+            queue: .main
+        ) { _ in
+            AppSettings.shared.lastCloudKitSyncTime = Date()
+        }
+    }
     
     var body: some Scene {
         WindowGroup {

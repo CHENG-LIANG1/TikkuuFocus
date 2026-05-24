@@ -136,6 +136,17 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var lastCloudKitSyncTime: Date? {
+        didSet {
+            guard lastCloudKitSyncTime != oldValue else { return }
+            if let time = lastCloudKitSyncTime {
+                UserDefaults.standard.set(time.timeIntervalSince1970, forKey: "lastCloudKitSyncTime")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "lastCloudKitSyncTime")
+            }
+        }
+    }
+    
     private init() {
         self.selectedLanguage = UserDefaults.standard.string(forKey: "selectedLanguage") ?? "system"
         self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
@@ -147,6 +158,11 @@ class AppSettings: ObservableObject {
         self.preferredTransportMode = TransportMode(rawValue: storedTransport) ?? .cycling
         self.preferredDuration = UserDefaults.standard.integer(forKey: "preferredDuration")
         self.isICloudSyncEnabled = UserDefaults.standard.bool(forKey: "isICloudSyncEnabled")
+        if let timestamp = UserDefaults.standard.object(forKey: "lastCloudKitSyncTime") as? TimeInterval {
+            self.lastCloudKitSyncTime = Date(timeIntervalSince1970: timestamp)
+        } else {
+            self.lastCloudKitSyncTime = nil
+        }
         if self.preferredDuration == 0 {
             self.preferredDuration = 25
         }
