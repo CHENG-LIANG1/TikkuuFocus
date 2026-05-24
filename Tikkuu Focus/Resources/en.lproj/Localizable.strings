@@ -187,7 +187,6 @@
 "icloud.status.local.data" = "Local Data";
 "icloud.status.journeys" = "Journeys";
 "icloud.status.locations" = "Locations";
-"icloud.status.refresh" = "Refresh Status";
 "icloud.status.hint" = "iCloud sync requires you to be signed in to iCloud with iCloud Drive enabled. Data may take a few moments to sync across devices.";
 "settings.data.clear" = "Clear All Data";
 "settings.data.clear.subtitle" = "Delete records and progress (cannot be restored)";

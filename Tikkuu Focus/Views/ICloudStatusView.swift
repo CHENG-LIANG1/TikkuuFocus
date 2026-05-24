@@ -79,25 +79,6 @@ struct ICloudStatusView: View {
                             color: .blue
                         )
 
-                        // Refresh Button
-                        Button(action: refreshStatus) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 16, weight: .semibold))
-                                Text(L("icloud.status.refresh"))
-                                    .font(.system(size: 16, weight: .semibold))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                    .fill(GradientStyles.primaryGradient)
-                            )
-                        }
-                        .buttonStyle(ScaleButtonStyle())
-                        .padding(.top, 8)
-
                         // Hint
                         Text(L("icloud.status.hint"))
                             .font(.system(size: 13, weight: .regular))
