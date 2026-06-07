@@ -7,6 +7,8 @@
 
 import SwiftUI
 import MapKit
+import SwiftData
+import UIKit
 
 /// Exploration-style map view that reveals the route progressively
 struct ExplorationMapView: View {
@@ -35,6 +37,7 @@ struct ExplorationMapView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var settings = AppSettings.shared
+    @Query private var transportAvatarSettings: [TransportAvatarSettings]
 
     private let traveledPathMaxPoints = 180
     private let traveledPathTargetPoints = 120
@@ -198,13 +201,13 @@ struct ExplorationMapView: View {
             
             // Current position (avatar) with smooth animation and pulsing effect (no label to avoid flickering)
             if let position = animatedPosition ?? currentPosition?.coordinate {
-                Marker(coordinate: position) {
+                Annotation("", coordinate: position) {
                     AvatarMarker(
                         transportMode: session.transportMode,
-                        pulseScale: pulseScale
+                        pulseScale: pulseScale,
+                        avatarSettings: transportAvatarSettings.first
                     )
                 }
-                .tint(.blue)
             }
             
             // Discovered POI markers (icon only, no tooltip bubble)
@@ -700,6 +703,7 @@ struct StartMarker: View {
 struct AvatarMarker: View {
     let transportMode: TransportMode
     let pulseScale: CGFloat
+    let avatarSettings: TransportAvatarSettings?
     
     var body: some View {
         ZStack {
@@ -708,31 +712,55 @@ struct AvatarMarker: View {
                 .fill(Color.blue.opacity(0.3))
                 .frame(width: 50, height: 50)
                 .scaleEffect(pulseScale)
-            
-            // Main avatar with glow
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.4, green: 0.7, blue: 0.9),
-                            Color(red: 0.3, green: 0.5, blue: 0.8)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+
+            if let avatarImage {
+                Image(uiImage: avatarImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 32, height: 32)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white, lineWidth: 3)
                     )
-                )
-                .frame(width: 32, height: 32)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white, lineWidth: 3)
-                )
-                .shadow(color: Color.blue.opacity(0.5), radius: 8, x: 0, y: 4)
-                .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
-            
-            Image(systemName: transportMode.iconName)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.white)
+                    .shadow(color: Color.blue.opacity(0.5), radius: 8, x: 0, y: 4)
+                    .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+            } else {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.4, green: 0.7, blue: 0.9),
+                                Color(red: 0.3, green: 0.5, blue: 0.8)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 30, height: 30)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white, lineWidth: 2.5)
+                    )
+                    .shadow(color: Color.blue.opacity(0.5), radius: 8, x: 0, y: 4)
+                    .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+
+                Image(systemName: transportMode.iconName)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+            }
         }
+    }
+
+    private var avatarImage: UIImage? {
+        guard avatarSettings?.isEnabled == true,
+              let avatarSettings,
+              let data = avatarSettings.imageData else {
+            return nil
+        }
+        let key = "map-avatar-\(avatarSettings.id.uuidString)-\(avatarSettings.updatedAt.timeIntervalSince1970)-\(data.count)"
+        return ImageProcessing.avatarImage(from: data, cacheKey: key)
     }
 }
 

@@ -154,6 +154,7 @@
 "settings.theme.neumorphism.light" = "Light";
 "settings.theme.neumorphism.light.subtitle" = "Brighter navy tone with softer contrast";
 "settings.language" = "Language";
+"settings.focus" = "Focus";
 "settings.language.system" = "System Default";
 "settings.support" = "Support";
 "settings.contact" = "Contact & Support";
@@ -165,6 +166,21 @@
 "settings.about.app" = "About Roam Focus";
 "settings.tutorial" = "View Tutorial";
 "settings.version" = "Version";
+"settings.looseMode" = "Loose Mode";
+"settings.looseMode.subtitle" = "When enabled, focus will keep running in the background or while the screen is locked, and will only stop if you pause it manually.";
+"settings.avatar.title" = "Avatar";
+"settings.avatar.configure" = "Avatar Settings";
+"settings.avatar.configure.subtitle" = "Customize your transport avatar";
+"settings.avatar.preview" = "Preview";
+"settings.avatar.preview.default" = "Using default transport icon";
+"settings.avatar.preview.enabled" = "Using custom avatar";
+"settings.avatar.preview.saved" = "Custom avatar saved";
+"settings.avatar.useCustom" = "Use Custom Avatar";
+"settings.avatar.choose" = "Choose Photo";
+"settings.avatar.replace" = "Replace Photo";
+"settings.avatar.choose.subtitle" = "From your photo library";
+"settings.avatar.crop.title" = "Crop";
+"settings.avatar.crop.recenter" = "Recenter";
 "settings.data" = "Data Management";
 "settings.data.icloud" = "iCloud Sync";
 "settings.data.icloud.subtitle" = "Coming soon";
@@ -184,9 +200,16 @@
 "icloud.status.noaccount" = "Not Signed In";
 "icloud.status.restricted" = "Restricted";
 "icloud.status.unknown" = "Checking...";
+"icloud.status.enable.requiresAccount.title" = "iCloud Required";
+"icloud.status.enable.requiresAccount.message" = "Please sign in to iCloud in Settings to enable iCloud sync.";
 "icloud.status.local.data" = "Local Data";
 "icloud.status.journeys" = "Journeys";
 "icloud.status.locations" = "Locations";
+"icloud.status.lastSync" = "Last Sync";
+"icloud.status.never" = "No sync yet";
+"icloud.status.refresh" = "Refresh Status";
+"icloud.status.refresh.subtitle" = "Tap to refresh";
+"icloud.status.refreshing" = "Refreshing...";
 
 "settings.data.clear" = "Clear All Data";
 "settings.data.clear.subtitle" = "Delete records and progress (cannot be restored)";
@@ -407,6 +430,8 @@
 "common.cancel" = "Cancel";
 "common.ok" = "OK";
 "common.delete" = "Delete";
+"common.on" = "On";
+"common.off" = "Off";
 
 // Stats
 "history.stats.completionRate" = "Completion Rate";
@@ -854,6 +879,11 @@
 "journey.summary.transport" = "Transport";
 "journey.summary.maxSpeed" = "Max Speed";
 "journey.summary.avgSpeed" = "Avg Speed";
+"virtual.metrics.steps" = "%@ steps";
+"virtual.metrics.calories" = "%@ kcal";
+"virtual.metrics.fuelLiters" = "%.1f L fuel";
+"virtual.metrics.fuelPrice" = "Fuel price %@/L";
+"virtual.metrics.fallCount" = "%@ falls";
 
 // Activity Heatmap
 "heatmap.less" = "Less";
@@ -908,7 +938,7 @@
 "onboarding.sim.subtitle" = "While you focus, your avatar roams the map, discovering interesting places along the way.";
 
 "onboarding.perm.title" = "Enable Location";
-"onboarding.perm.subtitle" = "We need your location to plan realistic roaming routes. Your data stays on your device.";
+"onboarding.perm.subtitle" = "We need your location to plan realistic roaming routes.";
 "onboarding.perm.location.title" = "Location Services";
 "onboarding.perm.location.desc" = "Used to calculate routes and find nearby POIs.";
 "onboarding.perm.notif.title" = "Notifications";

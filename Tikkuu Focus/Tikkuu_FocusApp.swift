@@ -7,20 +7,15 @@
 
 import SwiftUI
 import SwiftData
-import CoreData
+import Foundation
 
 @main
 struct Tikkuu_FocusApp: App {
     @StateObject private var settings = AppSettings.shared
+    private let modelContainer: ModelContainer
     
     init() {
-        NotificationCenter.default.addObserver(
-            forName: .NSPersistentStoreRemoteChange,
-            object: nil,
-            queue: .main
-        ) { _ in
-            AppSettings.shared.lastCloudKitSyncTime = Date()
-        }
+        self.modelContainer = Self.makeModelContainer()
     }
     
     var body: some Scene {
@@ -34,43 +29,33 @@ struct Tikkuu_FocusApp: App {
             }
             .preferredColorScheme(settings.currentColorScheme)
             .environment(\.locale, settings.appLocale)
-            .modelContainer(createModelContainer())
+            .modelContainer(modelContainer)
         }
     }
 
-    private func createModelContainer() -> ModelContainer {
+    private static func makeModelContainer() -> ModelContainer {
         let schema = Schema([
             JourneyRecord.self,
             SavedLocation.self,
+            TransportAvatarSettings.self,
         ])
 
-        let modelConfiguration: ModelConfiguration
-        if AppSettings.shared.isICloudSyncEnabled {
-            modelConfiguration = ModelConfiguration(
-                schema: schema,
-                cloudKitDatabase: .automatic
-            )
-        } else {
-            let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
-            let storeURL = appSupportURL.appendingPathComponent("TikkuuFocus.sqlite")
-            modelConfiguration = ModelConfiguration(url: storeURL)
-        }
+        let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+        let storeURL = appSupportURL.appendingPathComponent("TikkuuFocus.sqlite")
 
+        let localConfiguration = ModelConfiguration(
+            schema: schema,
+            url: storeURL,
+            cloudKitDatabase: .none
+        )
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [localConfiguration])
         } catch {
-            if !AppSettings.shared.isICloudSyncEnabled {
-                let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-                let storeURL = appSupportURL.appendingPathComponent("TikkuuFocus.sqlite")
-                removePersistentStoreFiles(at: storeURL)
-            }
-
-            do {
-                return try ModelContainer(for: schema, configurations: [modelConfiguration])
-            } catch {
-                fatalError("Could not create ModelContainer after recovery: \(error)")
-            }
+            removePersistentStoreFiles(at: storeURL)
+            return (try? ModelContainer(for: schema, configurations: [localConfiguration])) ?? {
+                fatalError("Could not create local ModelContainer after recovery: \(error)")
+            }()
         }
     }
 }

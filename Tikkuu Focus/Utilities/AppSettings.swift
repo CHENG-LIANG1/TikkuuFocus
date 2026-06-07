@@ -91,6 +91,7 @@ class AppSettings: ObservableObject {
         didSet {
             guard hasCompletedOnboarding != oldValue else { return }
             UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
+            syncWidgetPreferences()
         }
     }
     
@@ -119,6 +120,7 @@ class AppSettings: ObservableObject {
         didSet {
             guard preferredTransportMode != oldValue else { return }
             UserDefaults.standard.set(preferredTransportMode.rawValue, forKey: "preferredTransportMode")
+            syncWidgetPreferences()
         }
     }
     
@@ -126,24 +128,14 @@ class AppSettings: ObservableObject {
         didSet {
             guard preferredDuration != oldValue else { return }
             UserDefaults.standard.set(preferredDuration, forKey: "preferredDuration")
+            syncWidgetPreferences()
         }
     }
-    
-    @Published var isICloudSyncEnabled: Bool {
+
+    @Published var isLooseModeEnabled: Bool {
         didSet {
-            guard isICloudSyncEnabled != oldValue else { return }
-            UserDefaults.standard.set(isICloudSyncEnabled, forKey: "isICloudSyncEnabled")
-        }
-    }
-    
-    @Published var lastCloudKitSyncTime: Date? {
-        didSet {
-            guard lastCloudKitSyncTime != oldValue else { return }
-            if let time = lastCloudKitSyncTime {
-                UserDefaults.standard.set(time.timeIntervalSince1970, forKey: "lastCloudKitSyncTime")
-            } else {
-                UserDefaults.standard.removeObject(forKey: "lastCloudKitSyncTime")
-            }
+            guard isLooseModeEnabled != oldValue else { return }
+            UserDefaults.standard.set(isLooseModeEnabled, forKey: "isLooseModeEnabled")
         }
     }
     
@@ -156,16 +148,11 @@ class AppSettings: ObservableObject {
         self.selectedMapMode = AppMapMode(rawValue: storedMapMode) ?? .explore
         let storedTransport = UserDefaults.standard.string(forKey: "preferredTransportMode") ?? TransportMode.cycling.rawValue
         self.preferredTransportMode = TransportMode(rawValue: storedTransport) ?? .cycling
-        self.preferredDuration = UserDefaults.standard.integer(forKey: "preferredDuration")
-        self.isICloudSyncEnabled = UserDefaults.standard.bool(forKey: "isICloudSyncEnabled")
-        if let timestamp = UserDefaults.standard.object(forKey: "lastCloudKitSyncTime") as? TimeInterval {
-            self.lastCloudKitSyncTime = Date(timeIntervalSince1970: timestamp)
-        } else {
-            self.lastCloudKitSyncTime = nil
-        }
-        if self.preferredDuration == 0 {
-            self.preferredDuration = 25
-        }
+        let storedDuration = UserDefaults.standard.integer(forKey: "preferredDuration")
+        self.preferredDuration = storedDuration == 0 ? 25 : min(max(storedDuration, 5), 240)
+        self.isLooseModeEnabled = UserDefaults.standard.bool(forKey: "isLooseModeEnabled")
+
+        syncWidgetPreferences()
     }
     
     var currentLanguage: String {
@@ -221,6 +208,14 @@ class AppSettings: ObservableObject {
         localizationBundles[language] = bundle
         localizationBundleLock.unlock()
         return bundle
+    }
+
+    private func syncWidgetPreferences() {
+        WidgetSnapshotStore.shared.syncPreferenceMirror(
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            preferredTransportModeRawValue: preferredTransportMode.rawValue,
+            preferredDuration: preferredDuration
+        )
     }
 }
 

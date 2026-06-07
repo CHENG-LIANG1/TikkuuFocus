@@ -141,7 +141,7 @@ struct ActivityHeatmapView: View {
     private func heatmapCell(for date: Date) -> some View {
         let count = data[calendar.startOfDay(for: date)] ?? 0
         let level = calculateLevel(count: count, maxCount: maxCount)
-        let isSelected = selectedDate != nil && calendar.isDate(date, inSameDayAs: selectedDate!)
+        let isSelected = selectedDate.map { calendar.isDate(date, inSameDayAs: $0) } ?? false
         
         return RoundedRectangle(cornerRadius: 2)
             .fill(colorForLevel(level, maxLevel: 4))

@@ -243,6 +243,212 @@ struct VirtualPosition: Equatable {
     }
 }
 
+/// Mode-specific virtual metrics shown during and after a journey.
+struct VirtualJourneyMetrics: Equatable {
+    let transportMode: TransportMode
+    let stepCount: Int?
+    let calories: Int?
+    let fuelLiters: Double?
+    let fallCount: Int?
+
+    init(
+        distanceMeters: Double,
+        duration: TimeInterval,
+        transportMode: TransportMode,
+        sessionID: UUID
+    ) {
+        let safeDistance = max(distanceMeters, 0)
+        let safeDuration = max(duration, 0)
+        let distanceKm = safeDistance / 1000.0
+        let durationHours = safeDuration / 3600.0
+
+        self.transportMode = transportMode
+
+        switch transportMode {
+        case .walking:
+            stepCount = Int((safeDistance * 1.3 * Self.multiplier(sessionID: sessionID, salt: 11)).rounded())
+            calories = Int((durationHours * 200 * Self.multiplier(sessionID: sessionID, salt: 12)).rounded())
+            fuelLiters = nil
+            fallCount = nil
+        case .cycling:
+            stepCount = nil
+            calories = Int((durationHours * 400 * Self.multiplier(sessionID: sessionID, salt: 21)).rounded())
+            fuelLiters = nil
+            fallCount = nil
+        case .driving:
+            stepCount = nil
+            calories = nil
+            fuelLiters = distanceKm * 8.0 / 100.0 * Self.multiplier(sessionID: sessionID, salt: 31)
+            fallCount = nil
+        case .skateboard:
+            stepCount = nil
+            calories = Int((durationHours * 300 * Self.multiplier(sessionID: sessionID, salt: 41)).rounded())
+            fuelLiters = nil
+            let baseFalls = Int(floor(distanceKm / 5.0))
+            let randomBonus = safeDistance > 100 ? min(Int(Self.unitRandom(sessionID: sessionID, salt: 42) * 2.0), 1) : 0
+            fallCount = max(baseFalls + randomBonus, 0)
+        }
+    }
+
+    var distanceCardDetail: String? {
+        switch transportMode {
+        case .walking:
+            return formattedSteps
+        case .cycling:
+            return nil
+        case .driving:
+            return formattedFuelLiters
+        case .skateboard:
+            return formattedCalories
+        }
+    }
+
+    var speedCardDetail: String? {
+        switch transportMode {
+        case .walking, .cycling:
+            return formattedCalories
+        case .driving:
+            return formattedFuelPrice
+        case .skateboard:
+            return formattedFallCount
+        }
+    }
+
+    private var formattedSteps: String? {
+        guard let stepCount else { return nil }
+        return String(format: L("virtual.metrics.steps"), FormatUtilities.formatNumber(stepCount))
+    }
+
+    private var formattedCalories: String? {
+        guard let calories else { return nil }
+        return String(format: L("virtual.metrics.calories"), FormatUtilities.formatNumber(calories))
+    }
+
+    private var formattedFuelLiters: String? {
+        guard let fuelLiters else { return nil }
+        return String(format: L("virtual.metrics.fuelLiters"), fuelLiters)
+    }
+
+    private var formattedFuelPrice: String {
+        String(format: L("virtual.metrics.fuelPrice"), Self.localizedFuelPrice())
+    }
+
+    private var formattedFallCount: String? {
+        guard let fallCount else { return nil }
+        return String(format: L("virtual.metrics.fallCount"), FormatUtilities.formatNumber(fallCount))
+    }
+
+    private static func multiplier(sessionID: UUID, salt: UInt64) -> Double {
+        0.92 + unitRandom(sessionID: sessionID, salt: salt) * 0.16
+    }
+
+    private static func localizedFuelPrice() -> String {
+        let locale = Locale.autoupdatingCurrent
+        let regionCode = locale.region?.identifier.uppercased()
+        let currencyCode = locale.currency?.identifier.uppercased()
+        let symbol = currencySymbol(for: currencyCode) ?? locale.currencySymbol ?? "¥"
+        let rate = cnyExchangeRate(forCurrency: currencyCode, regionCode: regionCode)
+        let convertedPrice = 7.8 * rate
+
+        return "\(symbol)\(formattedFuelPriceValue(convertedPrice, currencyCode: currencyCode))"
+    }
+
+    private static func currencySymbol(for currencyCode: String?) -> String? {
+        switch currencyCode {
+        case "CNY", "JPY":
+            return "¥"
+        case "USD":
+            return "$"
+        case "CAD":
+            return "CA$"
+        case "AUD":
+            return "A$"
+        case "HKD":
+            return "HK$"
+        case "TWD":
+            return "NT$"
+        case "SGD":
+            return "S$"
+        case "EUR":
+            return "€"
+        case "GBP":
+            return "£"
+        case "KRW":
+            return "₩"
+        default:
+            return nil
+        }
+    }
+
+    private static func cnyExchangeRate(forCurrency currencyCode: String?, regionCode: String?) -> Double {
+        switch currencyCode {
+        case "CNY":
+            return 1.0
+        case "USD":
+            return 0.14
+        case "EUR":
+            return 0.13
+        case "GBP":
+            return 0.11
+        case "JPY":
+            return 21.8
+        case "KRW":
+            return 190.0
+        case "CAD":
+            return 0.19
+        case "AUD":
+            return 0.21
+        case "HKD":
+            return 1.1
+        case "TWD":
+            return 4.5
+        case "SGD":
+            return 0.19
+        default:
+            return fallbackCNYExchangeRate(forRegion: regionCode)
+        }
+    }
+
+    private static func fallbackCNYExchangeRate(forRegion regionCode: String?) -> Double {
+        switch regionCode {
+        case "US":
+            return 0.14
+        case "GB":
+            return 0.11
+        case "JP":
+            return 21.8
+        case "KR":
+            return 190.0
+        default:
+            return 1.0
+        }
+    }
+
+    private static func formattedFuelPriceValue(_ price: Double, currencyCode: String?) -> String {
+        switch currencyCode {
+        case "JPY", "KRW":
+            return String(format: "%.0f", price)
+        default:
+            return String(format: "%.1f", price)
+        }
+    }
+
+    private static func unitRandom(sessionID: UUID, salt: UInt64) -> Double {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        let prime: UInt64 = 1_099_511_628_211
+
+        for byte in sessionID.uuidString.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* prime
+        }
+
+        hash ^= salt
+        hash = hash &* prime
+
+        return Double(hash % 10_000) / 9_999.0
+    }
+}
+
 /// Point of Interest discovered during the journey
 struct DiscoveredPOI: Identifiable, Equatable {
     let id: UUID

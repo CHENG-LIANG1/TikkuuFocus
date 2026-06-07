@@ -10,6 +10,11 @@ import CoreLocation
 import SwiftData
 import WidgetKit
 
+private struct QuickStartLaunchRequest {
+    let transportMode: TransportMode
+    let duration: Int
+}
+
 struct SetupView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
@@ -41,6 +46,7 @@ struct SetupView: View {
     @State private var weatherUpdateTask: Task<Void, Never>?
     @State private var lastWeatherFetchAt: Date = .distantPast
     @State private var lastWeatherFetchCoordinate: CLLocationCoordinate2D?
+    @State private var pendingQuickStartRequest: QuickStartLaunchRequest?
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var allRecords: [JourneyRecord]
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     
@@ -126,6 +132,7 @@ struct SetupView: View {
             setupLocation()
             fetchWeatherForSelectedLocation()
             prewarmMapIfPossible()
+            attemptPendingQuickStart()
             
             // Debug version info
             AppInfo.debugVersionInfo()
@@ -138,6 +145,9 @@ struct SetupView: View {
         }
         .onChange(of: scenePhase) { _, _ in
             updateButtonGlowAnimation()
+            if scenePhase == .active {
+                attemptPendingQuickStart()
+            }
         }
         .onChange(of: reduceMotion) { _, _ in
             updateButtonGlowAnimation()
@@ -167,6 +177,7 @@ struct SetupView: View {
                 // Throttle weather updates to avoid excessive API calls
                 fetchWeatherIfNeeded(for: location.coordinate)
                 prewarmMapIfPossible()
+                attemptPendingQuickStart()
             }
         }
         .onDisappear {
@@ -180,7 +191,11 @@ struct SetupView: View {
                 showPermissionAlert = true
             } else if newStatus == .authorizedWhenInUse || newStatus == .authorizedAlways {
                 locationManager.startUpdatingLocation()
+                attemptPendingQuickStart()
             }
+        }
+        .onOpenURL { url in
+            handleIncomingURL(url)
         }
         .onChange(of: journeyManager.state) { _, newState in
             switch newState {
@@ -650,12 +665,12 @@ struct SetupView: View {
     // MARK: - Transport Selection
     
     private var transportSelectionCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(L("label.selectTransport"))
-                .font(.system(size: 19, weight: .semibold, design: .rounded))
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .foregroundColor(baseTextColor)
             
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ForEach(TransportMode.allCases) { mode in
                     TransportModeButton(
                         mode: mode,
@@ -670,7 +685,8 @@ struct SetupView: View {
                 }
             }
         }
-        .padding(24)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
         .glassCard(
             cornerRadius: 28,
             tintColor: colorScheme == .dark ? Color(red: 0.1, green: 0.25, blue: 0.15).opacity(0.6) : Color.green.opacity(0.1)
@@ -680,14 +696,14 @@ struct SetupView: View {
     // MARK: - Duration Selection
     
     private var durationSelectionCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(L("label.selectDuration"))
-                .font(.system(size: 19, weight: .semibold, design: .rounded))
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .foregroundColor(baseTextColor)
             
-            VStack(spacing: 14) {
+            VStack(spacing: 10) {
                 // Duration picker
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     ForEach(selectedTransport.suggestedDurations, id: \.self) { duration in
                         DurationButton(
                             duration: duration,
@@ -711,7 +727,7 @@ struct SetupView: View {
                         Spacer()
                         
                         Text("\(selectedDuration) \(L("time.unit.min"))")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.accentColor)
                     }
                     
@@ -723,13 +739,14 @@ struct SetupView: View {
                             selectedDuration = newValue
                             triggerDurationSliderHaptic(for: newValue)
                         }
-                    ), in: 5...120, step: 5)
+                    ), in: 5...240, step: 5)
                     .tint(Color(red: 0.4, green: 0.7, blue: 0.9))
                 }
-                .padding(.top, 4)
+                .padding(.top, 2)
             }
         }
-        .padding(24)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
         .glassCard(
             cornerRadius: 28,
             tintColor: colorScheme == .dark ? Color(red: 0.25, green: 0.15, blue: 0.3).opacity(0.6) : Color.purple.opacity(0.1)
@@ -1022,7 +1039,7 @@ struct SetupView: View {
 
     private func triggerDurationSliderHaptic(for value: Int) {
         // Give crisp step feedback while dragging, with stronger pulses on milestones.
-        if value == 5 || value == 120 || value % 30 == 0 {
+        if value == 5 || value == 240 || value % 30 == 0 {
             HapticManager.heavy()
         } else if value % 15 == 0 {
             HapticManager.medium()
@@ -1057,6 +1074,43 @@ struct SetupView: View {
         }
 
         return elapsed >= minInterval
+    }
+
+    private func handleIncomingURL(_ url: URL) {
+        guard url.scheme == "roamfocus",
+              url.host == "quick-start",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return
+        }
+
+        let transportRawValue = components.queryItems?.first(where: { $0.name == "transport" })?.value
+        let durationValue = components.queryItems?.first(where: { $0.name == "duration" })?.value
+
+        if let transportRawValue,
+           let mode = TransportMode(rawValue: transportRawValue) {
+            selectedTransport = mode
+        }
+
+        if let durationValue,
+           let duration = Int(durationValue) {
+            selectedDuration = min(max(duration, 5), 240)
+        }
+
+        pendingQuickStartRequest = QuickStartLaunchRequest(
+            transportMode: selectedTransport,
+            duration: selectedDuration
+        )
+        attemptPendingQuickStart()
+    }
+
+    private func attemptPendingQuickStart() {
+        guard pendingQuickStartRequest != nil,
+              canStartJourney else {
+            return
+        }
+
+        pendingQuickStartRequest = nil
+        startJourney()
     }
 }
 

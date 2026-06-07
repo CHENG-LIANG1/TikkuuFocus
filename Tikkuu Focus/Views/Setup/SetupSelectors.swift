@@ -171,25 +171,25 @@ struct LiquidGlassTransportModeButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Image(systemName: mode.iconName)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(isSelected ? .white : .primary)
-                    .frame(height: 24)
+                    .frame(height: 22)
 
                 Text(L("transport.\(mode.rawValue.lowercased())"))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(isSelected ? .white : .secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .frame(maxWidth: .infinity, minHeight: 80)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 6)
             .background(
                 Group {
                     if isSelected {
-                        RoundedRectangle(cornerRadius: 24)
+                        RoundedRectangle(cornerRadius: 20)
                             .fill(
                                 LinearGradient(
                                     colors: [
@@ -201,14 +201,14 @@ struct LiquidGlassTransportModeButton: View {
                                 )
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 24)
+                                RoundedRectangle(cornerRadius: 20)
                                     .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
                             )
                             .shadow(color: Color.blue.opacity(0.32), radius: 10, x: 0, y: 5)
                     } else {
-                        RoundedRectangle(cornerRadius: 24)
+                        RoundedRectangle(cornerRadius: 20)
                             .fill(Color.clear)
-                            .insetSurface(cornerRadius: 24, isActive: false)
+                            .insetSurface(cornerRadius: 20, isActive: false)
                     }
                 }
             )
@@ -290,21 +290,21 @@ struct LiquidGlassDurationButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Text("\(duration)")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundColor(isSelected ? .white : .primary)
 
                 Text(L("time.unit.min"))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(isSelected ? .white.opacity(0.82) : .secondary)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .padding(.vertical, 10)
             .background(
                 Group {
                     if isSelected {
-                        RoundedRectangle(cornerRadius: 24)
+                        RoundedRectangle(cornerRadius: 20)
                             .fill(
                                 LinearGradient(
                                     colors: [
@@ -316,14 +316,14 @@ struct LiquidGlassDurationButton: View {
                                 )
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 24)
+                                RoundedRectangle(cornerRadius: 20)
                                     .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
                             )
                             .shadow(color: Color.purple.opacity(0.32), radius: 10, x: 0, y: 5)
                     } else {
-                        RoundedRectangle(cornerRadius: 24)
+                        RoundedRectangle(cornerRadius: 20)
                             .fill(Color.clear)
-                            .insetSurface(cornerRadius: 24, isActive: false)
+                            .insetSurface(cornerRadius: 20, isActive: false)
                     }
                 }
             )
@@ -390,12 +390,12 @@ struct CustomDurationPicker: View {
                 Slider(value: Binding(
                     get: { Double(duration) },
                     set: { duration = Int($0) }
-                ), in: 5...120, step: 5)
+                ), in: 5...240, step: 5)
                     .tint(.blue)
                     .padding(.horizontal, 24)
                 
                 HStack(spacing: 12) {
-                    ForEach([15, 30, 45, 60, 90], id: \.self) { preset in
+                    ForEach([15, 30, 45, 60, 90, 120], id: \.self) { preset in
                         Button(action: {
                             HapticManager.selection()
                             duration = preset

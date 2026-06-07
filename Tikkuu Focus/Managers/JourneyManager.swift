@@ -778,7 +778,8 @@ class JourneyManager: ObservableObject {
     }
 
     private func handleDidEnterBackground() {
-        // Automatically pause active countdown when app moves to background.
+        // Automatically pause active countdown unless loose mode keeps focus running.
+        guard !AppSettings.shared.isLooseModeEnabled else { return }
         if case .active = state {
             pauseJourney(autoPaused: true)
         }
@@ -805,6 +806,7 @@ class JourneyManager: ObservableObject {
     /// Record POIs near start location to exclude them from discovery
     private func recordStartLocationPOIs(at coordinate: CLLocationCoordinate2D) async {
         let queries = ["restaurant", "landmark", "park", "cafe", "museum"]
+        let searchMeters = JourneyConfig.minimumTravelDistance * 2
         
         // Move to background thread
         Task.detached(priority: .utility) { [weak self] in
@@ -815,8 +817,8 @@ class JourneyManager: ObservableObject {
                 request.naturalLanguageQuery = query
                 request.region = MKCoordinateRegion(
                     center: coordinate,
-                    latitudinalMeters: JourneyConfig.minimumTravelDistance * 2,
-                    longitudinalMeters: JourneyConfig.minimumTravelDistance * 2
+                    latitudinalMeters: searchMeters,
+                    longitudinalMeters: searchMeters
                 )
                 request.resultTypes = .pointOfInterest
                 

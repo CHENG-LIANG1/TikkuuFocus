@@ -152,6 +152,7 @@
 "settings.theme.neumorphism.light" = "浅色";
 "settings.theme.neumorphism.light.subtitle" = "更明亮的蓝灰色调，对比更柔和";
 "settings.language" = "语言";
+"settings.focus" = "专注";
 "settings.language.system" = "跟随系统";
 "settings.support" = "支持";
 "settings.contact" = "联系与支持";
@@ -163,6 +164,21 @@
 "settings.about.app" = "关于 Roam Focus";
 "settings.tutorial" = "查看教程";
 "settings.version" = "版本";
+"settings.looseMode" = "宽松模式";
+"settings.looseMode.subtitle" = "开启后，进入后台或锁屏时不会自动暂停专注，只有你手动暂停才会停止。";
+"settings.avatar.title" = "头像";
+"settings.avatar.configure" = "头像设置";
+"settings.avatar.configure.subtitle" = "自定义交通方式头像";
+"settings.avatar.preview" = "预览";
+"settings.avatar.preview.default" = "使用默认交通图标";
+"settings.avatar.preview.enabled" = "正在使用自定义头像";
+"settings.avatar.preview.saved" = "已保存自定义头像";
+"settings.avatar.useCustom" = "使用自定义头像";
+"settings.avatar.choose" = "选择照片";
+"settings.avatar.replace" = "更换照片";
+"settings.avatar.choose.subtitle" = "从相册选择";
+"settings.avatar.crop.title" = "剪裁";
+"settings.avatar.crop.recenter" = "重新居中";
 "settings.data" = "数据管理";
 "settings.data.icloud" = "iCloud 同步";
 "settings.data.icloud.subtitle" = "即将支持";
@@ -182,9 +198,16 @@
 "icloud.status.noaccount" = "未登录";
 "icloud.status.restricted" = "受限制";
 "icloud.status.unknown" = "检测中...";
+"icloud.status.enable.requiresAccount.title" = "需要 iCloud 登录";
+"icloud.status.enable.requiresAccount.message" = "请先在系统设置中登录 iCloud，再开启 iCloud 同步。";
 "icloud.status.local.data" = "本地数据";
 "icloud.status.journeys" = "条旅程";
 "icloud.status.locations" = "个地点";
+"icloud.status.lastSync" = "最近同步";
+"icloud.status.never" = "尚无记录";
+"icloud.status.refresh" = "刷新状态";
+"icloud.status.refresh.subtitle" = "点击刷新";
+"icloud.status.refreshing" = "刷新中...";
 
 "settings.data.clear" = "清除所有数据";
 "settings.data.clear.subtitle" = "删除记录与进度（无法恢复）";
@@ -405,6 +428,8 @@
 "common.cancel" = "取消";
 "common.ok" = "确定";
 "common.delete" = "删除";
+"common.on" = "开启";
+"common.off" = "关闭";
 
 // Stats
 "history.stats.completionRate" = "完成率";
@@ -876,6 +901,11 @@
 "journey.summary.transport" = "交通方式";
 "journey.summary.maxSpeed" = "最高时速";
 "journey.summary.avgSpeed" = "平均时速";
+"virtual.metrics.steps" = "%@ 步";
+"virtual.metrics.calories" = "%@ 千卡";
+"virtual.metrics.fuelLiters" = "油耗 %.1f L";
+"virtual.metrics.fuelPrice" = "油价 %@/L";
+"virtual.metrics.fallCount" = "摔倒 %@ 次";
 
 // Activity Heatmap
 "heatmap.less" = "少";
@@ -930,7 +960,7 @@
 "onboarding.sim.subtitle" = "当你专注时，你的头像会在地图上漫游，沿途发现有趣的地方。";
 
 "onboarding.perm.title" = "开启定位服务";
-"onboarding.perm.subtitle" = "我们需要你的位置来规划真实的漫游路线。你的数据只会保存在设备上。";
+"onboarding.perm.subtitle" = "我们需要你的位置来规划真实的漫游路线。";
 "onboarding.perm.location.title" = "定位服务";
 "onboarding.perm.location.desc" = "用于计算路线和发现附近的兴趣点。";
 "onboarding.perm.notif.title" = "通知";

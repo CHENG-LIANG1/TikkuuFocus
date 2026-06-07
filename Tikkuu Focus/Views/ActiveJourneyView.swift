@@ -339,8 +339,13 @@ struct ActiveJourneyView: View {
     private var statsPanel: some View {
         VStack(spacing: 20) {
             // Time remaining (large)
-            if let position = journeyManager.currentPosition {
-                ActiveJourneyStatsPanel(position: position, currentSpeed: currentSpeed)
+            if let position = journeyManager.currentPosition,
+               let session = journeyManager.state.session {
+                ActiveJourneyStatsPanel(
+                    position: position,
+                    currentSpeed: currentSpeed,
+                    session: session
+                )
                     .equatable()
                     .padding(20)
                     .background(
@@ -648,6 +653,7 @@ struct ActiveJourneyView: View {
         
         // Save to SwiftData
         modelContext.insert(record)
+        persistJourneyChanges()
 
         presentSummary(
             session: session,
@@ -747,6 +753,7 @@ struct ActiveJourneyView: View {
         )
         
         modelContext.insert(record)
+        persistJourneyChanges()
         
         // Mark first journey as completed
         if !settings.hasCompletedFirstJourney {
@@ -765,15 +772,23 @@ struct ActiveJourneyView: View {
         let maxReasonableDistance = max(300, expectedDistance * 1.8 + 200)
         return min(rawDistance, maxReasonableDistance)
     }
+
+    private func persistJourneyChanges() {
+        try? modelContext.save()
+        WidgetSnapshotStore.shared.refreshSnapshot(using: modelContext, settings: settings)
+    }
     
 }
 
 struct ActiveJourneyStatsPanel: View, Equatable {
     let position: VirtualPosition
     let currentSpeed: Double
+    let session: JourneySession
 
     static func == (lhs: ActiveJourneyStatsPanel, rhs: ActiveJourneyStatsPanel) -> Bool {
-        lhs.position == rhs.position && lhs.currentSpeed == rhs.currentSpeed
+        lhs.position == rhs.position &&
+        lhs.currentSpeed == rhs.currentSpeed &&
+        lhs.session == rhs.session
     }
 
     var body: some View {
@@ -815,16 +830,31 @@ struct ActiveJourneyStatsPanel: View, Equatable {
                 CompactStatCard(
                     icon: "location.fill",
                     label: L("label.distanceTraveled"),
-                    value: FormatUtilities.formatDistance(position.distanceTraveled)
+                    value: FormatUtilities.formatDistance(position.distanceTraveled),
+                    detail: virtualMetrics.distanceCardDetail
                 )
 
                 CompactStatCard(
                     icon: "speedometer",
                     label: L("label.currentSpeed"),
-                    value: String(format: "%.1f km/h", currentSpeed)
+                    value: String(format: "%.1f km/h", currentSpeed),
+                    detail: virtualMetrics.speedCardDetail
                 )
             }
         }
+    }
+
+    private var elapsedDuration: TimeInterval {
+        max(session.duration - position.remainingTime, 0)
+    }
+
+    private var virtualMetrics: VirtualJourneyMetrics {
+        VirtualJourneyMetrics(
+            distanceMeters: position.distanceTraveled,
+            duration: elapsedDuration,
+            transportMode: session.transportMode,
+            sessionID: session.id
+        )
     }
 }
 
@@ -967,6 +997,19 @@ struct CompactStatCard: View {
     let icon: String
     let label: String
     let value: String
+    let detail: String?
+
+    init(
+        icon: String,
+        label: String,
+        value: String,
+        detail: String? = nil
+    ) {
+        self.icon = icon
+        self.label = label
+        self.value = value
+        self.detail = detail
+    }
     
     var body: some View {
         HStack(spacing: 8) {
@@ -985,6 +1028,12 @@ struct CompactStatCard: View {
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundColor(valueColor)
                     .lineLimit(1)
+
+                Text(detail ?? " ")
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .foregroundColor(valueColor.opacity(detail == nil ? 0 : 0.72))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             
             Spacer(minLength: 0)

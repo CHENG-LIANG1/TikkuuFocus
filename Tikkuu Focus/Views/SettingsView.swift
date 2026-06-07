@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import CloudKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -21,7 +20,7 @@ struct SettingsView: View {
     @State private var showClearDataStep1 = false
     @State private var showClearDataStep2 = false
     @State private var showClearDataSuccess = false
-    @State private var showICloudStatus = false
+    @State private var showAvatarSettings = false
     
     var body: some View {
         NavigationStack {
@@ -43,6 +42,30 @@ struct SettingsView: View {
                             )
                         ) {
                             languageOptions
+                        }
+
+                        modernSection(
+                            icon: "pause.circle.fill",
+                            title: L("settings.focus"),
+                            gradient: LinearGradient(
+                                colors: [Color.teal, Color.green],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        ) {
+                            focusOptions
+                        }
+
+                        modernSection(
+                            icon: "person.crop.circle",
+                            title: L("settings.avatar.title"),
+                            gradient: LinearGradient(
+                                colors: [Color.purple, Color.blue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        ) {
+                            avatarOptions
                         }
 
                         // Data Management Section
@@ -126,6 +149,9 @@ struct SettingsView: View {
                 showPrivacyPolicy = false
             }
         }
+        .sheet(isPresented: $showAvatarSettings) {
+            TransportAvatarSettingsView()
+        }
         .alert(L("settings.data.clear.confirm1.title"), isPresented: $showClearDataStep1) {
             Button(L("common.cancel"), role: .cancel) {}
             Button(L("settings.data.clear.confirm1.action"), role: .destructive) {
@@ -142,15 +168,12 @@ struct SettingsView: View {
                 }
             }
         } message: {
-            Text(settings.isICloudSyncEnabled ? L("settings.data.clear.confirm2.message.icloud") : L("settings.data.clear.confirm2.message"))
+            Text(L("settings.data.clear.confirm2.message"))
         }
         .alert(L("settings.data.clear.success.title"), isPresented: $showClearDataSuccess) {
             Button(L("common.ok")) {}
         } message: {
-            Text(settings.isICloudSyncEnabled ? L("settings.data.clear.success.message.icloud") : L("settings.data.clear.success.message.local"))
-        }
-        .sheet(isPresented: $showICloudStatus) {
-            ICloudStatusView()
+            Text(L("settings.data.clear.success.message.local"))
         }
     }
     
@@ -201,6 +224,31 @@ struct SettingsView: View {
 
     private var themeOptions: some View {
         EmptyView()
+    }
+
+    private var avatarOptions: some View {
+        VStack(spacing: 12) {
+            ModernActionRow(
+                title: L("settings.avatar.configure"),
+                subtitle: L("settings.avatar.configure.subtitle"),
+                icon: "person.crop.circle.fill",
+                showChevron: true
+            ) {
+                HapticManager.light()
+                showAvatarSettings = true
+            }
+        }
+    }
+
+    private var focusOptions: some View {
+        VStack(spacing: 12) {
+            ModernToggleRow(
+                title: L("settings.looseMode"),
+                subtitle: L("settings.looseMode.subtitle"),
+                icon: "pause.circle.fill",
+                isOn: $settings.isLooseModeEnabled
+            )
+        }
     }
 
     private var languageOptions: some View {
@@ -300,18 +348,6 @@ struct SettingsView: View {
 
     private var dataManagementOptions: some View {
         VStack(spacing: 12) {
-            if AppConfig.isICloudSyncEntryEnabled {
-                ModernActionRow(
-                    title: L("settings.data.icloud"),
-                    subtitle: settings.isICloudSyncEnabled ? L("settings.data.icloud.on") : L("settings.data.icloud.off"),
-                    icon: "icloud",
-                    showChevron: true
-                ) {
-                    HapticManager.light()
-                    showICloudStatus = true
-                }
-            }
-
             ModernActionRow(
                 title: L("settings.data.clear"),
                 subtitle: L("settings.data.clear.subtitle"),
@@ -337,62 +373,22 @@ struct SettingsView: View {
                 modelContext.delete(location)
             }
         }
+
+        let avatarSettingsDescriptor = FetchDescriptor<TransportAvatarSettings>()
+        if let avatarSettings = try? modelContext.fetch(avatarSettingsDescriptor) {
+            for setting in avatarSettings {
+                modelContext.delete(setting)
+            }
+        }
         
         try? modelContext.save()
+        WidgetSnapshotStore.shared.refreshSnapshot(using: modelContext, settings: settings)
 
         settings.hasCompletedFirstJourney = false
         settings.hasSeenFirstJourneyGuide = false
 
-        // 3. If iCloud sync is on, also clear CloudKit records
-        if settings.isICloudSyncEnabled {
-            await clearCloudKitData()
-            settings.isICloudSyncEnabled = false
-        }
-
         HapticManager.success()
         showClearDataSuccess = true
-    }
-    
-    private func clearCloudKitData() async {
-        let container = CKContainer(identifier: "iCloud.roam_focus")
-        let database = container.privateCloudDatabase
-        let recordTypes = ["CD_JourneyRecord", "CD_SavedLocation"]
-        
-        for recordType in recordTypes {
-            await deleteAllCloudKitRecords(ofType: recordType, in: database)
-        }
-    }
-    
-    private func deleteAllCloudKitRecords(ofType recordType: String, in database: CKDatabase) async {
-        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
-        
-        do {
-            var cursor: CKQueryOperation.Cursor? = nil
-            repeat {
-                let (results, newCursor) = try await database.records(
-                    matching: query,
-                    inZoneWith: CKRecordZone.default().zoneID,
-                    resultsLimit: 400
-                )
-                
-                let recordIDs = results.compactMap { _, result -> CKRecord.ID? in
-                    switch result {
-                    case .success(let record):
-                        return record.recordID
-                    case .failure:
-                        return nil
-                    }
-                }
-                
-                if !recordIDs.isEmpty {
-                    _ = try? await database.modifyRecords(saving: [], deleting: recordIDs)
-                }
-                
-                cursor = newCursor
-            } while cursor != nil
-        } catch {
-            print("Failed to clear CloudKit records for type \(recordType): \(error)")
-        }
     }
 }
 

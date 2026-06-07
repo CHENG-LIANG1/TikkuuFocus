@@ -9,6 +9,8 @@ import SwiftUI
 import MapKit
 import Photos
 import WeatherKit
+import SwiftData
+import UIKit
 
 struct ShareImageItem: Identifiable {
     let id = UUID()
@@ -19,6 +21,7 @@ struct JourneySummaryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var settings = AppSettings.shared
+    @Query private var transportAvatarSettings: [TransportAvatarSettings]
 
     let session: JourneySession
     let discoveredPOIs: [DiscoveredPOI]
@@ -308,6 +311,7 @@ struct JourneySummaryView: View {
                     icon: "location.fill",
                     title: L("journey.summary.distance"),
                     value: FormatUtilities.formatDistance(displayDistance),
+                    subtitle: virtualMetrics.distanceCardDetail,
                     gradient: LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
             }
@@ -316,6 +320,7 @@ struct JourneySummaryView: View {
             HStack(spacing: 12) {
                 MetricCell(
                     icon: session.transportMode.iconName,
+                    avatarImageData: customAvatarData,
                     title: L("journey.summary.transport"),
                     value: session.transportMode.localizedName,
                     gradient: LinearGradient(colors: [Color.green, Color.mint], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -325,10 +330,20 @@ struct JourneySummaryView: View {
                     icon: "speedometer",
                     title: L("journey.summary.avgSpeed"),
                     value: FormatUtilities.formatSpeed(actualDuration > 0 ? displayDistance / actualDuration : 0),
+                    subtitle: virtualMetrics.speedCardDetail,
                     gradient: LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
             }
         }
+    }
+
+    private var customAvatarData: Data? {
+        guard let setting = transportAvatarSettings.first,
+              setting.isEnabled,
+              let data = setting.imageData else {
+            return nil
+        }
+        return data
     }
 
     private var poiHighlights: some View {
@@ -607,6 +622,15 @@ struct JourneySummaryView: View {
         return sanitizeDistance(rawDistance, transportMode: session.transportMode, duration: actualDuration)
     }
 
+    private var virtualMetrics: VirtualJourneyMetrics {
+        VirtualJourneyMetrics(
+            distanceMeters: displayDistance,
+            duration: actualDuration,
+            transportMode: session.transportMode,
+            sessionID: session.id
+        )
+    }
+
     private func sanitizeDistance(
         _ rawDistance: Double,
         transportMode: TransportMode,
@@ -879,11 +903,29 @@ struct JourneySummaryView: View {
 
 private struct MetricCell: View {
     let icon: String
+    let avatarImageData: Data?
     let title: String
     let value: String
+    let subtitle: String?
     let gradient: LinearGradient
 
     @ObservedObject private var settings = AppSettings.shared
+
+    init(
+        icon: String,
+        avatarImageData: Data? = nil,
+        title: String,
+        value: String,
+        subtitle: String? = nil,
+        gradient: LinearGradient
+    ) {
+        self.icon = icon
+        self.avatarImageData = avatarImageData
+        self.title = title
+        self.value = value
+        self.subtitle = subtitle
+        self.gradient = gradient
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -891,10 +933,22 @@ private struct MetricCell: View {
                 Circle()
                     .fill(gradient.opacity(0.2))
                     .frame(width: 32, height: 32)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(gradient)
+
+                if let avatarImage {
+                    Image(uiImage: avatarImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 26, height: 26)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.8), lineWidth: 1.5)
+                        )
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(gradient)
+                }
             }
 
             Spacer(minLength: 0)
@@ -910,6 +964,14 @@ private struct MetricCell: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.white.opacity(0.65))
                     .lineLimit(1)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.55))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
             }
         }
         .padding(16)
@@ -930,6 +992,14 @@ private struct MetricCell: View {
                 )
                 .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
         )
+    }
+
+    private var avatarImage: UIImage? {
+        guard let avatarImageData,
+              let image = UIImage(data: avatarImageData) else {
+            return nil
+        }
+        return image
     }
 }
 

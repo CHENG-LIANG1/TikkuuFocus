@@ -45,10 +45,12 @@ struct AppInfo {
     
     /// Debug: Print all version-related info
     static func debugVersionInfo() {
+        #if DEBUG
         print("📱 App Version Debug Info:")
         print("  - CFBundleShortVersionString: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "nil")")
         print("  - CFBundleVersion: \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "nil")")
         print("  - Computed version: \(version)")
         print("  - Computed build: \(build)")
+        #endif
     }
 }

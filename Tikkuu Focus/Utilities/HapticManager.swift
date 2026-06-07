@@ -9,46 +9,82 @@ import UIKit
 
 /// Manager for haptic feedback
 enum HapticManager {
+    private static let lightGenerator = UIImpactFeedbackGenerator(style: .light)
+    private static let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private static let heavyGenerator = UIImpactFeedbackGenerator(style: .heavy)
+    private static let notificationGenerator = UINotificationFeedbackGenerator()
+    private static let selectionGenerator = UISelectionFeedbackGenerator()
+    private static var isWarmedUp = false
+
+    /// Pre-warm haptic engine to avoid first-touch hitch.
+    static func warmUp() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { warmUp() }
+            return
+        }
+        guard !isWarmedUp else { return }
+        lightGenerator.prepare()
+        mediumGenerator.prepare()
+        heavyGenerator.prepare()
+        notificationGenerator.prepare()
+        selectionGenerator.prepare()
+        isWarmedUp = true
+    }
+
+    private static func ensureReady() -> Bool {
+        if !isWarmedUp {
+            warmUp()
+            return false
+        }
+        return true
+    }
     
     /// Light impact feedback (for button taps)
     static func light() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        guard ensureReady() else { return }
+        lightGenerator.impactOccurred()
+        lightGenerator.prepare()
     }
     
     /// Medium impact feedback (for selections)
     static func medium() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        guard ensureReady() else { return }
+        mediumGenerator.impactOccurred()
+        mediumGenerator.prepare()
     }
     
     /// Heavy impact feedback (for important actions)
     static func heavy() {
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
+        guard ensureReady() else { return }
+        heavyGenerator.impactOccurred()
+        heavyGenerator.prepare()
     }
     
     /// Success notification
     static func success() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        guard ensureReady() else { return }
+        notificationGenerator.notificationOccurred(.success)
+        notificationGenerator.prepare()
     }
     
     /// Warning notification
     static func warning() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.warning)
+        guard ensureReady() else { return }
+        notificationGenerator.notificationOccurred(.warning)
+        notificationGenerator.prepare()
     }
     
     /// Error notification
     static func error() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
+        guard ensureReady() else { return }
+        notificationGenerator.notificationOccurred(.error)
+        notificationGenerator.prepare()
     }
     
     /// Selection changed feedback
     static func selection() {
-        let generator = UISelectionFeedbackGenerator()
-        generator.selectionChanged()
+        guard ensureReady() else { return }
+        selectionGenerator.selectionChanged()
+        selectionGenerator.prepare()
     }
 }
