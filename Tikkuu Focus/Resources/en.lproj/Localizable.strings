@@ -879,10 +879,15 @@
 "journey.summary.transport" = "Transport";
 "journey.summary.maxSpeed" = "Max Speed";
 "journey.summary.avgSpeed" = "Avg Speed";
+"virtual.metrics.title.steps" = "Steps";
+"virtual.metrics.title.calories" = "Calories";
+"virtual.metrics.title.fuelLiters" = "Fuel";
+"virtual.metrics.title.fuelPrice" = "Fuel Price";
+"virtual.metrics.title.fallCount" = "Falls";
 "virtual.metrics.steps" = "%@ steps";
 "virtual.metrics.calories" = "%@ kcal";
-"virtual.metrics.fuelLiters" = "%.1f L fuel";
-"virtual.metrics.fuelPrice" = "Fuel price %@/L";
+"virtual.metrics.fuelLiters" = "%.1f L";
+"virtual.metrics.fuelPrice" = "%@/L";
 "virtual.metrics.fallCount" = "%@ falls";
 
 // Activity Heatmap

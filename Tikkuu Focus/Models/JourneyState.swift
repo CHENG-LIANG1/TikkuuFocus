@@ -290,50 +290,93 @@ struct VirtualJourneyMetrics: Equatable {
         }
     }
 
-    var distanceCardDetail: String? {
+    var cardItems: [VirtualJourneyMetricCardItem] {
+        var items: [VirtualJourneyMetricCardItem] = []
+
         switch transportMode {
         case .walking:
-            return formattedSteps
+            if let formattedStepsValue {
+                items.append(VirtualJourneyMetricCardItem(
+                    id: "steps",
+                    icon: "shoeprints.fill",
+                    title: L("virtual.metrics.title.steps"),
+                    value: formattedStepsValue
+                ))
+            }
+            if let formattedCaloriesValue {
+                items.append(VirtualJourneyMetricCardItem(
+                    id: "calories",
+                    icon: "flame.fill",
+                    title: L("virtual.metrics.title.calories"),
+                    value: formattedCaloriesValue
+                ))
+            }
         case .cycling:
-            return nil
+            if let formattedCaloriesValue {
+                items.append(VirtualJourneyMetricCardItem(
+                    id: "calories",
+                    icon: "flame.fill",
+                    title: L("virtual.metrics.title.calories"),
+                    value: formattedCaloriesValue
+                ))
+            }
         case .driving:
-            return formattedFuelLiters
+            if let formattedFuelLitersValue {
+                items.append(VirtualJourneyMetricCardItem(
+                    id: "fuelLiters",
+                    icon: "fuelpump.fill",
+                    title: L("virtual.metrics.title.fuelLiters"),
+                    value: formattedFuelLitersValue
+                ))
+            }
+            items.append(VirtualJourneyMetricCardItem(
+                id: "fuelPrice",
+                icon: "dollarsign.circle.fill",
+                title: L("virtual.metrics.title.fuelPrice"),
+                value: formattedFuelPriceValue
+            ))
         case .skateboard:
-            return formattedCalories
+            if let formattedCaloriesValue {
+                items.append(VirtualJourneyMetricCardItem(
+                    id: "calories",
+                    icon: "flame.fill",
+                    title: L("virtual.metrics.title.calories"),
+                    value: formattedCaloriesValue
+                ))
+            }
+            if let formattedFallCountValue {
+                items.append(VirtualJourneyMetricCardItem(
+                    id: "fallCount",
+                    icon: "figure.fall",
+                    title: L("virtual.metrics.title.fallCount"),
+                    value: formattedFallCountValue
+                ))
+            }
         }
+
+        return items
     }
 
-    var speedCardDetail: String? {
-        switch transportMode {
-        case .walking, .cycling:
-            return formattedCalories
-        case .driving:
-            return formattedFuelPrice
-        case .skateboard:
-            return formattedFallCount
-        }
-    }
-
-    private var formattedSteps: String? {
+    private var formattedStepsValue: String? {
         guard let stepCount else { return nil }
         return String(format: L("virtual.metrics.steps"), FormatUtilities.formatNumber(stepCount))
     }
 
-    private var formattedCalories: String? {
+    private var formattedCaloriesValue: String? {
         guard let calories else { return nil }
         return String(format: L("virtual.metrics.calories"), FormatUtilities.formatNumber(calories))
     }
 
-    private var formattedFuelLiters: String? {
+    private var formattedFuelLitersValue: String? {
         guard let fuelLiters else { return nil }
         return String(format: L("virtual.metrics.fuelLiters"), fuelLiters)
     }
 
-    private var formattedFuelPrice: String {
+    private var formattedFuelPriceValue: String {
         String(format: L("virtual.metrics.fuelPrice"), Self.localizedFuelPrice())
     }
 
-    private var formattedFallCount: String? {
+    private var formattedFallCountValue: String? {
         guard let fallCount else { return nil }
         return String(format: L("virtual.metrics.fallCount"), FormatUtilities.formatNumber(fallCount))
     }
@@ -346,11 +389,13 @@ struct VirtualJourneyMetrics: Equatable {
         let locale = Locale.autoupdatingCurrent
         let regionCode = locale.region?.identifier.uppercased()
         let currencyCode = locale.currency?.identifier.uppercased()
-        let symbol = currencySymbol(for: currencyCode) ?? locale.currencySymbol ?? "¥"
-        let rate = cnyExchangeRate(forCurrency: currencyCode, regionCode: regionCode)
+        let canUseLocaleCurrency = currencyCode != nil && currencySymbol(for: currencyCode) != nil
+        let rate = canUseLocaleCurrency ? cnyExchangeRate(forCurrency: currencyCode, regionCode: regionCode) : 1.0
+        let symbol = canUseLocaleCurrency ? (currencySymbol(for: currencyCode) ?? locale.currencySymbol ?? "¥") : "¥"
+        let displayCurrencyCode = canUseLocaleCurrency ? currencyCode : "CNY"
         let convertedPrice = 7.8 * rate
 
-        return "\(symbol)\(formattedFuelPriceValue(convertedPrice, currencyCode: currencyCode))"
+        return "\(symbol)\(formattedFuelPriceValue(convertedPrice, currencyCode: displayCurrencyCode))"
     }
 
     private static func currencySymbol(for currencyCode: String?) -> String? {
@@ -447,6 +492,13 @@ struct VirtualJourneyMetrics: Equatable {
 
         return Double(hash % 10_000) / 9_999.0
     }
+}
+
+struct VirtualJourneyMetricCardItem: Identifiable, Equatable {
+    let id: String
+    let icon: String
+    let title: String
+    let value: String
 }
 
 /// Point of Interest discovered during the journey

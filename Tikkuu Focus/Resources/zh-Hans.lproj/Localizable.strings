@@ -901,11 +901,16 @@
 "journey.summary.transport" = "交通方式";
 "journey.summary.maxSpeed" = "最高时速";
 "journey.summary.avgSpeed" = "平均时速";
+"virtual.metrics.title.steps" = "步数";
+"virtual.metrics.title.calories" = "卡路里";
+"virtual.metrics.title.fuelLiters" = "油耗";
+"virtual.metrics.title.fuelPrice" = "油价";
+"virtual.metrics.title.fallCount" = "摔倒次数";
 "virtual.metrics.steps" = "%@ 步";
 "virtual.metrics.calories" = "%@ 千卡";
-"virtual.metrics.fuelLiters" = "油耗 %.1f L";
-"virtual.metrics.fuelPrice" = "油价 %@/L";
-"virtual.metrics.fallCount" = "摔倒 %@ 次";
+"virtual.metrics.fuelLiters" = "%.1f L";
+"virtual.metrics.fuelPrice" = "%@/L";
+"virtual.metrics.fallCount" = "%@ 次";
 
 // Activity Heatmap
 "heatmap.less" = "少";

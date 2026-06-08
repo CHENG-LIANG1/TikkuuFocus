@@ -830,16 +830,22 @@ struct ActiveJourneyStatsPanel: View, Equatable {
                 CompactStatCard(
                     icon: "location.fill",
                     label: L("label.distanceTraveled"),
-                    value: FormatUtilities.formatDistance(position.distanceTraveled),
-                    detail: virtualMetrics.distanceCardDetail
+                    value: FormatUtilities.formatDistance(position.distanceTraveled)
                 )
 
                 CompactStatCard(
                     icon: "speedometer",
                     label: L("label.currentSpeed"),
-                    value: String(format: "%.1f km/h", currentSpeed),
-                    detail: virtualMetrics.speedCardDetail
+                    value: String(format: "%.1f km/h", currentSpeed)
                 )
+            }
+
+            if !virtualMetrics.cardItems.isEmpty {
+                HStack(spacing: 10) {
+                    ForEach(virtualMetrics.cardItems) { item in
+                        VirtualMetricCompactCard(item: item)
+                    }
+                }
             }
         }
     }
@@ -997,18 +1003,15 @@ struct CompactStatCard: View {
     let icon: String
     let label: String
     let value: String
-    let detail: String?
 
     init(
         icon: String,
         label: String,
-        value: String,
-        detail: String? = nil
+        value: String
     ) {
         self.icon = icon
         self.label = label
         self.value = value
-        self.detail = detail
     }
     
     var body: some View {
@@ -1028,12 +1031,6 @@ struct CompactStatCard: View {
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundColor(valueColor)
                     .lineLimit(1)
-
-                Text(detail ?? " ")
-                    .font(.system(size: 9, weight: .semibold, design: .rounded))
-                    .foregroundColor(valueColor.opacity(detail == nil ? 0 : 0.72))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
             }
             
             Spacer(minLength: 0)
@@ -1068,6 +1065,49 @@ struct CompactStatCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.7)
         }
+    }
+}
+
+private struct VirtualMetricCompactCard: View {
+    let item: VirtualJourneyMetricCardItem
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: item.icon)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+
+                Text(item.value)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .padding(.vertical, 9)
+        .padding(.horizontal, 10)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+            }
+        )
     }
 }
 

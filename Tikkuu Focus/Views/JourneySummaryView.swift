@@ -311,7 +311,6 @@ struct JourneySummaryView: View {
                     icon: "location.fill",
                     title: L("journey.summary.distance"),
                     value: FormatUtilities.formatDistance(displayDistance),
-                    subtitle: virtualMetrics.distanceCardDetail,
                     gradient: LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
             }
@@ -330,9 +329,21 @@ struct JourneySummaryView: View {
                     icon: "speedometer",
                     title: L("journey.summary.avgSpeed"),
                     value: FormatUtilities.formatSpeed(actualDuration > 0 ? displayDistance / actualDuration : 0),
-                    subtitle: virtualMetrics.speedCardDetail,
                     gradient: LinearGradient(colors: [Color.yellow, Color.orange], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
+            }
+
+            if !virtualMetrics.cardItems.isEmpty {
+                HStack(spacing: 12) {
+                    ForEach(virtualMetrics.cardItems) { item in
+                        MetricCell(
+                            icon: item.icon,
+                            title: item.title,
+                            value: item.value,
+                            gradient: virtualMetricGradient(for: item)
+                        )
+                    }
+                }
             }
         }
     }
@@ -344,6 +355,26 @@ struct JourneySummaryView: View {
             return nil
         }
         return data
+    }
+
+    private func virtualMetricGradient(for item: VirtualJourneyMetricCardItem) -> LinearGradient {
+        let colors: [Color]
+        switch item.id {
+        case "steps":
+            colors = [Color.green, Color.mint]
+        case "calories":
+            colors = [Color.red, Color.orange]
+        case "fuelLiters":
+            colors = [Color.teal, Color.cyan]
+        case "fuelPrice":
+            colors = [Color.yellow, Color.orange]
+        case "fallCount":
+            colors = [Color.pink, Color.purple]
+        default:
+            colors = [Color.blue, Color.cyan]
+        }
+
+        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
     private var poiHighlights: some View {
