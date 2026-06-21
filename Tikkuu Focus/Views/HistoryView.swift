@@ -1861,7 +1861,7 @@ struct TransportModeDetailView: View {
                     .padding(.vertical, 20)
                 }
             }
-            .navigationTitle(mode.capitalized)
+            .navigationTitle(localizedTransportMode(mode))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -1882,6 +1882,15 @@ struct TransportModeDetailView: View {
         case "driving": return "car.fill"
         case "skateboard": return "figure.skateboarding"
         default: return "figure.walk"
+        }
+    }
+
+    private func localizedTransportMode(_ mode: String) -> String {
+        switch mode.lowercased() {
+        case "walking": return L("transport.walking")
+        case "cycling": return L("transport.cycling")
+        case "driving": return L("transport.driving")
+        default: return mode.capitalized
         }
     }
 }

@@ -13,6 +13,8 @@ struct FocusTimerActivityAttributes: ActivityAttributes {
         var endTime: Date
         var totalSeconds: Int
         var transportSymbolName: String
+        var startLocationName: String
+        var destinationName: String
     }
 
     var sessionID: String

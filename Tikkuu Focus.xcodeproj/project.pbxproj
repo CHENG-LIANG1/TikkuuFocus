@@ -383,7 +383,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = "Tikkuu Focus Live Activity/Tikkuu Focus Live Activity.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = AJD7NPWNRX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Tikkuu Focus Live Activity/Info.plist";
@@ -412,7 +412,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = "Tikkuu Focus Live Activity/Tikkuu Focus Live Activity.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = AJD7NPWNRX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Tikkuu Focus Live Activity/Info.plist";

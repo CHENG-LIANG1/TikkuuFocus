@@ -31,6 +31,8 @@
 "journey.stop.message" = "你的进度将保存到历史记录。";
 "journey.completed.duration" = "时长：%@";
 "journey.completed.pois" = "发现了 %d 个兴趣点";
+"notification.journeyComplete.title" = "漫游完成！";
+"notification.journeyComplete.body" = "%1$@ %2$@ 已完成";
 "journey.viewSummary" = "查看总结";
 "journey.viewSummary" = "查看总结";
 "journey.summary.complete" = "旅程完成";
@@ -151,10 +153,12 @@
 "settings.theme.neumorphism.dark.subtitle" = "亮度更低，层次更深";
 "settings.theme.neumorphism.light" = "浅色";
 "settings.theme.neumorphism.light.subtitle" = "更明亮的蓝灰色调，对比更柔和";
+"settings.preferences" = "偏好设置";
 "settings.language" = "语言";
 "settings.focus" = "专注";
 "settings.language.system" = "跟随系统";
 "settings.support" = "支持";
+"settings.supportAbout" = "支持与关于";
 "settings.contact" = "联系与支持";
 "settings.privacy" = "隐私政策";
 "privacy.error.title" = "页面加载失败";
@@ -163,9 +167,12 @@
 "settings.onboarding" = "新手引导";
 "settings.about.app" = "关于 Roam Focus";
 "settings.tutorial" = "查看教程";
+"settings.acknowledgements" = "致谢名单";
 "settings.version" = "版本";
-"settings.looseMode" = "宽松模式";
-"settings.looseMode.subtitle" = "开启后，进入后台或锁屏时不会自动暂停专注，只有你手动暂停才会停止。";
+"settings.strictMode" = "严格模式";
+"settings.strictMode.subtitle" = "后台或锁屏时自动暂停专注";
+"settings.hapticFeedback" = "触感反馈";
+"settings.hapticFeedback.subtitle" = "操作时的振动反馈";
 "settings.avatar.title" = "头像";
 "settings.avatar.configure" = "头像设置";
 "settings.avatar.configure.subtitle" = "自定义交通方式头像";
@@ -241,6 +248,21 @@
 "about.feature.history.desc" = "通过详细的统计数据和洞察追踪你的专注记录。";
 "about.version" = "版本 1.3.2";
 "about.version.full" = "版本 %@";
+
+// Acknowledgements
+"acknowledgements.hero.title" = "社区共创";
+"acknowledgements.hero.subtitle" = "Roam Focus 的每一次变好，都来自真实使用中的提醒。";
+"acknowledgements.note.title" = "特别感谢";
+"acknowledgements.note.body" = "谢谢你们为 Roam Focus 提出的建议。你们指出的细节、体验里的卡点和新的想法，让这个应用一点点变得更顺手、更清楚，也更值得长期使用。";
+"acknowledgements.platform.xiaohongshu" = "小红书";
+"acknowledgements.platform.xiaoheihe" = "小黑盒";
+"acknowledgements.names.xiaohongshu" = "Zestor, 有有";
+"acknowledgements.names.xiaoheihe" = "Sekai";
+"acknowledgements.platform.xiaohongshu.desc" = "来自日常使用和体验反馈";
+"acknowledgements.platform.xiaoheihe.desc" = "来自功能建议和细节提醒";
+"acknowledgements.closing.title" = "继续把想法告诉我";
+"acknowledgements.closing.body" = "如果你也有想法，欢迎继续反馈。Roam Focus 会把这些真实使用中的提醒认真记下来，慢慢做进之后的版本里。";
+"acknowledgements.closing.button" = "打开我的小红书主页";
 
 // Onboarding
 "onboarding.skip" = "跳过";

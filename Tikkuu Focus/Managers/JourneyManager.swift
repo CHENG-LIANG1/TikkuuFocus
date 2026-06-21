@@ -97,7 +97,8 @@ class JourneyManager: ObservableObject {
                      transportMode: TransportMode, 
                      duration: TimeInterval,
                      isPresetCity: Bool = false,
-                     presetLocation: PresetLocation? = nil) async {
+                     presetLocation: PresetLocation? = nil,
+                     startLocationName: String? = nil) async {
         let request = JourneyPreparationRequest(
             requestedStart: location,
             transportMode: transportMode,
@@ -109,12 +110,13 @@ class JourneyManager: ObservableObject {
         resetJourneyRuntimeState()
 
         if let preparedPlan = consumePreparedJourneyPlan(matching: request) {
-            activateJourney(
+            await activateJourney(
                 start: preparedPlan.resolvedStart,
                 destination: preparedPlan.destination,
                 route: preparedPlan.route,
                 duration: duration,
-                transportMode: transportMode
+                transportMode: transportMode,
+                startLocationName: startLocationName
             )
             return
         }
@@ -139,12 +141,13 @@ class JourneyManager: ObservableObject {
                 transportMode: transportMode
             )
             
-            activateJourney(
+            await activateJourney(
                 start: resolvedStart,
                 destination: destination,
                 route: route,
                 duration: duration,
-                transportMode: transportMode
+                transportMode: transportMode,
+                startLocationName: startLocationName
             )
             
         } catch {
@@ -526,7 +529,9 @@ class JourneyManager: ObservableObject {
             totalDistance: session.totalDistance,
             duration: session.duration,
             transportMode: session.transportMode,
-            startTime: session.startTime.addingTimeInterval(pauseDuration)
+            startTime: session.startTime.addingTimeInterval(pauseDuration),
+            startLocationName: session.startLocationName,
+            destinationName: session.destinationName
         )
         
         state = .active(newSession)
@@ -564,14 +569,20 @@ class JourneyManager: ObservableObject {
         destination: CLLocationCoordinate2D,
         route: RouteResult,
         duration: TimeInterval,
-        transportMode: TransportMode
-    ) {
+        transportMode: TransportMode,
+        startLocationName: String?
+    ) async {
         let targetDistance = max(transportMode.speedMps * duration, 1)
         let safeRoute = sanitizeRouteResult(
             route,
             start: start,
             destination: destination,
             targetDistance: targetDistance
+        )
+        let locationNames = await resolveJourneyLocationNames(
+            start: start,
+            destination: destination,
+            providedStartLocationName: startLocationName
         )
 
         let session = JourneySession(
@@ -582,17 +593,126 @@ class JourneyManager: ObservableObject {
             totalDistance: safeRoute.distance,
             duration: duration,
             transportMode: transportMode,
-            startTime: Date()
+            startTime: Date(),
+            startLocationName: locationNames.start,
+            destinationName: locationNames.destination
         )
 
         state = .active(session)
         startTimer()
         liveActivityManager.start(session: session)
+        NotificationManager.shared.requestAuthorization()
 
         // Run start-area POI cache in background to avoid delaying journey start.
         Task(priority: .utility) {
             await self.recordStartLocationPOIs(at: start)
         }
+    }
+
+    private func resolveJourneyLocationNames(
+        start: CLLocationCoordinate2D,
+        destination: CLLocationCoordinate2D,
+        providedStartLocationName: String?
+    ) async -> (start: String, destination: String) {
+        async let startName = resolveLocationName(
+            for: start,
+            providedName: providedStartLocationName,
+            fallback: L("location.current")
+        )
+        async let destinationName = resolveLocationName(
+            for: destination,
+            providedName: nil,
+            fallback: L("label.destination")
+        )
+
+        return await (startName, destinationName)
+    }
+
+    private func resolveLocationName(
+        for coordinate: CLLocationCoordinate2D,
+        providedName: String?,
+        fallback: String
+    ) async -> String {
+        if let providedName = usableLocationName(providedName) {
+            return providedName
+        }
+
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        guard let placemark = try? await CLGeocoder().reverseGeocodeLocation(location).first,
+              let geocodedName = Self.locationDisplayName(from: placemark) else {
+            return fallback
+        }
+
+        return geocodedName
+    }
+
+    private func usableLocationName(_ value: String?) -> String? {
+        guard let value else { return nil }
+
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let genericNames = [
+            L("location.current"),
+            L("label.destination"),
+            "Current Location",
+            "Destination",
+            "当前位置",
+            "目的地"
+        ]
+
+        guard !genericNames.contains(trimmed) else { return nil }
+        return trimmed
+    }
+
+    private static func locationDisplayName(from placemark: CLPlacemark) -> String? {
+        let primary = firstPlacemarkComponent([
+            placemark.areasOfInterest?.first,
+            placemark.name,
+            placemark.thoroughfare,
+            placemark.subLocality,
+            placemark.locality,
+            placemark.administrativeArea,
+            placemark.country
+        ])
+
+        guard let primary else { return nil }
+
+        let secondary = firstPlacemarkComponent([
+            placemark.subLocality,
+            placemark.locality,
+            placemark.administrativeArea,
+            placemark.country
+        ]) { candidate in
+            candidate != primary && !primary.contains(candidate)
+        }
+
+        if let secondary, primary.count <= 24 {
+            return "\(primary), \(secondary)"
+        }
+
+        return primary
+    }
+
+    private static func firstPlacemarkComponent(
+        _ candidates: [String?],
+        where predicate: (String) -> Bool = { _ in true }
+    ) -> String? {
+        for value in candidates {
+            guard let value else { continue }
+
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty,
+                  trimmed != "+",
+                  trimmed.localizedCaseInsensitiveCompare("Unnamed Road") != .orderedSame,
+                  predicate(trimmed) else {
+                continue
+            }
+
+            return trimmed
+        }
+
+        return nil
     }
 
     private func consumePreparedJourneyPlan(
@@ -717,6 +837,10 @@ class JourneyManager: ObservableObject {
         pausedAt = nil
         shouldAutoResumeWhenActive = false
         state = .completed(session)
+        NotificationManager.shared.notifyJourneyCompleted(
+            duration: session.duration,
+            transportMode: session.transportMode
+        )
     }
     
     // MARK: - Timer Management
@@ -778,8 +902,8 @@ class JourneyManager: ObservableObject {
     }
 
     private func handleDidEnterBackground() {
-        // Automatically pause active countdown unless loose mode keeps focus running.
-        guard !AppSettings.shared.isLooseModeEnabled else { return }
+        // Strict mode pauses the active countdown when the app is backgrounded or locked.
+        guard AppSettings.shared.isStrictModeEnabled else { return }
         if case .active = state {
             pauseJourney(autoPaused: true)
         }

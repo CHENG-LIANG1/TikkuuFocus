@@ -43,7 +43,7 @@ struct ActiveJourneyView: View {
             // Overlay UI
             VStack(spacing: 0) {
                 topOverlay
-                    .padding(.top, 60)
+                    .padding(.top, 44)
                 
                 Spacer()
 
@@ -627,8 +627,11 @@ struct ActiveJourneyView: View {
             referenceDuration: actualDuration
         )
         
-        // Find nearest POI to current position as destination
-        let destinationName = getNearestPOIName(to: position.coordinate) ?? L("label.destination")
+        let startLocationName = session.startLocationName.isEmpty
+            ? getLocationName(for: session.startLocation)
+            : session.startLocationName
+        let destinationName = getNearestPOIName(to: position.coordinate)
+            ?? (session.destinationName.isEmpty ? L("label.destination") : session.destinationName)
         
         // Create journey record
         let record = JourneyRecord(
@@ -637,7 +640,7 @@ struct ActiveJourneyView: View {
             duration: actualDuration,
             plannedDuration: session.duration,
             transportMode: session.transportMode.rawValue,
-            startLocationName: getLocationName(for: session.startLocation),
+            startLocationName: startLocationName,
             startLatitude: session.startLocation.latitude,
             startLongitude: session.startLocation.longitude,
             destinationName: destinationName,
@@ -729,8 +732,11 @@ struct ActiveJourneyView: View {
             referenceDuration: session.duration
         )
         
-        // Use destination location or nearest POI
-        let destinationName = getNearestPOIName(to: session.destinationLocation) ?? L("label.destination")
+        let startLocationName = session.startLocationName.isEmpty
+            ? getLocationName(for: session.startLocation)
+            : session.startLocationName
+        let destinationName = getNearestPOIName(to: session.destinationLocation)
+            ?? (session.destinationName.isEmpty ? L("label.destination") : session.destinationName)
         
         let record = JourneyRecord(
             startTime: session.startTime,
@@ -738,7 +744,7 @@ struct ActiveJourneyView: View {
             duration: actualDuration,
             plannedDuration: session.duration,
             transportMode: session.transportMode.rawValue,
-            startLocationName: getLocationName(for: session.startLocation),
+            startLocationName: startLocationName,
             startLatitude: session.startLocation.latitude,
             startLongitude: session.startLocation.longitude,
             destinationName: destinationName,
@@ -843,7 +849,11 @@ struct ActiveJourneyStatsPanel: View, Equatable {
             if !virtualMetrics.cardItems.isEmpty {
                 HStack(spacing: 10) {
                     ForEach(virtualMetrics.cardItems) { item in
-                        VirtualMetricCompactCard(item: item)
+                        CompactStatCard(
+                            icon: item.icon,
+                            label: item.title,
+                            value: item.value
+                        )
                     }
                 }
             }
@@ -1065,49 +1075,6 @@ struct CompactStatCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.7)
         }
-    }
-}
-
-private struct VirtualMetricCompactCard: View {
-    let item: VirtualJourneyMetricCardItem
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: item.icon)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(LiquidGlassStyle.primaryGradient)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-
-                Text(item.value)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, minHeight: 48)
-        .padding(.vertical, 9)
-        .padding(.horizontal, 10)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
-
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
-            }
-        )
     }
 }
 

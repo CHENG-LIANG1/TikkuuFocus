@@ -10,7 +10,6 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var records: [JourneyRecord]
     @ObservedObject private var settings = AppSettings.shared
@@ -21,6 +20,7 @@ struct SettingsView: View {
     @State private var showClearDataStep2 = false
     @State private var showClearDataSuccess = false
     @State private var showAvatarSettings = false
+    @State private var showAcknowledgements = false
     
     var body: some View {
         NavigationStack {
@@ -30,86 +30,34 @@ struct SettingsView: View {
                 
                 // Content
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        // Language Section
+                    VStack(spacing: 34) {
+                        // Preferences Section
                         modernSection(
-                            icon: "globe",
-                            title: L("settings.language"),
-                            gradient: LinearGradient(
-                                colors: [Color.blue, Color.purple],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                            title: L("settings.preferences"),
+                            tint: Color(red: 0.38, green: 0.57, blue: 0.96)
                         ) {
-                            languageOptions
+                            preferencesOptions
                         }
 
+                        // Support & About Section
                         modernSection(
-                            icon: "pause.circle.fill",
-                            title: L("settings.focus"),
-                            gradient: LinearGradient(
-                                colors: [Color.teal, Color.green],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                            title: L("settings.supportAbout"),
+                            tint: Color(red: 0.62, green: 0.46, blue: 0.94)
                         ) {
-                            focusOptions
-                        }
-
-                        modernSection(
-                            icon: "person.crop.circle",
-                            title: L("settings.avatar.title"),
-                            gradient: LinearGradient(
-                                colors: [Color.purple, Color.blue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        ) {
-                            avatarOptions
+                            supportAndAboutOptions
                         }
 
                         // Data Management Section
                         modernSection(
-                            icon: "externaldrive.fill.badge.person.crop",
                             title: L("settings.data"),
-                            gradient: LinearGradient(
-                                colors: [Color.orange, Color.red],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                            tint: Color(red: 0.93, green: 0.39, blue: 0.42)
                         ) {
                             dataManagementOptions
                         }
-                        
-                        // Support Section
-                        modernSection(
-                            icon: "heart.fill",
-                            title: L("settings.support"),
-                            gradient: LinearGradient(
-                                colors: [Color.red, Color.orange],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        ) {
-                            supportOptions
-                        }
-                        
-                        // About Section
-                        modernSection(
-                            icon: "info.circle.fill",
-                            title: L("settings.about"),
-                            gradient: LinearGradient(
-                                colors: [Color.green, Color.teal],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        ) {
-                            aboutOptions
-                        }
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-                    .padding(.bottom, 40)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 28)
+                    .padding(.bottom, 56)
                 }
             }
             .navigationTitle(L("settings.title"))
@@ -152,6 +100,9 @@ struct SettingsView: View {
         .sheet(isPresented: $showAvatarSettings) {
             TransportAvatarSettingsView()
         }
+        .sheet(isPresented: $showAcknowledgements) {
+            AcknowledgementsView()
+        }
         .alert(L("settings.data.clear.confirm1.title"), isPresented: $showClearDataStep1) {
             Button(L("common.cancel"), role: .cancel) {}
             Button(L("settings.data.clear.confirm1.action"), role: .destructive) {
@@ -180,128 +131,99 @@ struct SettingsView: View {
     // MARK: - Modern Section
     
     private func modernSection<Content: View>(
-        icon: String,
         title: String,
-        gradient: LinearGradient,
+        tint: Color,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(gradient.opacity(0.2))
-                        .frame(width: 40, height: 40)
-                    
-                    Image(systemName: icon)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(gradient)
-                }
-                
-                Text(title)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.primary)
-            }
-            
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title.uppercased())
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .tracking(0.6)
+                .foregroundStyle(tint.opacity(0.92))
+                .padding(.leading, 18)
+
             VStack(spacing: 0) {
                 content()
             }
+            .padding(8)
+            .background(sectionBackground(tint: tint))
         }
-        .padding(20)
-        .background(sectionBackground)
     }
 
-    @ViewBuilder
-    private var sectionBackground: some View {
+    private func sectionBackground(tint: Color) -> some View {
         Color.clear
-            .glassCard(cornerRadius: 20)
+            .glassCard(cornerRadius: 30, tintColor: tint)
+            .overlay {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.18), Color.white.opacity(0.03)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.7
+                    )
+            }
     }
     
-    // MARK: - Language Options
+    // MARK: - Preferences Options
 
-    private var appearanceOptions: some View {
-        EmptyView()
-    }
+    private var preferencesOptions: some View {
+        VStack(spacing: 0) {
+            LanguagePickerRow()
+            SettingsRowDivider()
 
-    private var themeOptions: some View {
-        EmptyView()
-    }
-
-    private var avatarOptions: some View {
-        VStack(spacing: 12) {
             ModernActionRow(
                 title: L("settings.avatar.configure"),
                 subtitle: L("settings.avatar.configure.subtitle"),
                 icon: "person.crop.circle.fill",
+                tint: .purple,
                 showChevron: true
             ) {
                 HapticManager.light()
                 showAvatarSettings = true
             }
-        }
-    }
+            SettingsRowDivider()
 
-    private var focusOptions: some View {
-        VStack(spacing: 12) {
             ModernToggleRow(
-                title: L("settings.looseMode"),
-                subtitle: L("settings.looseMode.subtitle"),
-                icon: "pause.circle.fill",
-                isOn: $settings.isLooseModeEnabled
+                title: L("settings.strictMode"),
+                subtitle: L("settings.strictMode.subtitle"),
+                icon: "lock.circle.fill",
+                tint: .orange,
+                isOn: $settings.isStrictModeEnabled
+            )
+            SettingsRowDivider()
+
+            ModernToggleRow(
+                title: L("settings.hapticFeedback"),
+                subtitle: L("settings.hapticFeedback.subtitle"),
+                icon: "waveform",
+                tint: .pink,
+                isOn: $settings.isHapticFeedbackEnabled
             )
         }
     }
 
-    private var languageOptions: some View {
-        VStack(spacing: 12) {
-            ModernOptionRow(
-                title: L("settings.language.system"),
-                isSelected: settings.selectedLanguage == "system"
-            ) {
-                HapticManager.selection()
-                if settings.selectedLanguage != "system" {
-                    settings.selectedLanguage = "system"
-                }
-            }
-            
-            ModernOptionRow(
-                title: "English",
-                isSelected: settings.selectedLanguage == "en"
-            ) {
-                HapticManager.selection()
-                if settings.selectedLanguage != "en" {
-                    settings.selectedLanguage = "en"
-                }
-            }
-            
-            ModernOptionRow(
-                title: "简体中文",
-                isSelected: settings.selectedLanguage == "zh-Hans"
-            ) {
-                HapticManager.selection()
-                if settings.selectedLanguage != "zh-Hans" {
-                    settings.selectedLanguage = "zh-Hans"
-                }
-            }
-        }
-    }
-    
-    // MARK: - Support Options
-    
-    private var supportOptions: some View {
-        VStack(spacing: 12) {
+    // MARK: - Support & About Options
+
+    private var supportAndAboutOptions: some View {
+        VStack(spacing: 0) {
             ModernActionRow(
                 title: L("settings.tutorial"),
                 icon: "book.fill",
+                tint: .blue,
                 showChevron: true
             ) {
                 HapticManager.light()
                 showOnboarding = true
             }
-            
+            SettingsRowDivider()
+
             ModernActionRow(
                 title: L("settings.contact"),
                 subtitle: "madfool@icloud.com",
                 icon: "envelope.fill",
+                tint: .green,
                 showChevron: true
             ) {
                 HapticManager.light()
@@ -309,49 +231,59 @@ struct SettingsView: View {
                     UIApplication.shared.open(url)
                 }
             }
-            
+            SettingsRowDivider()
+
             ModernActionRow(
                 title: L("settings.privacy"),
                 icon: "hand.raised.fill",
+                tint: .indigo,
                 showChevron: true
             ) {
                 HapticManager.light()
                 showPrivacyPolicy = true
             }
-        }
-    }
-    
-    // MARK: - About Options
-    
-    private var aboutOptions: some View {
-        VStack(spacing: 12) {
+            SettingsRowDivider()
+
             ModernActionRow(
                 title: L("settings.about.app"),
                 icon: "info.circle.fill",
+                tint: .teal,
                 showChevron: true
             ) {
                 HapticManager.light()
                 showAbout = true
             }
-            
+            SettingsRowDivider()
+
+            ModernActionRow(
+                title: L("settings.acknowledgements"),
+                icon: "heart.text.square.fill",
+                tint: .pink,
+                showChevron: true
+            ) {
+                HapticManager.light()
+                showAcknowledgements = true
+            }
+            SettingsRowDivider()
+
             ModernActionRow(
                 title: L("settings.version"),
                 subtitle: AppInfo.version,
-                icon: "doc.text.fill"
-            ) {
-                // No action
-            }
+                icon: "doc.text.fill",
+                tint: .gray
+            ) {}
         }
     }
 
     // MARK: - Data Management Options
 
     private var dataManagementOptions: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
             ModernActionRow(
                 title: L("settings.data.clear"),
                 subtitle: L("settings.data.clear.subtitle"),
                 icon: "trash.fill",
+                tint: .red,
                 showChevron: true
             ) {
                 HapticManager.light()
@@ -392,169 +324,196 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Modern Option Row
+// MARK: - Settings Icon
 
-struct ModernOptionRow: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @ObservedObject private var settings = AppSettings.shared
-    let title: String
-    var subtitle: String? = nil
-    var icon: String? = nil
-    let isSelected: Bool
-    let action: () -> Void
+/// Colored rounded-square icon container (Grow / iOS Settings style).
+struct SettingsIcon: View {
+    let systemName: String
+    let tint: Color
 
-    private var selectedTextColor: Color {
-        false ? Color(red: 0.20, green: 0.24, blue: 0.34) : .white
-    }
-    
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                if let icon = icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(isSelected ? selectedTextColor : .secondary)
-                        .frame(width: 24)
-                }
-                
-                Text(title)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(isSelected ? selectedTextColor : .primary)
-
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(isSelected ? selectedTextColor.opacity(0.82) : .secondary)
-                        .lineLimit(1)
-                }
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.green, Color.teal],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [tint.opacity(0.26), tint.opacity(0.12)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: 36, height: 36)
+            .overlay {
+                Image(systemName: systemName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(tint)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(optionRowBackground)
-        }
-        .buttonStyle(ScaleButtonStyle())
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(tint.opacity(0.20), lineWidth: 0.8)
+            }
     }
+}
 
-    @ViewBuilder
-    private var optionRowBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.clear)
-            .insetSurface(cornerRadius: 20, isActive: isSelected)
+struct SettingsRowDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.02),
+                        Color.white.opacity(0.10),
+                        Color.white.opacity(0.02)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .frame(height: 1)
+            .padding(.horizontal, 18)
     }
 }
 
 // MARK: - Modern Action Row
 
 struct ModernActionRow: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @ObservedObject private var settings = AppSettings.shared
     let title: String
     var subtitle: String? = nil
     var icon: String
+    var tint: Color = .green
     var showChevron: Bool = false
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(GradientStyles.primaryGradient)
-                    .frame(width: 24)
-                
-                VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 16) {
+                SettingsIcon(systemName: icon, tint: tint)
+
+                VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.primary)
-                    
+
                     if let subtitle = subtitle {
                         Text(subtitle)
                             .font(.system(size: 13, weight: .regular))
                             .foregroundColor(.secondary)
+                            .lineSpacing(2)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 if showChevron {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color.secondary.opacity(0.65))
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.05))
+                        )
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(actionRowBackground)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 17)
+            .contentShape(Rectangle())
         }
         .buttonStyle(ScaleButtonStyle())
-    }
-
-    @ViewBuilder
-    private var actionRowBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.clear)
-            .insetSurface(cornerRadius: 20, isActive: false)
     }
 }
 
 // MARK: - Modern Toggle Row
 
 struct ModernToggleRow: View {
-    @Environment(\.colorScheme) private var colorScheme
     let title: String
     var subtitle: String? = nil
     let icon: String
+    var tint: Color = .green
     @Binding var isOn: Bool
-    
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(GradientStyles.primaryGradient)
-                .frame(width: 24)
-            
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(spacing: 16) {
+            SettingsIcon(systemName: icon, tint: tint)
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.primary)
-                
+
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.system(size: 13, weight: .regular))
                         .foregroundColor(.secondary)
+                        .lineSpacing(2)
                 }
             }
-            
+
             Spacer()
-            
+
             Toggle("", isOn: $isOn)
                 .labelsHidden()
                 .tint(Color.green)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(toggleRowBackground)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 17)
     }
-    
-    @ViewBuilder
-    private var toggleRowBackground: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.clear)
-            .insetSurface(cornerRadius: 20, isActive: false)
+}
+
+// MARK: - Language Picker Row
+
+struct LanguagePickerRow: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    private var displayName: String {
+        switch settings.selectedLanguage {
+        case "en": return "English"
+        case "zh-Hans": return "简体中文"
+        default: return L("settings.language.system")
+        }
+    }
+
+    var body: some View {
+        Menu {
+            Button(L("settings.language.system")) {
+                HapticManager.selection()
+                settings.selectedLanguage = "system"
+            }
+            Button("English") {
+                HapticManager.selection()
+                settings.selectedLanguage = "en"
+            }
+            Button("简体中文") {
+                HapticManager.selection()
+                settings.selectedLanguage = "zh-Hans"
+            }
+        } label: {
+            HStack(spacing: 16) {
+                SettingsIcon(systemName: "globe", tint: .blue)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("settings.language"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text(L("settings.language.system"))
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
+
+                Spacer()
+
+                Text(displayName)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.secondary.opacity(0.6))
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 17)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 

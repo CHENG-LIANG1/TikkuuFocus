@@ -1071,7 +1071,7 @@ struct TikkuuFocusLiveActivity: Widget {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(context.state.isPaused ? "已暂停" : "专注进行中")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        Text(context.state.isPaused ? "点击灵动岛返回并继续" : "保持专注，旅程正在推进")
+                        Text(routeText(for: context.state))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -1151,6 +1151,12 @@ struct TikkuuFocusLiveActivity: Widget {
                             progress: progress(for: context.state),
                             tint: context.state.isPaused ? .orange : .blue
                         )
+
+                        Text(routeText(for: context.state))
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .padding(.horizontal, 14)
                 }
@@ -1247,6 +1253,20 @@ struct TikkuuFocusLiveActivity: Widget {
 
     private func expandedMessage(for state: FocusTimerActivityAttributes.ContentState) -> String {
         state.isPaused ? "点击返回继续旅程" : "保持节奏，旅程推进中"
+    }
+
+    private func routeText(for state: FocusTimerActivityAttributes.ContentState) -> String {
+        "\(displayStartName(for: state)) -> \(displayDestinationName(for: state))"
+    }
+
+    private func displayStartName(for state: FocusTimerActivityAttributes.ContentState) -> String {
+        let trimmed = state.startLocationName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "当前位置" : trimmed
+    }
+
+    private func displayDestinationName(for state: FocusTimerActivityAttributes.ContentState) -> String {
+        let trimmed = state.destinationName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "目的地" : trimmed
     }
 
     private func timeString(from seconds: Int) -> String {

@@ -32,6 +32,7 @@ enum HapticManager {
     }
 
     private static func ensureReady() -> Bool {
+        guard AppSettings.shared.isHapticFeedbackEnabled else { return false }
         if !isWarmedUp {
             warmUp()
             return false

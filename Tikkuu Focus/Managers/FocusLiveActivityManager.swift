@@ -21,12 +21,11 @@ final class FocusLiveActivityManager {
             await endCurrent(dismissalPolicy: .immediate)
 
             let remaining = max(Int(ceil(session.endTime.timeIntervalSinceNow)), 0)
-            let state = FocusTimerActivityAttributes.ContentState(
+            let state = makeContentState(
+                for: session,
                 remainingSeconds: remaining,
                 isPaused: false,
-                endTime: session.endTime,
-                totalSeconds: max(Int(ceil(session.duration)), 1),
-                transportSymbolName: session.transportMode.iconName
+                endTime: session.endTime
             )
             let attributes = FocusTimerActivityAttributes(sessionID: session.id.uuidString)
             let content = ActivityContent(state: state, staleDate: session.endTime.addingTimeInterval(60))
@@ -44,12 +43,11 @@ final class FocusLiveActivityManager {
 
         Task {
             let remaining = max(Int(ceil(remainingTime)), 0)
-            let state = FocusTimerActivityAttributes.ContentState(
+            let state = makeContentState(
+                for: session,
                 remainingSeconds: remaining,
                 isPaused: true,
-                endTime: Date().addingTimeInterval(remainingTime),
-                totalSeconds: max(Int(ceil(session.duration)), 1),
-                transportSymbolName: session.transportMode.iconName
+                endTime: Date().addingTimeInterval(remainingTime)
             )
             await activity.update(ActivityContent(state: state, staleDate: nil))
         }
@@ -63,12 +61,11 @@ final class FocusLiveActivityManager {
 
         Task {
             let remaining = max(Int(ceil(session.endTime.timeIntervalSinceNow)), 0)
-            let state = FocusTimerActivityAttributes.ContentState(
+            let state = makeContentState(
+                for: session,
                 remainingSeconds: remaining,
                 isPaused: false,
-                endTime: session.endTime,
-                totalSeconds: max(Int(ceil(session.duration)), 1),
-                transportSymbolName: session.transportMode.iconName
+                endTime: session.endTime
             )
             await activity.update(ActivityContent(state: state, staleDate: session.endTime.addingTimeInterval(60)))
         }
@@ -101,5 +98,22 @@ final class FocusLiveActivityManager {
         }
         currentActivity = activity
         return activity
+    }
+
+    private func makeContentState(
+        for session: JourneySession,
+        remainingSeconds: Int,
+        isPaused: Bool,
+        endTime: Date
+    ) -> FocusTimerActivityAttributes.ContentState {
+        FocusTimerActivityAttributes.ContentState(
+            remainingSeconds: remainingSeconds,
+            isPaused: isPaused,
+            endTime: endTime,
+            totalSeconds: max(Int(ceil(session.duration)), 1),
+            transportSymbolName: session.transportMode.iconName,
+            startLocationName: session.startLocationName,
+            destinationName: session.destinationName
+        )
     }
 }

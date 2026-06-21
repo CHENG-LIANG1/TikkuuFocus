@@ -996,6 +996,7 @@ struct SetupView: View {
 
         let startCoordinate: CLLocationCoordinate2D
         let isPresetCity: Bool
+        let startLocationName: String?
         var presetLocation: PresetLocation? = nil
         
         // Determine start coordinate based on selected location
@@ -1008,15 +1009,18 @@ struct SetupView: View {
             }
             startCoordinate = location
             isPresetCity = false
+            startLocationName = locationManager.currentLocationName.isEmpty ? nil : locationManager.currentLocationName
             
         case .preset(let location):
             startCoordinate = location.coordinate
             isPresetCity = true
             presetLocation = location
+            startLocationName = location.localizedName
             
-        case .custom(let coordinate, _):
+        case .custom(let coordinate, let name):
             startCoordinate = coordinate
             isPresetCity = false
+            startLocationName = name
         }
         
         isStarting = true
@@ -1027,7 +1031,8 @@ struct SetupView: View {
                 transportMode: selectedTransport,
                 duration: TimeInterval(selectedDuration * 60),
                 isPresetCity: isPresetCity,
-                presetLocation: presetLocation
+                presetLocation: presetLocation,
+                startLocationName: startLocationName
             )
             
             // Check if journey started successfully

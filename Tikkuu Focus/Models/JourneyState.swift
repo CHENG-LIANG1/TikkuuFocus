@@ -48,6 +48,8 @@ struct JourneySession: Equatable, Identifiable {
     let duration: TimeInterval // in seconds
     let transportMode: TransportMode
     let startTime: Date
+    let startLocationName: String
+    let destinationName: String
 
     // Precomputed route distances for fast interpolation during timer updates.
     private let cumulativeRouteDistances: [Double]
@@ -61,7 +63,9 @@ struct JourneySession: Equatable, Identifiable {
         totalDistance: Double,
         duration: TimeInterval,
         transportMode: TransportMode,
-        startTime: Date
+        startTime: Date,
+        startLocationName: String = "",
+        destinationName: String = ""
     ) {
         self.id = id
         self.startLocation = startLocation
@@ -75,6 +79,8 @@ struct JourneySession: Equatable, Identifiable {
         self.duration = duration
         self.transportMode = transportMode
         self.startTime = startTime
+        self.startLocationName = startLocationName
+        self.destinationName = destinationName
 
         let cumulative = JourneySession.buildCumulativeRouteDistances(self.route)
         self.cumulativeRouteDistances = cumulative

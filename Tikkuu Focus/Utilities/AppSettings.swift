@@ -132,10 +132,17 @@ class AppSettings: ObservableObject {
         }
     }
 
-    @Published var isLooseModeEnabled: Bool {
+    @Published var isStrictModeEnabled: Bool {
         didSet {
-            guard isLooseModeEnabled != oldValue else { return }
-            UserDefaults.standard.set(isLooseModeEnabled, forKey: "isLooseModeEnabled")
+            guard isStrictModeEnabled != oldValue else { return }
+            UserDefaults.standard.set(isStrictModeEnabled, forKey: "isStrictModeEnabled")
+        }
+    }
+
+    @Published var isHapticFeedbackEnabled: Bool {
+        didSet {
+            guard isHapticFeedbackEnabled != oldValue else { return }
+            UserDefaults.standard.set(isHapticFeedbackEnabled, forKey: "isHapticFeedbackEnabled")
         }
     }
     
@@ -150,7 +157,9 @@ class AppSettings: ObservableObject {
         self.preferredTransportMode = TransportMode(rawValue: storedTransport) ?? .cycling
         let storedDuration = UserDefaults.standard.integer(forKey: "preferredDuration")
         self.preferredDuration = storedDuration == 0 ? 25 : min(max(storedDuration, 5), 240)
-        self.isLooseModeEnabled = UserDefaults.standard.bool(forKey: "isLooseModeEnabled")
+        self.isStrictModeEnabled = UserDefaults.standard.bool(forKey: "isStrictModeEnabled")
+        let storedHaptic = UserDefaults.standard.object(forKey: "isHapticFeedbackEnabled")
+        self.isHapticFeedbackEnabled = storedHaptic == nil ? true : UserDefaults.standard.bool(forKey: "isHapticFeedbackEnabled")
 
         syncWidgetPreferences()
     }

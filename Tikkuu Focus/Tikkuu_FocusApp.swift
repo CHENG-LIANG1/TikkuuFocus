@@ -8,12 +8,25 @@
 import SwiftUI
 import SwiftData
 import Foundation
+import UIKit
+
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Must register the notification-center delegate before launch completes.
+        NotificationManager.shared.configure()
+        return true
+    }
+}
 
 @main
 struct Tikkuu_FocusApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings = AppSettings.shared
     private let modelContainer: ModelContainer
-    
+
     init() {
         self.modelContainer = Self.makeModelContainer()
     }
