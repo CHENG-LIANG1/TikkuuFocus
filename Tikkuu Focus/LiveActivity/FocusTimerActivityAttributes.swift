@@ -12,6 +12,7 @@ struct FocusTimerActivityAttributes: ActivityAttributes {
         var isPaused: Bool
         var endTime: Date
         var totalSeconds: Int
+        var progress: Double
         var transportSymbolName: String
         var startLocationName: String
         var destinationName: String

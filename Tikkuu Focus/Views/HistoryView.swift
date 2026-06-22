@@ -87,6 +87,7 @@ struct HistoryView: View {
         let averageSpeed: Double
         let fastestSpeed: Double
         let heatmapData: [Date: Int]
+        let heatmapDurationData: [Date: TimeInterval]
         let uniqueLocationsCount: Int
         let longestStreak: Int
         let estimatedSteps: Int
@@ -150,6 +151,7 @@ struct HistoryView: View {
         var speedSampleCount = 0
         var fastestSpeed: Double = 0
         var heatmapData: [Date: Int] = [:]
+        var heatmapDurationData: [Date: TimeInterval] = [:]
         var uniqueLocationNames: Set<String> = []
         var activeDays: Set<Date> = []
         var walkingDistance: Double = 0
@@ -206,6 +208,7 @@ struct HistoryView: View {
 
             let day = calendar.startOfDay(for: record.startTime)
             heatmapData[day, default: 0] += 1
+            heatmapDurationData[day, default: 0] += record.duration
             activeDays.insert(day)
 
             // Time-of-day bucketing
@@ -283,6 +286,7 @@ struct HistoryView: View {
             averageSpeed: averageSpeed,
             fastestSpeed: fastestSpeed,
             heatmapData: heatmapData,
+            heatmapDurationData: heatmapDurationData,
             uniqueLocationsCount: uniqueLocationsCount,
             longestStreak: longestStreak,
             estimatedSteps: estimatedSteps,
@@ -559,6 +563,9 @@ struct HistoryView: View {
     
     private var overviewContent: some View {
         VStack(spacing: 16) {
+            // Activity heatmap (shown first)
+            JourneyHeatmapSection(data: heatmapDurationData)
+
             // Summary cards
             HStack(spacing: 12) {
                 Button {
@@ -1103,6 +1110,10 @@ struct HistoryView: View {
     
     private var heatmapData: [Date: Int] {
         cachedStats?.heatmapData ?? [:]
+    }
+
+    private var heatmapDurationData: [Date: TimeInterval] {
+        cachedStats?.heatmapDurationData ?? [:]
     }
     
     private var estimatedSteps: Int {

@@ -161,7 +161,7 @@
 "settings.language.system" = "System Default";
 "settings.support" = "Support";
 "settings.supportAbout" = "Support & About";
-"settings.contact" = "Contact & Support";
+"settings.contact" = "Contact Us";
 "settings.privacy" = "Privacy Policy";
 "privacy.error.title" = "Failed to load page";
 "privacy.error.retry" = "Retry";
@@ -256,10 +256,10 @@
 "acknowledgements.hero.subtitle" = "Every improvement in Roam Focus starts with real feedback from people using it.";
 "acknowledgements.note.title" = "Special Thanks";
 "acknowledgements.note.body" = "Thank you for sharing suggestions for Roam Focus. The details you noticed, the rough edges you called out, and the ideas you offered help make the app clearer, smoother, and more worth returning to.";
-"acknowledgements.platform.xiaohongshu" = "小红书";
-"acknowledgements.platform.xiaoheihe" = "小黑盒";
-"acknowledgements.names.xiaohongshu" = "Zestor, 有有";
-"acknowledgements.names.xiaoheihe" = "Sekai";
+"acknowledgements.love.title" = "For You";
+"acknowledgements.love.subtitle" = "My First User: ";
+"acknowledgements.platform.xiaohongshu" = "Red Note Accounts: ";
+"acknowledgements.platform.xiaoheihe" = "HeyBox Accounts: ";
 "acknowledgements.platform.xiaohongshu.desc" = "Everyday usage notes and experience feedback";
 "acknowledgements.platform.xiaoheihe.desc" = "Feature suggestions and detail checks";
 "acknowledgements.closing.title" = "Keep the ideas coming";
@@ -981,3 +981,11 @@
 "onboarding.btn.allowlocation" = "Allow Location";
 "onboarding.btn.opensettings" = "Open Settings";
 "onboarding.btn.begin" = "Start First Roam";
+
+// Journey Heatmap
+"heatmap.period.week" = "Week";
+"heatmap.period.month" = "Month";
+"heatmap.period.year" = "Year";
+"heatmap.thisWeek" = "This Week";
+"heatmap.activeDays" = "Active Days";
+"heatmap.noActivity" = "No activity";

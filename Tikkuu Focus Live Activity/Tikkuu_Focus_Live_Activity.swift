@@ -1207,6 +1207,10 @@ struct TikkuuFocusLiveActivity: Widget {
     }
 
     private func progress(for state: FocusTimerActivityAttributes.ContentState) -> Double {
+        if state.progress.isFinite {
+            return min(max(state.progress, 0), 1)
+        }
+
         let total = max(Double(state.totalSeconds), 1)
         let remaining: Double
 

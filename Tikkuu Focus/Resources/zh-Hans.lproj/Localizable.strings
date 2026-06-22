@@ -159,7 +159,7 @@
 "settings.language.system" = "跟随系统";
 "settings.support" = "支持";
 "settings.supportAbout" = "支持与关于";
-"settings.contact" = "联系与支持";
+"settings.contact" = "联系我们";
 "settings.privacy" = "隐私政策";
 "privacy.error.title" = "页面加载失败";
 "privacy.error.retry" = "重试";
@@ -254,10 +254,10 @@
 "acknowledgements.hero.subtitle" = "Roam Focus 的每一次变好，都来自真实使用中的提醒。";
 "acknowledgements.note.title" = "特别感谢";
 "acknowledgements.note.body" = "谢谢你们为 Roam Focus 提出的建议。你们指出的细节、体验里的卡点和新的想法，让这个应用一点点变得更顺手、更清楚，也更值得长期使用。";
-"acknowledgements.platform.xiaohongshu" = "小红书";
-"acknowledgements.platform.xiaoheihe" = "小黑盒";
-"acknowledgements.names.xiaohongshu" = "Zestor, 有有";
-"acknowledgements.names.xiaoheihe" = "Sekai";
+"acknowledgements.love.title" = "献给你";
+"acknowledgements.love.subtitle" = "感谢我的第一个用户";
+"acknowledgements.platform.xiaohongshu" = "小红书致谢名单:";
+"acknowledgements.platform.xiaoheihe" = "小黑盒致谢名单:";
 "acknowledgements.platform.xiaohongshu.desc" = "来自日常使用和体验反馈";
 "acknowledgements.platform.xiaoheihe.desc" = "来自功能建议和细节提醒";
 "acknowledgements.closing.title" = "继续把想法告诉我";
@@ -1003,3 +1003,11 @@
 "onboarding.btn.allowlocation" = "允许定位";
 "onboarding.btn.opensettings" = "打开设置";
 "onboarding.btn.begin" = "开始第一次漫游";
+
+// Journey Heatmap
+"heatmap.period.week" = "周";
+"heatmap.period.month" = "月";
+"heatmap.period.year" = "年";
+"heatmap.thisWeek" = "本周";
+"heatmap.activeDays" = "活跃天数";
+"heatmap.noActivity" = "无记录";

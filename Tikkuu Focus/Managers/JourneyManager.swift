@@ -871,6 +871,7 @@ class JourneyManager: ObservableObject {
         
         let position = session.currentPosition()
         currentPosition = position
+        liveActivityManager.update(session: session, position: position)
         
         // Check if journey is complete
         if position.remainingTime <= 0 {

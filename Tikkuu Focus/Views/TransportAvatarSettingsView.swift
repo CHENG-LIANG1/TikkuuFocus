@@ -48,6 +48,7 @@ struct TransportAvatarSettingsView: View {
         }
         .preferredColorScheme(AppSettings.shared.currentColorScheme)
         .onAppear {
+            createSettingsRecordIfNeeded()
             ensureEnabledStateConsistency()
         }
         .onChange(of: pickerItem) { _, newValue in
@@ -179,7 +180,7 @@ struct TransportAvatarSettingsView: View {
             .padding(20)
             .glassCard(cornerRadius: 20)
         }
-        .disabled(currentSettings == nil || isLoading)
+        .disabled(isLoading)
     }
 
     private var previewSubtitle: String {

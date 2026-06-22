@@ -11,6 +11,7 @@ struct AcknowledgementsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @ObservedObject private var settings = AppSettings.shared
+    @State private var isSpecialThanksExpanded = false
 
     private let xiaohongshuProfileURL = "https://www.xiaohongshu.com/user/profile/592cc6f56a6a6952cc7181d6?xsec_token=YBJ4MSYCgzvY8_vTPOlJJK71dmYXtJktTeY330ZPyl5x0=&xsec_source=app_share&xhsshare=CopyLink&shareRedId=Nz80Q0Y7Sj48SDtDP0E1OElGQDg8Nko_&apptime=1775933888&share_id=3bab167e879d4963a9c37aa7e011e60c"
 
@@ -23,7 +24,7 @@ struct AcknowledgementsView: View {
                     VStack(spacing: 20) {
                         header
 
-                        noteCard
+                        specialThanksCard
 
                         platformList
 
@@ -56,7 +57,7 @@ struct AcknowledgementsView: View {
                     HeaderIcon(imageName: "XiaohongshuIcon", size: 58, cornerRadius: 16, fullBleed: true)
                         .rotationEffect(.degrees(-7))
 
-                    HeaderIcon(imageName: "AppLogo", size: 72, padding: 0, cornerRadius: 16)
+                    HeaderIcon(imageName: "AppLogo", size: 72, padding: 0, cornerRadius: 16, fullBleed: true)
                         .zIndex(1)
 
                     HeaderIcon(imageName: "XiaoheiheIcon", cornerRadius: 16)
@@ -111,6 +112,102 @@ struct AcknowledgementsView: View {
         }
     }
 
+    private var specialThanksCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 10) {
+                Text(L("acknowledgements.love.title"))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.66))
+                    .textCase(.uppercase)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 1.0, green: 0.46, blue: 0.58),
+                                    Color(red: 1.0, green: 0.22, blue: 0.38)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+
+                    Image(systemName: isSpecialThanksExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.42))
+                        .contentTransition(.symbolEffect(.replace))
+                }
+            }
+
+            Text(L("acknowledgements.love.subtitle"))
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .foregroundColor(.white.opacity(0.92))
+                .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if isSpecialThanksExpanded {
+                HStack(spacing: 8) {
+                    ForEach(["Deadpan", "Tikkuu", "竹子"], id: \.self) { name in
+                        VStack(spacing: 7) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color(red: 1.0, green: 0.34, blue: 0.48).opacity(0.92))
+
+                            Text(name)
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.92))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.78)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 6)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.07))
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.11), lineWidth: 0.8)
+                        }
+                    }
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .padding(17)
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .onTapGesture {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                isSpecialThanksExpanded.toggle()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            Color.clear
+                .glassCard(cornerRadius: 24, tintColor: Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.10))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.18),
+                            Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.18),
+                            Color.white.opacity(0.06)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.8
+                )
+        }
+    }
+
     private var platformList: some View {
         VStack(spacing: 12) {
             AcknowledgementPlatformCard(
@@ -125,7 +222,7 @@ struct AcknowledgementsView: View {
             AcknowledgementPlatformCard(
                 imageName: "XiaoheiheIcon",
                 platform:L("acknowledgements.platform.xiaoheihe"),
-                names: ["Sekai"],
+                names: ["Sekai", "米子哈qwq", "ikuyooo", "CasperMoller", "Crbon666", "左转直飞NX", "DoubleTian", "双蛋烤冷面"],
                 description: L("acknowledgements.platform.xiaoheihe.desc"),
                 accent: Color(red: 0.74, green: 0.80, blue: 0.88)
             )

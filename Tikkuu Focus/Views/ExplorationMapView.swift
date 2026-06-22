@@ -243,6 +243,10 @@ struct ExplorationMapView: View {
                         showRecenterButton = true
                     }
                 }
+            } else if showRecenterButton {
+                withAnimation(AnimationConfig.quickSpring) {
+                    showRecenterButton = false
+                }
             }
         }
         .onAppear {
@@ -430,12 +434,12 @@ struct ExplorationMapView: View {
 
         withAnimation(AnimationConfig.smoothSpring) {
             showRecenterButton = false
-            cameraPosition = .region(MKCoordinateRegion(
-                center: position,
-                latitudinalMeters: zoom,
-                longitudinalMeters: zoom
-            ))
         }
+        setCamera(
+            center: position,
+            zoom: zoom,
+            animation: PerformanceConfig.enableMapCameraAnimations ? AnimationConfig.smoothSpring : nil
+        )
     }
 
     private func setCamera(center: CLLocationCoordinate2D, zoom: Double, animation: Animation?) {
@@ -463,8 +467,9 @@ struct ExplorationMapView: View {
             update()
         }
 
-        // Release the guard shortly after the camera update settles.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        // Release the guard after the map has emitted its programmatic camera-change callbacks.
+        let releaseDelay = max(0.6, cameraAnimationDuration + 0.25)
+        DispatchQueue.main.asyncAfter(deadline: .now() + releaseDelay) {
             guard cameraGuardToken == guardToken else { return }
             isProgrammaticCameraChange = false
         }

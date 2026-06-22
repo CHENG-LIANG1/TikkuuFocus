@@ -245,17 +245,6 @@ struct SettingsView: View {
             SettingsRowDivider()
 
             ModernActionRow(
-                title: L("settings.about.app"),
-                icon: "info.circle.fill",
-                tint: .teal,
-                showChevron: true
-            ) {
-                HapticManager.light()
-                showAbout = true
-            }
-            SettingsRowDivider()
-
-            ModernActionRow(
                 title: L("settings.acknowledgements"),
                 icon: "heart.text.square.fill",
                 tint: .pink,
@@ -267,11 +256,14 @@ struct SettingsView: View {
             SettingsRowDivider()
 
             ModernActionRow(
-                title: L("settings.version"),
-                subtitle: AppInfo.version,
-                icon: "doc.text.fill",
-                tint: .gray
-            ) {}
+                title: L("settings.about.app"),
+                icon: "info.circle.fill",
+                tint: .teal,
+                showChevron: true
+            ) {
+                HapticManager.light()
+                showAbout = true
+            }
         }
     }
 

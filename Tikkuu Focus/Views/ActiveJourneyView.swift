@@ -23,6 +23,7 @@ struct ActiveJourneyView: View {
     @State private var showHistory = false
     @State private var showCustomStopDialog = false
     @State private var currentSpeed: Double = 0.0
+    @State private var isStatsExpanded = true
     @StateObject private var weatherManager = WeatherManager()
     private let weatherRefreshTimer = Timer.publish(every: 600, on: .main, in: .common).autoconnect()
     
@@ -43,19 +44,19 @@ struct ActiveJourneyView: View {
             // Overlay UI
             VStack(spacing: 0) {
                 topOverlay
-                    .padding(.top, 44)
+                    .padding(.top, 30)
                 
                 Spacer()
 
                 // Bottom stats panel
                 VStack(spacing: 12) {
                     controlsPanel
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 20)
                     
                     statsPanel
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 6)
                 }
-                .padding(.bottom, 32)
+                .padding(.bottom, -2)
             }
         }
         .preferredColorScheme(settings.currentColorScheme)
@@ -82,7 +83,6 @@ struct ActiveJourneyView: View {
     
     private var topOverlay: some View {
         unifiedTopPill
-            .padding(.top, 8)
     }
     
     private var isJourneyActive: Bool {
@@ -344,20 +344,22 @@ struct ActiveJourneyView: View {
                 ActiveJourneyStatsPanel(
                     position: position,
                     currentSpeed: currentSpeed,
-                    session: session
+                    session: session,
+                    isExpanded: isStatsExpanded,
+                    onToggleExpanded: toggleStatsPanel
                 )
                     .equatable()
-                    .padding(20)
+                    .padding(isStatsExpanded ? 16 : 14)
                     .background(
                         ZStack {
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            RoundedRectangle(cornerRadius: 34, style: .continuous)
                                 .fill(.ultraThinMaterial)
                             
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .fill(Color.black.opacity(colorScheme == .dark ? 0.35 : 0.1))
+                            RoundedRectangle(cornerRadius: 34, style: .continuous)
+                                .fill(Color.black.opacity(colorScheme == .dark ? 0.18 : 0.035))
                             
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.4), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 34, style: .continuous)
+                                .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.2 : 0.45), lineWidth: 1)
                         }
                     )
                     .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
@@ -391,6 +393,13 @@ struct ActiveJourneyView: View {
                 )
                 .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
             }
+        }
+    }
+
+    private func toggleStatsPanel() {
+        HapticManager.light()
+        withAnimation(AnimationConfig.smoothSpring) {
+            isStatsExpanded.toggle()
         }
     }
     
@@ -448,10 +457,10 @@ struct ActiveJourneyView: View {
                     .fill(.ultraThinMaterial)
                 
                 Capsule()
-                    .fill(Color.black.opacity(colorScheme == .dark ? 0.4 : 0.1))
+                    .fill(Color.black.opacity(colorScheme == .dark ? 0.24 : 0.055))
                 
                 Capsule()
-                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.15 : 0.4), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.18 : 0.45), lineWidth: 1)
             }
         )
         .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
@@ -790,74 +799,147 @@ struct ActiveJourneyStatsPanel: View, Equatable {
     let position: VirtualPosition
     let currentSpeed: Double
     let session: JourneySession
+    let isExpanded: Bool
+    let onToggleExpanded: () -> Void
 
     static func == (lhs: ActiveJourneyStatsPanel, rhs: ActiveJourneyStatsPanel) -> Bool {
         lhs.position == rhs.position &&
         lhs.currentSpeed == rhs.currentSpeed &&
-        lhs.session == rhs.session
+        lhs.session == rhs.session &&
+        lhs.isExpanded == rhs.isExpanded
     }
 
     var body: some View {
-        VStack(spacing: 12) {
-            HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L("label.timeRemaining"))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary)
-
-                    Text(FormatUtilities.formatTimeDigital(position.remainingTime))
-                        .font(.system(size: 48, weight: .semibold, design: .rounded))
-                        .foregroundStyle(LiquidGlassStyle.primaryGradient)
-                }
-
-                Spacer()
-
-                ZStack {
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 4)
-                        .frame(width: 44, height: 44)
-
-                    Circle()
-                        .trim(from: 0, to: position.progress)
-                        .stroke(
-                            LiquidGlassStyle.primaryGradient,
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .frame(width: 44, height: 44)
-                        .rotationEffect(.degrees(-90))
-
-                    Text(FormatUtilities.formatProgress(position.progress))
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primary)
-                }
+        VStack(spacing: isExpanded ? 9 : 8) {
+            if isExpanded {
+                expandedHeader
+            } else {
+                collapsedHeader
             }
 
-            HStack(spacing: 10) {
-                CompactStatCard(
-                    icon: "location.fill",
-                    label: L("label.distanceTraveled"),
-                    value: FormatUtilities.formatDistance(position.distanceTraveled)
-                )
+            linearProgressBar
 
-                CompactStatCard(
-                    icon: "speedometer",
-                    label: L("label.currentSpeed"),
-                    value: String(format: "%.1f km/h", currentSpeed)
-                )
+            if isExpanded {
+                expandedStatCards
             }
+        }
+    }
 
-            if !virtualMetrics.cardItems.isEmpty {
-                HStack(spacing: 10) {
-                    ForEach(virtualMetrics.cardItems) { item in
-                        CompactStatCard(
-                            icon: item.icon,
-                            label: item.title,
-                            value: item.value
-                        )
-                    }
+    @ViewBuilder
+    private var expandedStatCards: some View {
+        let cards = compactCardItems
+
+        if cards.count <= 4 {
+            HStack(spacing: 7) {
+                ForEach(cards) { item in
+                    CompactStatCard(
+                        icon: item.icon,
+                        label: item.label,
+                        value: item.value
+                    )
+                }
+            }
+        } else {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                spacing: 8
+            ) {
+                ForEach(cards) { item in
+                    CompactStatCard(
+                        icon: item.icon,
+                        label: item.label,
+                        value: item.value
+                    )
                 }
             }
         }
+    }
+
+    private var expandedHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L("label.timeRemaining"))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+
+                Text(FormatUtilities.formatTimeDigital(position.remainingTime))
+                    .font(.system(size: 40, weight: .semibold, design: .rounded))
+                    .foregroundStyle(LiquidGlassStyle.primaryGradient)
+            }
+
+            Spacer()
+
+            ZStack {
+                Circle()
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 3.5)
+                    .frame(width: 38, height: 38)
+
+                Circle()
+                    .trim(from: 0, to: position.progress)
+                    .stroke(
+                        LiquidGlassStyle.primaryGradient,
+                        style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+                    )
+                    .frame(width: 38, height: 38)
+                    .rotationEffect(.degrees(-90))
+
+                Text(FormatUtilities.formatProgress(position.progress))
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+
+            toggleButton
+        }
+    }
+
+    private var collapsedHeader: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(FormatUtilities.formatTimeDigital(position.remainingTime))
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .foregroundStyle(LiquidGlassStyle.primaryGradient)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Spacer(minLength: 12)
+
+            toggleButton
+        }
+    }
+
+    private var toggleButton: some View {
+        Button(action: onToggleExpanded) {
+            Image(systemName: isExpanded ? "chevron.down" : "chevron.up")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.primary.opacity(0.78))
+                .frame(width: 28, height: 28)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                )
+                .overlay {
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.8)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isExpanded ? Text(L("common.collapse")) : Text(L("common.expand")))
+    }
+
+    private var linearProgressBar: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.gray.opacity(0.22))
+                Capsule()
+                    .fill(LiquidGlassStyle.primaryGradient)
+                    .frame(width: max(proxy.size.width * min(max(position.progress, 0), 1), position.progress > 0 ? 6 : 0))
+            }
+        }
+        .frame(height: isExpanded ? 6 : 8)
     }
 
     private var elapsedDuration: TimeInterval {
@@ -872,6 +954,34 @@ struct ActiveJourneyStatsPanel: View, Equatable {
             sessionID: session.id
         )
     }
+
+    private var compactCardItems: [ActiveJourneyStatCardItem] {
+        [
+            ActiveJourneyStatCardItem(
+                icon: "location.fill",
+                label: L("label.distanceTraveled"),
+                value: FormatUtilities.formatDistance(position.distanceTraveled)
+            ),
+            ActiveJourneyStatCardItem(
+                icon: "speedometer",
+                label: L("label.currentSpeed"),
+                value: String(format: "%.1f km/h", currentSpeed)
+            )
+        ] + virtualMetrics.cardItems.map {
+            ActiveJourneyStatCardItem(
+                icon: $0.icon,
+                label: $0.title,
+                value: $0.value
+            )
+        }
+    }
+}
+
+private struct ActiveJourneyStatCardItem: Identifiable {
+    let id = UUID()
+    let icon: String
+    let label: String
+    let value: String
 }
 
 private struct CompletedJourneyStatsPanel: View {
@@ -1025,29 +1135,31 @@ struct CompactStatCard: View {
     }
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(iconColor)
-                .frame(width: 20)
+                .frame(width: 15)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 8, weight: .medium))
                     .foregroundColor(labelColor)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 
                 Text(value)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(valueColor)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 7)
         .background(backgroundView)
     }
     
@@ -1070,10 +1182,10 @@ struct CompactStatCard: View {
                 .fill(.ultraThinMaterial)
             
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.05))
+                .fill(Color.white.opacity(0.03))
             
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.7)
+                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.7)
         }
     }
 }

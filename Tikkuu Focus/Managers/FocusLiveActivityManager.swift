@@ -71,6 +71,22 @@ final class FocusLiveActivityManager {
         }
     }
 
+    func update(session: JourneySession, position: VirtualPosition) {
+        guard let activity = resolveActivity(for: session) else { return }
+
+        Task {
+            let remaining = max(Int(ceil(position.remainingTime)), 0)
+            let state = makeContentState(
+                for: session,
+                remainingSeconds: remaining,
+                isPaused: false,
+                endTime: session.endTime,
+                progress: position.progress
+            )
+            await activity.update(ActivityContent(state: state, staleDate: session.endTime.addingTimeInterval(60)))
+        }
+    }
+
     func endCurrent(dismissalPolicy: ActivityUIDismissalPolicy = .immediate) async {
         let activities = Activity<FocusTimerActivityAttributes>.activities
         if activities.isEmpty {
@@ -104,13 +120,19 @@ final class FocusLiveActivityManager {
         for session: JourneySession,
         remainingSeconds: Int,
         isPaused: Bool,
-        endTime: Date
+        endTime: Date,
+        progress explicitProgress: Double? = nil
     ) -> FocusTimerActivityAttributes.ContentState {
-        FocusTimerActivityAttributes.ContentState(
+        let totalSeconds = max(Int(ceil(session.duration)), 1)
+        let fallbackProgress = 1 - Double(max(remainingSeconds, 0)) / Double(totalSeconds)
+        let progress = min(max(explicitProgress ?? fallbackProgress, 0), 1)
+
+        return FocusTimerActivityAttributes.ContentState(
             remainingSeconds: remainingSeconds,
             isPaused: isPaused,
             endTime: endTime,
-            totalSeconds: max(Int(ceil(session.duration)), 1),
+            totalSeconds: totalSeconds,
+            progress: progress,
             transportSymbolName: session.transportMode.iconName,
             startLocationName: session.startLocationName,
             destinationName: session.destinationName
