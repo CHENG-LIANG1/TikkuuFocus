@@ -98,7 +98,6 @@ struct HistoryView: View {
         let afternoonJourneys: Int
         let eveningJourneys: Int
         let nightJourneys: Int
-        let weeklyActivity: [(day: String, count: Int)]
     }
     
     private var recordsChangeToken: Int {
@@ -161,7 +160,6 @@ struct HistoryView: View {
         var afternoonCount = 0
         var eveningCount = 0
         var nightCount = 0
-        var weekdayCounts: [Int: Int] = [:]
         let calendar = Calendar.current
 
         for record in records {
@@ -223,10 +221,6 @@ struct HistoryView: View {
                 nightCount += 1
             }
 
-            // Weekday bucketing
-            let weekday = calendar.component(.weekday, from: record.startTime)
-            weekdayCounts[weekday, default: 0] += 1
-
             let modeLower = record.transportMode.lowercased()
             if modeLower == "walking" {
                 walkingDistance += record.distanceTraveled
@@ -265,13 +259,6 @@ struct HistoryView: View {
         let estimatedSteps = Int(walkingDistance * 1.3)
         let co2Saved = (nonDrivingDistance / 1000.0) * 0.12
 
-        // Build weekly activity from weekday counts
-        let weekdaySymbols = calendar.shortWeekdaySymbols
-        let weeklyActivity: [(day: String, count: Int)] = (1...7).map { weekday in
-            let label = weekdaySymbols[weekday - 1]
-            return (day: label, count: weekdayCounts[weekday, default: 0])
-        }
-
         cachedStats = CachedHistoryStats(
             totalTime: totalTime,
             totalDistance: totalDistance,
@@ -296,8 +283,7 @@ struct HistoryView: View {
             morningJourneys: morningCount,
             afternoonJourneys: afternoonCount,
             eveningJourneys: eveningCount,
-            nightJourneys: nightCount,
-            weeklyActivity: weeklyActivity
+            nightJourneys: nightCount
         )
     }
 
@@ -903,19 +889,6 @@ struct HistoryView: View {
             .padding(20)
             .glassCard(cornerRadius: 24)
             
-            // Weekly activity
-            if !weeklyActivity.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(L("history.stats.weeklyActivity"))
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    WeeklyActivityChart(data: weeklyActivity)
-                }
-                .padding(20)
-                .glassCard(cornerRadius: 24)
-            }
-            
             // Milestones
             VStack(alignment: .leading, spacing: 12) {
                 Text(L("history.stats.milestones"))
@@ -1096,10 +1069,6 @@ struct HistoryView: View {
     
     private var nightJourneys: Int {
         cachedStats?.nightJourneys ?? 0
-    }
-    
-    private var weeklyActivity: [(day: String, count: Int)] {
-        cachedStats?.weeklyActivity ?? []
     }
     
     private var totalActiveDays: Int {
@@ -2478,57 +2447,6 @@ struct TimeDistributionRow: View {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
-    }
-}
-
-// MARK: - Weekly Activity Chart
-
-struct WeeklyActivityChart: View {
-    let data: [(day: String, count: Int)]
-    
-    private var maxCount: Int {
-        data.map { $0.count }.max() ?? 1
-    }
-    
-    private func weekdayLabel(for day: String) -> String {
-        // For Chinese: "周日" -> "日", "周一" -> "一"
-        if day.hasPrefix("周") {
-            return String(day.suffix(1))
-        }
-        // For English: "Sunday" -> "S", "Monday" -> "M"
-        return String(day.prefix(1))
-    }
-    
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            ForEach(data, id: \.day) { item in
-                VStack(spacing: 6) {
-                    ZStack(alignment: .bottom) {
-                        // Background bar
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.1))
-                            .frame(height: 80)
-                        
-                        // Actual bar
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.blue, Color.purple],
-                                    startPoint: .bottom,
-                                    endPoint: .top
-                                )
-                            )
-                            .frame(height: maxCount > 0 ? CGFloat(item.count) / CGFloat(maxCount) * 80 : 0)
-                    }
-                    
-                    Text(weekdayLabel(for: item.day))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .frame(height: 110)
     }
 }
 

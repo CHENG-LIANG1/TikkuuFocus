@@ -113,91 +113,99 @@ struct AcknowledgementsView: View {
     }
 
     private var specialThanksCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 10) {
-                Text(L("acknowledgements.love.title"))
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.66))
-                    .textCase(.uppercase)
+        let heartGradient = LinearGradient(
+            colors: [
+                Color(red: 1.0, green: 0.50, blue: 0.62),
+                Color(red: 1.0, green: 0.22, blue: 0.40)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(heartGradient)
+                    .frame(width: 36, height: 36)
+                    .background {
+                        Circle()
+                            .fill(Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.16))
+                    }
+                    .overlay {
+                        Circle()
+                            .strokeBorder(Color(red: 1.0, green: 0.40, blue: 0.54).opacity(0.28), lineWidth: 0.8)
+                    }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L("acknowledgements.love.title"))
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 1.0, green: 0.58, blue: 0.68).opacity(0.92))
+                        .textCase(.uppercase)
+                        .tracking(1.4)
+
+                    Text(L("acknowledgements.love.subtitle"))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.94))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 8) {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.46, blue: 0.58),
-                                    Color(red: 1.0, green: 0.22, blue: 0.38)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-
-                    Image(systemName: isSpecialThanksExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.42))
-                        .contentTransition(.symbolEffect(.replace))
-                }
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white.opacity(0.44))
+                    .rotationEffect(.degrees(isSpecialThanksExpanded ? 180 : 0))
             }
 
-            Text(L("acknowledgements.love.subtitle"))
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundColor(.white.opacity(0.92))
-                .lineSpacing(5)
-                .fixedSize(horizontal: false, vertical: true)
-
             if isSpecialThanksExpanded {
-                HStack(spacing: 8) {
+                VStack(spacing: 9) {
                     ForEach(["Deadpan", "Tikkuu", "竹子"], id: \.self) { name in
-                        VStack(spacing: 7) {
+                        HStack(spacing: 11) {
                             Image(systemName: "heart.fill")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(Color(red: 1.0, green: 0.34, blue: 0.48).opacity(0.92))
+                                .foregroundStyle(heartGradient)
 
                             Text(name)
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundColor(.white.opacity(0.92))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.78)
+                                .foregroundColor(.white.opacity(0.94))
+
+                            Spacer(minLength: 0)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
                         .background {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.07))
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.10))
                         }
                         .overlay {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.11), lineWidth: 0.8)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(Color(red: 1.0, green: 0.42, blue: 0.56).opacity(0.20), lineWidth: 0.8)
                         }
                     }
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .padding(17)
+        .padding(18)
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onTapGesture {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
                 isSpecialThanksExpanded.toggle()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             Color.clear
-                .glassCard(cornerRadius: 24, tintColor: Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.10))
+                .glassCard(cornerRadius: 24, tintColor: Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.12))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .strokeBorder(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.18),
-                            Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.18),
+                            Color(red: 1.0, green: 0.46, blue: 0.58).opacity(0.30),
+                            Color(red: 1.0, green: 0.30, blue: 0.46).opacity(0.12),
                             Color.white.opacity(0.06)
                         ],
                         startPoint: .topLeading,
@@ -223,7 +231,6 @@ struct AcknowledgementsView: View {
                 imageName: "XiaoheiheIcon",
                 platform:L("acknowledgements.platform.xiaoheihe"),
                 names: ["Sekai", "米子哈qwq", "ikuyooo", "CasperMoller", "Crbon666", "左转直飞NX", "DoubleTian", "双蛋烤冷面"],
-                description: L("acknowledgements.platform.xiaoheihe.desc"),
                 accent: Color(red: 0.74, green: 0.80, blue: 0.88)
             )
         }
@@ -358,47 +365,71 @@ private struct AcknowledgementPlatformCard: View {
     let imageName: String
     let platform: String
     let names: [String]
-    let description: String
+    var description: String = ""
     let accent: Color
     var iconStyle: PlatformIconStyle = .original
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            platformIcon
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center, spacing: 14) {
+                platformIcon
 
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(platform)
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.94))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(platform)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.94))
+
+                    if !description.isEmpty {
+                        Text(description)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white.opacity(0.56))
+                            .lineLimit(1)
                     }
-
-                    Spacer(minLength: 0)
                 }
 
-                FlowLayout(spacing: 8, rowSpacing: 8) {
-                    ForEach(names, id: \.self) { name in
+                Spacer(minLength: 0)
+
+                Text("\(names.count)")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.82))
+                    .frame(minWidth: 26, minHeight: 26)
+                    .padding(.horizontal, 6)
+                    .background {
+                        Capsule()
+                            .fill(accent.opacity(0.22))
+                    }
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(accent.opacity(0.34), lineWidth: 0.8)
+                    }
+            }
+
+            FlowLayout(spacing: 8, rowSpacing: 8) {
+                ForEach(names, id: \.self) { name in
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(accent.opacity(0.85))
+                            .frame(width: 5, height: 5)
+
                         Text(name)
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.88))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background {
-                                Capsule()
-                                    .fill(accent.opacity(0.18))
-                            }
-                            .overlay {
-                                Capsule()
-                                    .strokeBorder(accent.opacity(0.30), lineWidth: 0.8)
-                        }
+                            .foregroundColor(.white.opacity(0.90))
+                    }
+                    .padding(.leading, 11)
+                    .padding(.trailing, 13)
+                    .padding(.vertical, 7)
+                    .background {
+                        Capsule()
+                            .fill(accent.opacity(0.16))
+                    }
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(accent.opacity(0.28), lineWidth: 0.8)
                     }
                 }
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(16)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             Color.clear
