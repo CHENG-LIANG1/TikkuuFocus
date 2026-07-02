@@ -50,6 +50,13 @@ struct JourneySession: Equatable, Identifiable {
     let startTime: Date
     let startLocationName: String
     let destinationName: String
+    let focusGoal: String
+    let vehicle: Vehicle?
+    let scenicRouteID: String
+    let scenicRouteName: String
+    let scenicRouteTotalDistance: Double
+    let scenicRouteStartProgress: Double
+    let scenicRouteEndProgress: Double
 
     // Precomputed route distances for fast interpolation during timer updates.
     private let cumulativeRouteDistances: [Double]
@@ -65,7 +72,14 @@ struct JourneySession: Equatable, Identifiable {
         transportMode: TransportMode,
         startTime: Date,
         startLocationName: String = "",
-        destinationName: String = ""
+        destinationName: String = "",
+        focusGoal: String = "",
+        vehicle: Vehicle? = nil,
+        scenicRouteID: String = "",
+        scenicRouteName: String = "",
+        scenicRouteTotalDistance: Double = 0,
+        scenicRouteStartProgress: Double = 0,
+        scenicRouteEndProgress: Double = 0
     ) {
         self.id = id
         self.startLocation = startLocation
@@ -81,6 +95,13 @@ struct JourneySession: Equatable, Identifiable {
         self.startTime = startTime
         self.startLocationName = startLocationName
         self.destinationName = destinationName
+        self.focusGoal = focusGoal
+        self.vehicle = vehicle
+        self.scenicRouteID = scenicRouteID
+        self.scenicRouteName = scenicRouteName
+        self.scenicRouteTotalDistance = scenicRouteTotalDistance
+        self.scenicRouteStartProgress = scenicRouteStartProgress
+        self.scenicRouteEndProgress = scenicRouteEndProgress
 
         let cumulative = JourneySession.buildCumulativeRouteDistances(self.route)
         self.cumulativeRouteDistances = cumulative
@@ -89,6 +110,15 @@ struct JourneySession: Equatable, Identifiable {
     
     var endTime: Date {
         startTime.addingTimeInterval(duration)
+    }
+
+    var hasScenicRoute: Bool {
+        !scenicRouteID.isEmpty
+    }
+
+    func scenicRouteProgress(atSessionProgress progress: Double) -> Double {
+        let safeProgress = min(max(progress, 0), 1)
+        return scenicRouteStartProgress + (scenicRouteEndProgress - scenicRouteStartProgress) * safeProgress
     }
     
     /// Calculate current virtual position based on elapsed time
@@ -252,16 +282,21 @@ struct VirtualPosition: Equatable {
 /// Mode-specific virtual metrics shown during and after a journey.
 struct VirtualJourneyMetrics: Equatable {
     let transportMode: TransportMode
+    let energyType: VehicleEnergyType
     let stepCount: Int?
     let calories: Int?
     let fuelLiters: Double?
+    let fuelCost: Double?
+    let energyKwh: Double?
+    let energyCost: Double?
     let fallCount: Int?
 
     init(
         distanceMeters: Double,
         duration: TimeInterval,
         transportMode: TransportMode,
-        sessionID: UUID
+        sessionID: UUID,
+        energyType: VehicleEnergyType = .gasoline
     ) {
         let safeDistance = max(distanceMeters, 0)
         let safeDuration = max(duration, 0)
@@ -269,27 +304,51 @@ struct VirtualJourneyMetrics: Equatable {
         let durationHours = safeDuration / 3600.0
 
         self.transportMode = transportMode
+        self.energyType = energyType
 
         switch transportMode {
         case .walking:
             stepCount = Int((safeDistance * 1.3 * Self.multiplier(sessionID: sessionID, salt: 11)).rounded())
             calories = Int((durationHours * 200 * Self.multiplier(sessionID: sessionID, salt: 12)).rounded())
             fuelLiters = nil
+            fuelCost = nil
+            energyKwh = nil
+            energyCost = nil
             fallCount = nil
         case .cycling:
             stepCount = nil
             calories = Int((durationHours * 400 * Self.multiplier(sessionID: sessionID, salt: 21)).rounded())
             fuelLiters = nil
+            fuelCost = nil
+            energyKwh = nil
+            energyCost = nil
             fallCount = nil
         case .driving:
             stepCount = nil
             calories = nil
-            fuelLiters = distanceKm * 8.0 / 100.0 * Self.multiplier(sessionID: sessionID, salt: 31)
             fallCount = nil
+            if energyType == .electric {
+                // ~15 kWh / 100 km for an EV.
+                let kwh = distanceKm * 15.0 / 100.0 * Self.multiplier(sessionID: sessionID, salt: 51)
+                energyKwh = kwh
+                energyCost = kwh * Self.localizedElectricityUnitPrice().amount
+                fuelLiters = nil
+                fuelCost = nil
+            } else {
+                // ~8 L / 100 km for a gasoline car.
+                let liters = distanceKm * 8.0 / 100.0 * Self.multiplier(sessionID: sessionID, salt: 31)
+                fuelLiters = liters
+                fuelCost = liters * Self.localizedFuelUnitPrice().amount
+                energyKwh = nil
+                energyCost = nil
+            }
         case .skateboard:
             stepCount = nil
             calories = Int((durationHours * 300 * Self.multiplier(sessionID: sessionID, salt: 41)).rounded())
             fuelLiters = nil
+            fuelCost = nil
+            energyKwh = nil
+            energyCost = nil
             let baseFalls = Int(floor(distanceKm / 5.0))
             let randomBonus = safeDistance > 100 ? min(Int(Self.unitRandom(sessionID: sessionID, salt: 42) * 2.0), 1) : 0
             fallCount = max(baseFalls + randomBonus, 0)
@@ -327,20 +386,37 @@ struct VirtualJourneyMetrics: Equatable {
                 ))
             }
         case .driving:
-            if let formattedFuelLitersValue {
+            if energyType == .electric {
+                if let formattedEnergyKwhValue {
+                    items.append(VirtualJourneyMetricCardItem(
+                        id: "energyKwh",
+                        icon: "bolt.fill",
+                        title: L("virtual.metrics.title.energyKwh"),
+                        value: formattedEnergyKwhValue
+                    ))
+                }
                 items.append(VirtualJourneyMetricCardItem(
-                    id: "fuelLiters",
-                    icon: "fuelpump.fill",
-                    title: L("virtual.metrics.title.fuelLiters"),
-                    value: formattedFuelLitersValue
+                    id: "energyCost",
+                    icon: "bolt.car.fill",
+                    title: L("virtual.metrics.title.energyCost"),
+                    value: formattedEnergyCostValue
+                ))
+            } else {
+                if let formattedFuelLitersValue {
+                    items.append(VirtualJourneyMetricCardItem(
+                        id: "fuelLiters",
+                        icon: "fuelpump.fill",
+                        title: L("virtual.metrics.title.fuelLiters"),
+                        value: formattedFuelLitersValue
+                    ))
+                }
+                items.append(VirtualJourneyMetricCardItem(
+                    id: "fuelPrice",
+                    icon: "dollarsign.circle.fill",
+                    title: L("virtual.metrics.title.fuelPrice"),
+                    value: formattedFuelCostValue
                 ))
             }
-            items.append(VirtualJourneyMetricCardItem(
-                id: "fuelPrice",
-                icon: "dollarsign.circle.fill",
-                title: L("virtual.metrics.title.fuelPrice"),
-                value: formattedFuelPriceValue
-            ))
         case .skateboard:
             if let formattedCaloriesValue {
                 items.append(VirtualJourneyMetricCardItem(
@@ -378,8 +454,21 @@ struct VirtualJourneyMetrics: Equatable {
         return String(format: L("virtual.metrics.fuelLiters"), fuelLiters)
     }
 
-    private var formattedFuelPriceValue: String {
-        String(format: L("virtual.metrics.fuelPrice"), Self.localizedFuelPrice())
+    private var formattedFuelCostValue: String {
+        let price = Self.localizedFuelUnitPrice()
+        guard let fuelCost else { return price.formatted }
+        return Self.formattedFuelPriceValue(fuelCost, currencyCode: price.currencyCode, symbol: price.symbol)
+    }
+
+    private var formattedEnergyKwhValue: String? {
+        guard let energyKwh else { return nil }
+        return String(format: L("virtual.metrics.energyKwh"), energyKwh)
+    }
+
+    private var formattedEnergyCostValue: String {
+        let price = Self.localizedElectricityUnitPrice()
+        guard let energyCost else { return price.formatted }
+        return Self.formattedFuelPriceValue(energyCost, currencyCode: price.currencyCode, symbol: price.symbol)
     }
 
     private var formattedFallCountValue: String? {
@@ -391,17 +480,31 @@ struct VirtualJourneyMetrics: Equatable {
         0.92 + unitRandom(sessionID: sessionID, salt: salt) * 0.16
     }
 
-    private static func localizedFuelPrice() -> String {
+    private static func localizedFuelUnitPrice() -> (amount: Double, symbol: String, currencyCode: String, formatted: String) {
+        localizedUnitPrice(baseCNY: 7.8)
+    }
+
+    /// Electricity per-kWh price, ~1.0 CNY/kWh as a baseline.
+    private static func localizedElectricityUnitPrice() -> (amount: Double, symbol: String, currencyCode: String, formatted: String) {
+        localizedUnitPrice(baseCNY: 1.0)
+    }
+
+    private static func localizedUnitPrice(baseCNY: Double) -> (amount: Double, symbol: String, currencyCode: String, formatted: String) {
         let locale = Locale.autoupdatingCurrent
         let regionCode = locale.region?.identifier.uppercased()
         let currencyCode = locale.currency?.identifier.uppercased()
         let canUseLocaleCurrency = currencyCode != nil && currencySymbol(for: currencyCode) != nil
         let rate = canUseLocaleCurrency ? cnyExchangeRate(forCurrency: currencyCode, regionCode: regionCode) : 1.0
         let symbol = canUseLocaleCurrency ? (currencySymbol(for: currencyCode) ?? locale.currencySymbol ?? "¥") : "¥"
-        let displayCurrencyCode = canUseLocaleCurrency ? currencyCode : "CNY"
-        let convertedPrice = 7.8 * rate
+        let displayCurrencyCode = (canUseLocaleCurrency ? currencyCode : "CNY") ?? "CNY"
+        let convertedPrice = baseCNY * rate
 
-        return "\(symbol)\(formattedFuelPriceValue(convertedPrice, currencyCode: displayCurrencyCode))"
+        return (
+            amount: convertedPrice,
+            symbol: symbol,
+            currencyCode: displayCurrencyCode,
+            formatted: formattedFuelPriceValue(convertedPrice, currencyCode: displayCurrencyCode, symbol: symbol)
+        )
     }
 
     private static func currencySymbol(for currencyCode: String?) -> String? {
@@ -475,12 +578,12 @@ struct VirtualJourneyMetrics: Equatable {
         }
     }
 
-    private static func formattedFuelPriceValue(_ price: Double, currencyCode: String?) -> String {
+    private static func formattedFuelPriceValue(_ price: Double, currencyCode: String?, symbol: String = "") -> String {
         switch currencyCode {
         case "JPY", "KRW":
-            return String(format: "%.0f", price)
+            return "\(symbol)\(String(format: "%.0f", price))"
         default:
-            return String(format: "%.1f", price)
+            return "\(symbol)\(String(format: "%.1f", price))"
         }
     }
 

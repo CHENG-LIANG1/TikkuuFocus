@@ -72,6 +72,19 @@ struct HistoryView: View {
         let count: Int
         let distance: Double
     }
+
+    private struct FocusGoalAggregate {
+        let goal: String
+        let count: Int
+        let totalTime: TimeInterval
+    }
+
+    private struct ScenicRouteAggregate {
+        let name: String
+        let count: Int
+        let distance: Double
+        let progress: Double
+    }
     
     private struct CachedHistoryStats {
         let totalTime: TimeInterval
@@ -80,6 +93,8 @@ struct HistoryView: View {
         let totalPOIs: Int
         let topLocations: [LocationAggregate]
         let transportModes: [TransportModeAggregate]
+        let focusGoals: [FocusGoalAggregate]
+        let scenicRoutes: [ScenicRouteAggregate]
         let longestJourney: JourneyRecord?
         let farthestDistance: JourneyRecord?
         let mostPOIs: JourneyRecord?
@@ -107,21 +122,25 @@ struct HistoryView: View {
         if let first = records.first {
             hasher.combine(first.id)
             hasher.combine(first.startTime.timeIntervalSinceReferenceDate)
+            hasher.combine(first.focusGoal)
         }
         if let last = records.last {
             hasher.combine(last.id)
             hasher.combine(last.startTime.timeIntervalSinceReferenceDate)
             hasher.combine(last.isCompleted)
+            hasher.combine(last.focusGoal)
         }
         if records.count > 2 {
             let mid = records[records.count / 2]
             hasher.combine(mid.id)
             hasher.combine(mid.isCompleted)
+            hasher.combine(mid.focusGoal)
         }
         if records.count > 4 {
             let quarter = records[records.count / 4]
             hasher.combine(quarter.id)
             hasher.combine(quarter.isCompleted)
+            hasher.combine(quarter.focusGoal)
         }
         return hasher.finalize()
     }
@@ -142,6 +161,8 @@ struct HistoryView: View {
 
         var locationStats: [String: (count: Int, totalTime: TimeInterval)] = [:]
         var modeStats: [String: (count: Int, distance: Double)] = [:]
+        var goalStats: [String: (count: Int, totalTime: TimeInterval)] = [:]
+        var routeStats: [String: (name: String, count: Int, distance: Double, progress: Double)] = [:]
         var longestJourney: JourneyRecord?
         var farthestDistance: JourneyRecord?
         var mostPOIs: JourneyRecord?
@@ -183,6 +204,22 @@ struct HistoryView: View {
             modeAggregate.count += 1
             modeAggregate.distance += record.distanceTraveled
             modeStats[record.transportMode] = modeAggregate
+
+            var goalAggregate = goalStats[record.focusGoalDisplayName, default: (count: 0, totalTime: 0)]
+            goalAggregate.count += 1
+            goalAggregate.totalTime += record.duration
+            goalStats[record.focusGoalDisplayName] = goalAggregate
+
+            if record.hasScenicRoute {
+                var routeAggregate = routeStats[
+                    record.scenicRouteID,
+                    default: (name: record.scenicRouteDisplayName, count: 0, distance: 0, progress: 0)
+                ]
+                routeAggregate.count += 1
+                routeAggregate.distance += record.distanceTraveled
+                routeAggregate.progress = max(routeAggregate.progress, record.scenicRouteProgress)
+                routeStats[record.scenicRouteID] = routeAggregate
+            }
 
             if longestJourney == nil || record.duration > (longestJourney?.duration ?? 0) {
                 longestJourney = record
@@ -253,6 +290,28 @@ struct HistoryView: View {
             }
             .sorted { $0.count > $1.count }
 
+        let focusGoals = goalStats
+            .map { key, value in
+                FocusGoalAggregate(goal: key, count: value.count, totalTime: value.totalTime)
+            }
+            .sorted { lhs, rhs in
+                if lhs.count == rhs.count {
+                    return lhs.totalTime > rhs.totalTime
+                }
+                return lhs.count > rhs.count
+            }
+
+        let scenicRoutes = routeStats
+            .map { _, value in
+                ScenicRouteAggregate(
+                    name: value.name,
+                    count: value.count,
+                    distance: value.distance,
+                    progress: value.progress
+                )
+            }
+            .sorted { $0.progress > $1.progress }
+
         let averageSpeed = speedSampleCount > 0 ? totalSpeed / Double(speedSampleCount) : 0
         let uniqueLocationsCount = uniqueLocationNames.count
         let longestStreak = calculateLongestStreak(from: activeDays)
@@ -266,6 +325,8 @@ struct HistoryView: View {
             totalPOIs: totalPOIs,
             topLocations: Array(topLocations),
             transportModes: transportModes,
+            focusGoals: focusGoals,
+            scenicRoutes: scenicRoutes,
             longestJourney: longestJourney,
             farthestDistance: farthestDistance,
             mostPOIs: mostPOIs,
@@ -304,6 +365,7 @@ struct HistoryView: View {
             } else if daysDiff > 1 {
                 currentStreak = 1
             }
+
         }
 
         return maxStreak
@@ -788,6 +850,43 @@ struct HistoryView: View {
             }
             .padding(20)
             .glassCard(cornerRadius: 24)
+
+            if !focusGoalStats.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(L("focus.goal.stats.title"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    VStack(spacing: 10) {
+                        ForEach(focusGoalStats, id: \.goal) { item in
+                            FocusGoalStatRow(
+                                goal: item.goal,
+                                count: item.count,
+                                totalTime: item.totalTime,
+                                totalCount: max(records.count, 1)
+                            )
+                        }
+                    }
+                }
+                .padding(20)
+                .glassCard(cornerRadius: 24)
+            }
+
+            if !scenicRouteStats.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(L("route.stats.title"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    VStack(spacing: 10) {
+                        ForEach(scenicRouteStats, id: \.name) { item in
+                            ScenicRouteStatRow(item: item)
+                        }
+                    }
+                }
+                .padding(20)
+                .glassCard(cornerRadius: 24)
+            }
             
             // Streaks and achievements
             VStack(alignment: .leading, spacing: 12) {
@@ -1043,6 +1142,20 @@ struct HistoryView: View {
         guard let cached = cachedStats else { return [] }
         return cached.transportModes.map { item in
             (mode: item.mode, count: item.count, distance: item.distance)
+        }
+    }
+
+    private var focusGoalStats: [(goal: String, count: Int, totalTime: TimeInterval)] {
+        guard let cached = cachedStats else { return [] }
+        return cached.focusGoals.map { item in
+            (goal: item.goal, count: item.count, totalTime: item.totalTime)
+        }
+    }
+
+    private var scenicRouteStats: [(name: String, count: Int, distance: Double, progress: Double)] {
+        guard let cached = cachedStats else { return [] }
+        return cached.scenicRoutes.map { item in
+            (name: item.name, count: item.count, distance: item.distance, progress: item.progress)
         }
     }
     
@@ -1342,6 +1455,24 @@ struct ExpandableRecordCard: View {
                         Text(L("transport.\(record.transportMode.lowercased())"))
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
+
+                        Text("·")
+                            .foregroundColor(.secondary)
+
+                        Text(record.focusGoalDisplayName)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+
+                        if record.hasVehicle {
+                            Text("·")
+                                .foregroundColor(.secondary)
+
+                            Text(record.vehiclePlate.isEmpty ? record.vehicleDisplayName : record.vehiclePlate)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
 
@@ -1435,6 +1566,13 @@ struct ExpandableRecordCard: View {
                             label: L("history.detail.destination"),
                             value: record.destinationName,
                             color: .red
+                        )
+
+                        ExpandedDetailRow(
+                            icon: "target",
+                            label: L("focus.goal.title"),
+                            value: record.focusGoalDisplayName,
+                            color: .blue
                         )
 
                         ExpandedDetailRow(
@@ -1979,6 +2117,118 @@ struct StatRow: View {
     }
 }
 
+// MARK: - Focus Goal Stat Row
+
+struct FocusGoalStatRow: View {
+    let goal: String
+    let count: Int
+    let totalTime: TimeInterval
+    let totalCount: Int
+
+    private var ratio: Double {
+        guard totalCount > 0 else { return 0 }
+        return min(max(Double(count) / Double(totalCount), 0), 1)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "target")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.blue)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(Color.blue.opacity(0.14)))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(goal)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+
+                    Text(FormatUtilities.formatTime(totalTime))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text("\(count)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.08))
+
+                    Capsule()
+                        .fill(LinearGradient(colors: [Color.indigo, Color.blue], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(proxy.size.width * ratio, ratio > 0 ? 8 : 0))
+                }
+            }
+            .frame(height: 5)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.primary.opacity(0.035))
+        )
+    }
+}
+
+// MARK: - Scenic Route Stat Row
+
+struct ScenicRouteStatRow: View {
+    let item: (name: String, count: Int, distance: Double, progress: Double)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "point.topleft.down.curvedto.point.bottomright.up")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.green)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(Color.green.opacity(0.14)))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+
+                    Text("\(item.count) \(L("common.journeys")) · \(FormatUtilities.formatDistance(item.distance))")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text("\(Int(item.progress * 100))%")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+            }
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.08))
+                    Capsule()
+                        .fill(LinearGradient(colors: [Color.green, Color.teal], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(proxy.size.width * item.progress, item.progress > 0 ? 8 : 0))
+                }
+            }
+            .frame(height: 5)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.primary.opacity(0.035))
+        )
+    }
+}
+
 // MARK: - Achievement Row
 
 struct AchievementRow: View {
@@ -2102,6 +2352,30 @@ struct RecordDetailView: View {
                                 )
                             )
                             
+                            DetailStatCard(
+                                icon: "target",
+                                label: L("focus.goal.title"),
+                                value: record.focusGoalDisplayName,
+                                gradient: LinearGradient(
+                                    colors: [Color.indigo, Color.blue],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+
+                            if record.hasVehicle {
+                                DetailStatCard(
+                                    icon: (record.vehicleEnergyTypeEnum == .electric) ? "bolt.car.fill" : "car.fill",
+                                    label: L("vehicle.title"),
+                                    value: record.vehicleDisplayName.isEmpty ? record.vehiclePlate : record.vehicleDisplayName,
+                                    gradient: LinearGradient(
+                                        colors: [Color.blue, Color.cyan],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            }
+
                             DetailStatCard(
                                 icon: "star.fill",
                                 label: L("history.detail.poisDiscovered"),

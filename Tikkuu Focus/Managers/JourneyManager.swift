@@ -98,7 +98,21 @@ class JourneyManager: ObservableObject {
                      duration: TimeInterval,
                      isPresetCity: Bool = false,
                      presetLocation: PresetLocation? = nil,
-                     startLocationName: String? = nil) async {
+                     startLocationName: String? = nil,
+                     focusGoal: String = "",
+                     vehicle: Vehicle? = nil,
+                     scenicRoute: ScenicRoute? = nil) async {
+        if let scenicRoute {
+            await startScenicRouteJourney(
+                route: scenicRoute,
+                transportMode: transportMode,
+                duration: duration,
+                focusGoal: focusGoal,
+                vehicle: vehicle
+            )
+            return
+        }
+
         let request = JourneyPreparationRequest(
             requestedStart: location,
             transportMode: transportMode,
@@ -116,7 +130,11 @@ class JourneyManager: ObservableObject {
                 route: preparedPlan.route,
                 duration: duration,
                 transportMode: transportMode,
-                startLocationName: startLocationName
+                startLocationName: startLocationName,
+                focusGoal: focusGoal,
+                vehicle: vehicle,
+                scenicRoute: nil,
+                scenicSegment: nil
             )
             return
         }
@@ -147,9 +165,55 @@ class JourneyManager: ObservableObject {
                 route: route,
                 duration: duration,
                 transportMode: transportMode,
-                startLocationName: startLocationName
+                startLocationName: startLocationName,
+                focusGoal: focusGoal,
+                vehicle: vehicle,
+                scenicRoute: nil,
+                scenicSegment: nil
             )
             
+        } catch {
+            state = .failed(error.localizedDescription)
+        }
+    }
+
+    private func startScenicRouteJourney(
+        route: ScenicRoute,
+        transportMode: TransportMode,
+        duration: TimeInterval,
+        focusGoal: String,
+        vehicle: Vehicle?
+    ) async {
+        resetJourneyRuntimeState()
+        state = .preparing
+
+        let requestedDistance = max(transportMode.speedMps * duration, 1)
+        var startProgress = ScenicRouteProgressStore.shared.progress(for: route.id)
+        if startProgress >= 0.999 {
+            ScenicRouteProgressStore.shared.reset(routeID: route.id)
+            startProgress = 0
+        }
+        let segment = route.segment(fromProgress: startProgress, distance: requestedDistance)
+        do {
+            let routeResult = try await calculateRouteStrict(
+                from: segment.start,
+                to: segment.end,
+                transportMode: transportMode,
+                targetDistance: segment.distance
+            )
+
+            await activateJourney(
+                start: routeResult.coordinates.first ?? segment.start,
+                destination: routeResult.coordinates.last ?? segment.end,
+                route: routeResult,
+                duration: duration,
+                transportMode: transportMode,
+                startLocationName: String(format: L("route.scenic.start.progress"), route.localizedName, Int(segment.startProgress * 100)),
+                focusGoal: focusGoal,
+                vehicle: vehicle,
+                scenicRoute: route,
+                scenicSegment: segment
+            )
         } catch {
             state = .failed(error.localizedDescription)
         }
@@ -226,15 +290,6 @@ class JourneyManager: ObservableObject {
         }
     }
     
-    /// Generate a random destination at the specified distance
-    /// Tries multiple bearings to find a routable destination
-    private func generateRandomDestination(from start: CLLocationCoordinate2D, 
-                                          distance: Double) async throws -> CLLocationCoordinate2D {
-        // Just generate a random bearing - route validation happens in calculateRoute
-        let bearing = Double.random(in: 0..<360)
-        return start.coordinate(at: distance, bearing: bearing)
-    }
-    
     /// Generate destination and calculate route with retry logic
     private func generateRoutableDestination(
         from start: CLLocationCoordinate2D,
@@ -286,14 +341,6 @@ class JourneyManager: ObservableObject {
         if let bestCandidate,
            bestCandidate.distanceErrorRatio <= JourneyConfig.routeDistanceReasonableRatio {
             return (bestCandidate.destination, bestCandidate.route)
-        }
-
-        if let fallback = makeFallbackRoute(
-            from: start,
-            preferredDestination: bestCandidate?.destination,
-            targetDistance: targetDistance
-        ) {
-            return fallback
         }
 
         throw lastError
@@ -475,15 +522,7 @@ class JourneyManager: ObservableObject {
     private func calculateRoute(from start: CLLocationCoordinate2D,
                                to destination: CLLocationCoordinate2D,
                                transportMode: TransportMode) async throws -> RouteResult {
-        do {
-            return try await calculateRouteStrict(from: start, to: destination, transportMode: transportMode)
-        } catch {
-            // Fallback: create a straight line route (only for edge cases)
-            return RouteResult(
-                coordinates: [start, destination],
-                distance: start.distance(to: destination)
-            )
-        }
+        try await calculateRouteStrict(from: start, to: destination, transportMode: transportMode)
     }
 
     private func mapTransportType(for transportMode: TransportMode) -> MKDirectionsTransportType {
@@ -531,9 +570,16 @@ class JourneyManager: ObservableObject {
             transportMode: session.transportMode,
             startTime: session.startTime.addingTimeInterval(pauseDuration),
             startLocationName: session.startLocationName,
-            destinationName: session.destinationName
+            destinationName: session.destinationName,
+            focusGoal: session.focusGoal,
+            vehicle: session.vehicle,
+            scenicRouteID: session.scenicRouteID,
+            scenicRouteName: session.scenicRouteName,
+            scenicRouteTotalDistance: session.scenicRouteTotalDistance,
+            scenicRouteStartProgress: session.scenicRouteStartProgress,
+            scenicRouteEndProgress: session.scenicRouteEndProgress
         )
-        
+
         state = .active(newSession)
         startTimer()
         liveActivityManager.resume(session: newSession)
@@ -570,9 +616,13 @@ class JourneyManager: ObservableObject {
         route: RouteResult,
         duration: TimeInterval,
         transportMode: TransportMode,
-        startLocationName: String?
+        startLocationName: String?,
+        focusGoal: String,
+        vehicle: Vehicle?,
+        scenicRoute: ScenicRoute?,
+        scenicSegment: ScenicRouteSegment?
     ) async {
-        let targetDistance = max(transportMode.speedMps * duration, 1)
+        let targetDistance = max(scenicSegment?.distance ?? transportMode.speedMps * duration, 1)
         let safeRoute = sanitizeRouteResult(
             route,
             start: start,
@@ -595,7 +645,14 @@ class JourneyManager: ObservableObject {
             transportMode: transportMode,
             startTime: Date(),
             startLocationName: locationNames.start,
-            destinationName: locationNames.destination
+            destinationName: locationNames.destination,
+            focusGoal: focusGoal,
+            vehicle: vehicle,
+            scenicRouteID: scenicRoute?.id ?? "",
+            scenicRouteName: scenicRoute?.localizedName ?? "",
+            scenicRouteTotalDistance: scenicRoute?.totalDistance ?? 0,
+            scenicRouteStartProgress: scenicSegment?.startProgress ?? 0,
+            scenicRouteEndProgress: scenicSegment?.endProgress ?? 0
         )
 
         state = .active(session)
@@ -768,34 +825,6 @@ class JourneyManager: ObservableObject {
         return coordinate.latitude.isFinite && coordinate.longitude.isFinite
     }
 
-    private func makeFallbackRoute(
-        from start: CLLocationCoordinate2D,
-        preferredDestination: CLLocationCoordinate2D?,
-        targetDistance: Double
-    ) -> (destination: CLLocationCoordinate2D, route: RouteResult)? {
-        let fallbackDistance = max(targetDistance, 50)
-        var fallbackDestinations: [CLLocationCoordinate2D] = []
-
-        if let preferredDestination {
-            fallbackDestinations.append(preferredDestination)
-        }
-        fallbackDestinations.append(start.coordinate(at: fallbackDistance, bearing: Double.random(in: 0..<360)))
-        fallbackDestinations.append(start.coordinate(at: fallbackDistance, bearing: 45))
-        fallbackDestinations.append(start.coordinate(at: fallbackDistance, bearing: 225))
-
-        for destination in fallbackDestinations where isCoordinateValidForRouting(destination) {
-            let straightLineDistance = start.distance(to: destination)
-            guard straightLineDistance.isFinite, straightLineDistance > 0 else { continue }
-            let route = RouteResult(
-                coordinates: [start, destination],
-                distance: straightLineDistance
-            )
-            return (destination, route)
-        }
-
-        return nil
-    }
-
     private func sanitizeRouteResult(
         _ route: RouteResult,
         start: CLLocationCoordinate2D,
@@ -813,18 +842,7 @@ class JourneyManager: ObservableObject {
             return route
         }
 
-        if let fallback = makeFallbackRoute(
-            from: start,
-            preferredDestination: destination,
-            targetDistance: targetDistance
-        ) {
-            return fallback.route
-        }
-
-        return RouteResult(
-            coordinates: [start, destination],
-            distance: max(targetDistance, 1)
-        )
+        return route
     }
     
     /// Complete the journey

@@ -19,6 +19,7 @@ struct LocationPickerView: View {
     
     @State private var showMapPicker = false
     @State private var showFavoritesSheet = false
+    @State private var selectedCountryID: String = PresetLocation.countries.first?.id ?? ""
     
     var body: some View {
         NavigationStack {
@@ -60,6 +61,9 @@ struct LocationPickerView: View {
         .preferredColorScheme(settings.currentColorScheme)
         .onAppear {
             locationStore.setModelContext(modelContext)
+            if case .preset(let location) = selectedLocation {
+                selectedCountryID = location.country
+            }
         }
         .sheet(isPresented: $showMapPicker) {
             MapPickerView(selectedLocation: $selectedLocation)
@@ -198,17 +202,29 @@ struct LocationPickerView: View {
     // MARK: - Preset Locations Section
     
     private var presetLocationsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(L("location.preset"))
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 4)
-            
+
+            // Country selector
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(PresetLocation.countries) { country in
+                        countryChip(country)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.bottom, 2)
+            }
+
+            // Cities for the selected country
             LazyVGrid(columns: [
                 GridItem(.flexible(), spacing: 12),
                 GridItem(.flexible(), spacing: 12)
             ], spacing: 12) {
-                ForEach(PresetLocation.presets) { location in
+                ForEach(citiesForSelectedCountry) { location in
                     PresetLocationCard(
                         location: location,
                         isSelected: isPresetSelected(location),
@@ -218,7 +234,51 @@ struct LocationPickerView: View {
                     )
                 }
             }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: selectedCountryID)
         }
+    }
+
+    private var citiesForSelectedCountry: [PresetLocation] {
+        PresetLocation.countries.first { $0.id == selectedCountryID }?.cities
+            ?? PresetLocation.countries.first?.cities
+            ?? []
+    }
+
+    private func countryChip(_ country: PresetCountry) -> some View {
+        let isSelected = selectedCountryID == country.id
+        return Button {
+            HapticManager.selection()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                selectedCountryID = country.id
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(country.flag)
+                    .font(.system(size: 16))
+                Text(country.localizedName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(isSelected ? .white : .primary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(
+                Group {
+                    if isSelected {
+                        Capsule(style: .continuous)
+                            .fill(Color.accentColor)
+                            .shadow(color: Color.accentColor.opacity(0.35), radius: 8, x: 0, y: 4)
+                    } else {
+                        Capsule(style: .continuous)
+                            .fill(Color.primary.opacity(0.06))
+                            .overlay(
+                                Capsule(style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                            )
+                    }
+                }
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
     }
     
     // MARK: - Custom Location Card
@@ -290,7 +350,7 @@ struct LocationPickerView: View {
         }
         return false
     }
-    
+
     private func isPresetSelected(_ location: PresetLocation) -> Bool {
         if case .preset(let selected) = selectedLocation {
             return selected.id == location.id
@@ -305,6 +365,132 @@ struct LocationPickerView: View {
             return distance < 100
         }
         return false
+    }
+}
+
+// MARK: - Scenic Route Card
+
+struct ScenicRouteSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var settings = AppSettings.shared
+    @Binding var selectedLocation: LocationSource
+
+    private var selectedRoute: ScenicRoute? {
+        if case .scenicRoute(let route) = selectedLocation {
+            return route
+        }
+        return nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AnimatedGradientBackground().ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if selectedRoute != nil {
+                            clearRouteButton
+                        }
+
+                        ForEach(ScenicRoute.all) { route in
+                            ScenicRouteCard(
+                                route: route,
+                                isSelected: selectedRoute?.id == route.id,
+                                action: {
+                                    HapticManager.selection()
+                                    selectedLocation = .scenicRoute(route)
+                                }
+                            )
+                        }
+
+                        Text(L("route.scenic.locked.hint"))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 4)
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle(L("route.scenic.sheet.title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(L("common.done")) { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+        .preferredColorScheme(settings.currentColorScheme)
+    }
+
+    private var clearRouteButton: some View {
+        Button {
+            HapticManager.selection()
+            selectedLocation = .currentLocation
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                Text(L("route.scenic.clear"))
+                    .font(.system(size: 15, weight: .semibold))
+                Spacer()
+            }
+            .foregroundColor(.red.opacity(0.9))
+            .padding(16)
+            .glassCard(cornerRadius: 20)
+        }
+        .buttonStyle(ScaleButtonStyle())
+    }
+}
+
+struct ScenicRouteCard: View {
+    let route: ScenicRoute
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            HapticManager.selection()
+            action()
+        } label: {
+            HStack(spacing: 14) {
+                Text(route.emoji)
+                    .font(.system(size: 34))
+                    .frame(width: 48, height: 48)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(route.localizedName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    Text(route.localizedSubtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                    HStack(spacing: 8) {
+                        Label(FormatUtilities.formatDistance(route.totalDistance), systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                        Label(route.displayProgressText, systemImage: "chart.line.uptrend.xyaxis")
+                    }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(isSelected ? .blue : .secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(isSelected ? .blue : .secondary.opacity(0.5))
+            }
+            .padding(16)
+            .glassCard(cornerRadius: 24)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(isSelected ? Color.blue.opacity(0.55) : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
     }
 }
 
@@ -613,25 +799,6 @@ struct MapPickerView: View {
             
             // Recenter and action buttons
             HStack(spacing: 12) {
-                // Recenter button (only show when map is not centered on user)
-                if !isMapCenteredOnUser && locationManager.currentLocation != nil {
-                    Button {
-                        recenterToCurrentLocation()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text(L("map.recenter"))
-                                .font(.system(size: 14, weight: .semibold))
-                        }
-                        .foregroundColor(.primary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .glassCard(cornerRadius: 20)
-                    }
-                    .transition(.scale.combined(with: .opacity))
-                }
-                
                 // Add to favorites button (only when location selected)
                 if selectedCoordinate != nil && !locationName.isEmpty {
                     Button {
@@ -649,8 +816,20 @@ struct MapPickerView: View {
                         .glassCard(cornerRadius: 20)
                     }
                 }
-                
+
                 Spacer()
+
+                // Locate-to-current-location button (always available)
+                Button {
+                    recenterToCurrentLocation()
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(isMapCenteredOnUser ? .blue : .primary)
+                        .frame(width: 48, height: 48)
+                        .glassCard(cornerRadius: 24)
+                }
+                .buttonStyle(ScaleButtonStyle())
             }
             .padding(.horizontal, 20)
             .animation(.easeInOut(duration: 0.25), value: isMapCenteredOnUser)
@@ -739,12 +918,16 @@ struct MapPickerView: View {
     
     private func recenterToCurrentLocation() {
         HapticManager.light()
-        
+
         guard let currentLocation = locationManager.currentLocation else {
-            // Show alert or feedback that location is not available
+            // No fix yet — request permission / start updating so the dot can appear.
+            locationManager.requestPermission()
+            if locationManager.isAuthorized {
+                locationManager.startUpdatingLocation()
+            }
             return
         }
-        
+
         withAnimation(.easeInOut(duration: 0.5)) {
             cameraPosition = .region(MKCoordinateRegion(
                 center: currentLocation.coordinate,

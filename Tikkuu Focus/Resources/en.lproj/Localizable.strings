@@ -546,15 +546,16 @@
 "trophy.progress" = "Progress";
 "trophy.complete" = "Complete";
 "trophy.requirement" = "Requirement";
+"trophy.next" = "Next";
 
 // Trophy Categories
 "trophy.category.all" = "All";
-"trophy.category.distance" = "Distance";
-"trophy.category.journey" = "Journeys";
+"trophy.category.distance" = "Map Fog";
+"trophy.category.journey" = "Main Quest";
 "trophy.category.location" = "Locations";
-"trophy.category.time" = "Time";
-"trophy.category.poi" = "POIs";
-"trophy.category.streak" = "Streaks";
+"trophy.category.time" = "AFK";
+"trophy.category.poi" = "Easter Eggs";
+"trophy.category.streak" = "Combo";
 "trophy.category.speed" = "Speed";
 "trophy.category.weather" = "Weather";
 
@@ -568,21 +569,21 @@
 // Trophy Titles & Descriptions
 "trophy.distance_1km.title" = "First Steps";
 "trophy.distance_1km.description" = "Travel 1 km";
-"trophy.distance_10km.title" = "Explorer";
-"trophy.distance_10km.description" = "Travel 10 km";
+"trophy.distance_10km.title" = "Outside the Tutorial Zone";
+"trophy.distance_10km.description" = "Reveal 10 km of map. You are officially beyond spawn.";
 "trophy.distance_50km.title" = "Adventurer";
 "trophy.distance_50km.description" = "Travel 50 km";
-"trophy.distance_100km.title" = "Voyager";
-"trophy.distance_100km.description" = "Travel 100 km";
-"trophy.distance_500km.title" = "World Traveler";
-"trophy.distance_500km.description" = "Travel 500 km";
+"trophy.distance_100km.title" = "Where Is the Map Edge?";
+"trophy.distance_100km.description" = "Reveal 100 km. The minimap has filed a complaint.";
+"trophy.distance_500km.title" = "Open World Confirmed";
+"trophy.distance_500km.description" = "Reveal 500 km. No invisible wall found yet.";
 
-"trophy.journey_1.title" = "Beginner";
-"trophy.journey_1.description" = "Complete 1 journey";
-"trophy.journey_10.title" = "Regular";
-"trophy.journey_10.description" = "Complete 10 journeys";
-"trophy.journey_50.title" = "Dedicated";
-"trophy.journey_50.description" = "Complete 50 journeys";
+"trophy.journey_1.title" = "Tutorial Cleared";
+"trophy.journey_1.description" = "Complete 1 roam. The starter quest is done.";
+"trophy.journey_10.title" = "Daily Board Cleared";
+"trophy.journey_10.description" = "Complete 10 roams. Fewer exclamation marks on the map.";
+"trophy.journey_50.title" = "Reputation Grinder";
+"trophy.journey_50.description" = "Complete 50 roams. This is not work, it is faction rep.";
 "trophy.journey_100.title" = "Committed";
 "trophy.journey_100.description" = "Complete 100 journeys";
 "trophy.journey_500.title" = "Master";
@@ -597,21 +598,21 @@
 "trophy.location_50.title" = "World Explorer";
 "trophy.location_50.description" = "Visit 50 different locations";
 
-"trophy.time_1h.title" = "First Hour";
-"trophy.time_1h.description" = "Focus for 1 hour total";
-"trophy.time_10h.title" = "Focused";
-"trophy.time_10h.description" = "Focus for 10 hours total";
-"trophy.time_50h.title" = "Dedicated";
-"trophy.time_50h.description" = "Focus for 50 hours total";
+"trophy.time_1h.title" = "AFK for an Hour";
+"trophy.time_1h.description" = "Focus for 1 hour total. The XP bar moved.";
+"trophy.time_10h.title" = "Loading Screen Sage";
+"trophy.time_10h.description" = "Focus for 10 hours total. All progress bars deserve respect.";
+"trophy.time_50h.title" = "Session Limit Ignored";
+"trophy.time_50h.description" = "Focus for 50 hours total. The system is impressed and concerned.";
 "trophy.time_100h.title" = "Expert";
 "trophy.time_100h.description" = "Focus for 100 hours total";
 "trophy.time_500h.title" = "Zen Master";
 "trophy.time_500h.description" = "Focus for 500 hours total";
 
-"trophy.poi_10.title" = "Scout";
-"trophy.poi_10.description" = "Discover 10 POIs";
-"trophy.poi_50.title" = "Discoverer";
-"trophy.poi_50.description" = "Discover 50 POIs";
+"trophy.poi_10.title" = "Question Mark Tapper";
+"trophy.poi_10.description" = "Discover 10 POIs. Map icons do not clear themselves.";
+"trophy.poi_50.title" = "Icon Completionist";
+"trophy.poi_50.description" = "Discover 50 POIs. If it glows, it gets collected.";
 "trophy.poi_100.title" = "Collector";
 "trophy.poi_100.description" = "Discover 100 POIs";
 "trophy.poi_500.title" = "Curator";
@@ -619,10 +620,10 @@
 "trophy.poi_1000.title" = "Encyclopedia";
 "trophy.poi_1000.description" = "Discover 1000 POIs";
 
-"trophy.streak_3.title" = "Getting Started";
-"trophy.streak_3.description" = "3-day streak";
-"trophy.streak_7.title" = "Week Warrior";
-"trophy.streak_7.description" = "7-day streak";
+"trophy.streak_3.title" = "Combo x3";
+"trophy.streak_3.description" = "Keep a 3-day focus streak. Do not drop the combo.";
+"trophy.streak_7.title" = "Daily Login Reward";
+"trophy.streak_7.description" = "Keep a 7-day focus streak. Claim your imaginary chest.";
 "trophy.streak_30.title" = "Monthly Master";
 "trophy.streak_30.description" = "30-day streak";
 "trophy.streak_100.title" = "Centurion";
@@ -644,19 +645,19 @@
 "trophy.weather_allseasons.title" = "Four Seasons";
 "trophy.weather_allseasons.description" = "Journey in all 4 seasons";
 
-"trophy.distance_5km.title" = "Starter";
-"trophy.distance_5km.description" = "Travel 5 km";
-"trophy.distance_25km.title" = "Long Hauler";
-"trophy.distance_25km.description" = "Travel 25 km";
-"trophy.distance_250km.title" = "Distance Runner";
-"trophy.distance_250km.description" = "Travel 250 km";
-"trophy.distance_1000km.title" = "Thousand Miles";
-"trophy.distance_1000km.description" = "Travel 1000 km";
+"trophy.distance_5km.title" = "Leaving the Safe Zone";
+"trophy.distance_5km.description" = "Reveal 5 km. The tutorial walls are behind you.";
+"trophy.distance_25km.title" = "Minimap Needed";
+"trophy.distance_25km.description" = "Reveal 25 km. The zoom buttons have entered the chat.";
+"trophy.distance_250km.title" = "Map Material Farm";
+"trophy.distance_250km.description" = "Reveal 250 km. Yes, you really ran that route.";
+"trophy.distance_1000km.title" = "Fog of War Cleared";
+"trophy.distance_1000km.description" = "Reveal 1000 km. Cartographers are taking notes.";
 
-"trophy.journey_5.title" = "Newcomer";
-"trophy.journey_5.description" = "Complete 5 journeys";
-"trophy.journey_25.title" = "Skilled";
-"trophy.journey_25.description" = "Complete 25 journeys";
+"trophy.journey_5.title" = "Five Pulls In";
+"trophy.journey_5.description" = "Complete 5 roams. No pity yet, but a habit dropped.";
+"trophy.journey_25.title" = "Long Quest Chain";
+"trophy.journey_25.description" = "Complete 25 roams. The quest giver recognizes you now.";
 "trophy.journey_250.title" = "Veteran";
 "trophy.journey_250.description" = "Complete 250 journeys";
 "trophy.journey_1000.title" = "Legend";
@@ -669,26 +670,26 @@
 "trophy.location_100.title" = "Around the World";
 "trophy.location_100.description" = "Visit 100 different locations";
 
-"trophy.time_30min.title" = "First Steps";
-"trophy.time_30min.description" = "Focus for 30 minutes total";
-"trophy.time_5h.title" = "Starter";
-"trophy.time_5h.description" = "Focus for 5 hours total";
-"trophy.time_25h.title" = "Diligent";
-"trophy.time_25h.description" = "Focus for 25 hours total";
+"trophy.time_30min.title" = "Tutorial Not Skipped";
+"trophy.time_30min.description" = "Focus for 30 minutes total. Cutscene watched, XP gained.";
+"trophy.time_5h.title" = "Save Point Reached";
+"trophy.time_5h.description" = "Focus for 5 hours total. Safe to save and quit.";
+"trophy.time_25h.title" = "Build Online";
+"trophy.time_25h.description" = "Focus for 25 hours total. This character has scaling now.";
 "trophy.time_250h.title" = "Master Level";
 "trophy.time_250h.description" = "Focus for 250 hours total";
 
-"trophy.poi_5.title" = "Observer";
-"trophy.poi_5.description" = "Discover 5 POIs";
-"trophy.poi_25.title" = "Explorer";
-"trophy.poi_25.description" = "Discover 25 POIs";
+"trophy.poi_5.title" = "Question Mark Cleaner";
+"trophy.poi_5.description" = "Discover 5 POIs. Completionist behavior detected.";
+"trophy.poi_25.title" = "Roadside Chest Hunter";
+"trophy.poi_25.description" = "Discover 25 POIs. If it can glow, it can be cleared.";
 "trophy.poi_250.title" = "Connoisseur";
 "trophy.poi_250.description" = "Discover 250 POIs";
 
-"trophy.streak_2.title" = "Building Habit";
-"trophy.streak_2.description" = "2-day streak";
-"trophy.streak_14.title" = "Two Week Champion";
-"trophy.streak_14.description" = "14-day streak";
+"trophy.streak_2.title" = "Double Jump";
+"trophy.streak_2.description" = "Keep a 2-day focus streak. The second input landed.";
+"trophy.streak_14.title" = "New Game Plus";
+"trophy.streak_14.description" = "Keep a 14-day focus streak. This is no longer a login bonus.";
 "trophy.streak_60.title" = "Two Month Hero";
 "trophy.streak_60.description" = "60-day streak";
 
@@ -880,9 +881,57 @@
 
 "history.stats.activityHeatmap" = "Activity Heatmap";
 
+// Focus Goal
+"focus.goal.title" = "Focus Goal";
+"focus.goal.default" = "Default";
+"focus.goal.work" = "Work";
+"focus.goal.study" = "Study";
+"focus.goal.exercise" = "Exercise";
+"focus.goal.custom" = "Custom";
+"focus.goal.custom.placeholder" = "12 letters or 6 Chinese characters";
+"focus.goal.stats.title" = "Goal Breakdown";
+"focus.goal.set" = "Set Goal";
+"focus.goal.sheet.title" = "Set Focus Goal";
+"focus.goal.add.title" = "Add Goal";
+"focus.goal.add.confirm" = "Add";
+"focus.goal.add.message" = "Name a goal for this focus session (up to 12 letters or 6 Chinese characters).";
+"focus.goal.count" = "%d / %d goals added";
+
+// Vehicle
+"vehicle.title" = "Vehicle";
+"vehicle.setup" = "Set Vehicle";
+"vehicle.sheet.title" = "Vehicle Settings";
+"vehicle.add" = "Add Vehicle";
+"vehicle.edit" = "Edit Vehicle";
+"vehicle.count" = "%d / %d vehicles added";
+"vehicle.empty" = "No vehicles yet";
+"vehicle.empty.message" = "Add a vehicle to start your driving focus.";
+"vehicle.section.model" = "Brand & Model";
+"vehicle.brand" = "Brand";
+"vehicle.brand.placeholder" = "Choose a brand";
+"vehicle.brand.search" = "Search brands";
+"vehicle.model" = "Model";
+"vehicle.model.placeholder" = "Choose a model";
+"vehicle.plate" = "License Plate";
+"vehicle.plate.placeholder" = "e.g. ABC·8888";
+"vehicle.plate.hint" = "Gasoline plates support up to 7 characters; electric plates support up to 8.";
+"vehicle.delete.confirm.title" = "Delete this vehicle?";
+"vehicle.delete.confirm.message" = "Delete \"%@\"? Saved journey records will not be affected.";
+"vehicle.energy.title" = "Energy Type";
+"vehicle.energy.gasoline" = "Gasoline";
+"vehicle.energy.electric" = "Electric";
+"vehicle.energy.cost" = "Energy Cost";
+
+"virtual.metrics.title.energyKwh" = "Energy";
+"virtual.metrics.title.energyCost" = "Energy Cost";
+"virtual.metrics.energyKwh" = "%.1f kWh";
+
+"common.save" = "Save";
+
 // Journey Summary
 "journey.summary.focusTime" = "Focus Time";
 "journey.summary.distance" = "Distance";
+"journey.summary.progress" = "Progress";
 "journey.summary.pois" = "POIs";
 "journey.summary.route" = "Route";
 "journey.summary.save" = "Save";
@@ -904,12 +953,12 @@
 "virtual.metrics.title.steps" = "Steps";
 "virtual.metrics.title.calories" = "Calories";
 "virtual.metrics.title.fuelLiters" = "Fuel";
-"virtual.metrics.title.fuelPrice" = "Fuel Price";
+"virtual.metrics.title.fuelPrice" = "Fuel Cost";
 "virtual.metrics.title.fallCount" = "Falls";
 "virtual.metrics.steps" = "%@ steps";
 "virtual.metrics.calories" = "%@ kcal";
 "virtual.metrics.fuelLiters" = "%.1f L";
-"virtual.metrics.fuelPrice" = "%@/L";
+"virtual.metrics.fuelPrice" = "%@";
 "virtual.metrics.fallCount" = "%@ falls";
 
 // Activity Heatmap
@@ -938,6 +987,33 @@
 "trophy.notFound" = "Trophy not found";
 "trophy.empty.category" = "No trophies in this category yet";
 "trophy.done" = "Done";
+"trophy.inbox.title" = "Trophy Inbox";
+"trophy.inbox.empty" = "No trophies unlocked yet";
+"trophy.category.route" = "Dungeons";
+"trophy.route_first.title" = "Dungeon Queue Popped";
+"trophy.route_first.description" = "Start 1 scenic route. The party leader clicked ready.";
+"trophy.route_5.title" = "Static Party Formed";
+"trophy.route_5.description" = "Start 5 scenic routes. Team synergy is improving.";
+"trophy.route_half.title" = "Progress Bar Brain";
+"trophy.route_half.description" = "Reach 50% on any scenic route. Half-full is basically unfinished.";
+"trophy.route_90.title" = "Final Checkpoint Energy";
+"trophy.route_90.description" = "Reach 90% on any scenic route. Quitting now would hurt.";
+"trophy.route_complete.title" = "Fast Travel Unlocked";
+"trophy.route_complete.description" = "Complete any scenic route. You can now say: I ran that.";
+
+// Scenic Routes
+"route.scenic.title" = "Scenic Routes";
+"route.scenic.set" = "Set Route";
+"route.scenic.sheet.title" = "Route Settings";
+"route.scenic.clear" = "Clear Route";
+"route.scenic.locked.hint" = "A fixed route is selected. Custom start location is disabled; next time continues from this route progress.";
+"route.scenic.start.progress" = "%@ · %d%% complete";
+"route.scenic.progress" = "Route Progress";
+"route.stats.title" = "Route Stats";
+
+// Notifications
+"notification.trophyUnlocked.title" = "New Trophy";
+"notification.trophyUnlocked.body" = "You unlocked \"%@\"";
 
 // About
 "about.appName" = "Roam Focus";
@@ -949,30 +1025,34 @@
 "common.dash" = "—";
 
 // Onboarding v3 - Interactive
-"onboarding.welcome.title" = "Focus, Roam, Discover";
-"onboarding.welcome.subtitle" = "Turn your focus time into real map adventures. Pick a mode, set a duration, and watch yourself explore.";
+"onboarding.welcome.badge" = "Pomodoro Timer";
+"onboarding.welcome.title" = "A Pomodoro That Travels";
+"onboarding.welcome.subtitle" = "Start focusing and you set off on the map. When time's up, you've arrived.";
+"onboarding.welcome.step1" = "Set Time";
+"onboarding.welcome.step2" = "Focus";
+"onboarding.welcome.step3" = "Earn It";
 "onboarding.welcome.stat.modes" = "Modes";
 "onboarding.welcome.stat.minutes" = "Minutes";
 "onboarding.welcome.stat.trophies" = "Trophies";
 
-"onboarding.setup.title" = "Choose Your Style";
-"onboarding.setup.subtitle" = "Select the transport and duration that fit your focus rhythm. You can change this anytime.";
+"onboarding.setup.title" = "Pick Your Pace";
+"onboarding.setup.subtitle" = "Choose a transport mode and focus length. Change it anytime.";
 "onboarding.setup.transport.label" = "TRANSPORT";
 "onboarding.setup.duration.label" = "DURATION";
 "onboarding.setup.preview.title" = "Preview";
 
-"onboarding.sim.title" = "This Is How It Works";
-"onboarding.sim.subtitle" = "While you focus, your avatar roams the map, discovering interesting places along the way.";
+"onboarding.sim.title" = "One Pomodoro, One Journey";
+"onboarding.sim.subtitle" = "As you focus, your avatar roams the map and unlocks places along the way.";
 
 "onboarding.perm.title" = "Enable Location";
-"onboarding.perm.subtitle" = "We need your location to plan realistic roaming routes.";
+"onboarding.perm.subtitle" = "Your location is used to generate a real roaming route.";
 "onboarding.perm.location.title" = "Location Services";
-"onboarding.perm.location.desc" = "Used to calculate routes and find nearby POIs.";
+"onboarding.perm.location.desc" = "Used to calculate routes and find nearby places.";
 "onboarding.perm.notif.title" = "Notifications";
-"onboarding.perm.notif.desc" = "Remind you when a focus session ends.";
+"onboarding.perm.notif.desc" = "Remind you when a pomodoro ends.";
 
-"onboarding.ready.title" = "All Set!";
-"onboarding.ready.subtitle" = "Your preferences are saved. Start your first focus roam whenever you're ready.";
+"onboarding.ready.title" = "You're All Set!";
+"onboarding.ready.subtitle" = "Preferences saved. Start your first pomodoro whenever you're ready.";
 "onboarding.ready.config.title" = "Your Configuration";
 
 "onboarding.btn.start" = "Start Experience";

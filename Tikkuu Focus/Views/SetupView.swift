@@ -22,9 +22,14 @@ struct SetupView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var journeyManager = JourneyManager()
     @StateObject private var weatherManager = WeatherManager()
-    
+
     @State private var selectedTransport: TransportMode = AppSettings.shared.preferredTransportMode
     @State private var selectedDuration: Int = AppSettings.shared.preferredDuration
+    @ObservedObject private var focusGoalStore = FocusGoalStore.shared
+    @State private var showFocusGoalSheet = false
+    @ObservedObject private var vehicleStore = VehicleStore.shared
+    @State private var showVehicleSheet = false
+    @State private var showScenicRouteSheet = false
     @State private var isStarting = false
     @State private var showPermissionAlert = false
     @State private var showErrorAlert = false
@@ -33,6 +38,7 @@ struct SetupView: View {
     @State private var showLocationPicker = false
     @State private var showHistory = false
     @State private var showTrophies = false
+    @StateObject private var trophyInbox = TrophyInboxStore.shared
     @State private var showSettings = false
     @ObservedObject private var settings = AppSettings.shared
     @State private var cardsAppeared = false
@@ -49,35 +55,35 @@ struct SetupView: View {
     @State private var pendingQuickStartRequest: QuickStartLaunchRequest?
     @Query(sort: \JourneyRecord.startTime, order: .reverse) private var allRecords: [JourneyRecord]
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
-    
+
     // MARK: - Theme Colors
-    
+
     private var isEnergySavingMode: Bool {
         reduceMotion || ProcessInfo.processInfo.isLowPowerModeEnabled
     }
 
     private let weatherFetchMinDistance: CLLocationDistance = 500
-    
+
     private var baseTextColor: Color {
         .primary
     }
-    
+
     private var baseSecondaryTextColor: Color {
         .secondary
     }
-    
+
     private var mainScrollViewContent: some View {
         VStack(spacing: 0) {
             // Header
             headerView
                 .padding(.top, 20)
                 .padding(.bottom, 20)
-            
+
             // Weather & History Row
             weatherAndHistoryRow
                 .padding(.horizontal, 24)
                 .padding(.bottom, 18)
-            
+
             // Main content
             VStack(spacing: 20) {
                 locationSelectionCard
@@ -93,22 +99,22 @@ struct SetupView: View {
                     .offset(y: cardsAppeared ? 0 : 20)
                     .animation(AnimationConfig.smoothSpring.delay(0.12), value: cardsAppeared)
                     // Note: avoid drawingGroup on material-based cards to prevent black backgrounds
-                
+
                 durationSelectionCard
                     .scaleEffect(cardsAppeared ? 1 : 0.9)
                     .opacity(cardsAppeared ? 1 : 0)
                     .offset(y: cardsAppeared ? 0 : 20)
-                    .animation(AnimationConfig.smoothSpring.delay(0.16), value: cardsAppeared)
+                    .animation(AnimationConfig.smoothSpring.delay(0.18), value: cardsAppeared)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
     }
-    
+
     var body: some View {
         return ZStack {
             AnimatedGradientBackground()
-            
+
             ScrollView(showsIndicators: false) {
                 mainScrollViewContent
             }
@@ -133,10 +139,10 @@ struct SetupView: View {
             fetchWeatherForSelectedLocation()
             prewarmMapIfPossible()
             attemptPendingQuickStart()
-            
+
             // Debug version info
             AppInfo.debugVersionInfo()
-            
+
             // Trigger card animations
             withAnimation(AnimationConfig.smoothSpring.delay(0.05)) {
                 cardsAppeared = true
@@ -272,6 +278,9 @@ struct SetupView: View {
                 locationManager: locationManager
             )
         }
+        .fullScreenCover(isPresented: $showScenicRouteSheet) {
+            ScenicRouteSheet(selectedLocation: $selectedLocation)
+        }
         .sheet(isPresented: $showHistory) {
             HistoryView()
         }
@@ -280,6 +289,12 @@ struct SetupView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showFocusGoalSheet) {
+            FocusGoalSheet(store: focusGoalStore)
+        }
+        .sheet(isPresented: $showVehicleSheet) {
+            VehicleListSheet(store: vehicleStore)
         }
         .sheet(isPresented: $showWeatherDetail) {
             NavigationStack {
@@ -351,16 +366,16 @@ struct SetupView: View {
         }
         */
     }
-    
+
     // MARK: - Setup
-    
+
     private func setupLocation() {
         locationManager.requestPermission()
         if locationManager.isAuthorized {
             locationManager.startUpdatingLocation()
         }
     }
-    
+
     private func fetchWeatherForSelectedLocation(force: Bool = false) {
         let coordinate: CLLocationCoordinate2D
 
@@ -372,6 +387,8 @@ struct SetupView: View {
             coordinate = location.coordinate
         case .custom(let coord, _):
             coordinate = coord
+        case .scenicRoute(let route):
+            coordinate = route.startCoordinateForNextSession
         }
 
         fetchWeatherIfNeeded(for: coordinate, force: force)
@@ -403,6 +420,8 @@ struct SetupView: View {
         case .custom(let coordinate, _):
             startCoordinate = coordinate
             isPresetCity = false
+        case .scenicRoute:
+            return
         }
 
         let selectedMode = selectedTransport
@@ -424,9 +443,9 @@ struct SetupView: View {
             )
         }
     }
-    
+
     // MARK: - Header
-    
+
     private var weatherAndHistoryRow: some View {
         HStack(spacing: 12) {
             Button {
@@ -442,7 +461,7 @@ struct SetupView: View {
             .opacity(cardsAppeared ? 1 : 0)
             .offset(x: cardsAppeared ? 0 : -15)
             .animation(AnimationConfig.smoothSpring.delay(0.04), value: cardsAppeared)
-            
+
             Button {
                 HapticManager.light()
                 showHistory = true
@@ -461,7 +480,7 @@ struct SetupView: View {
     }
 
     // MARK: - Header
-    
+
     private var headerView: some View {
         ZStack {
             // Left button - History/Records
@@ -472,27 +491,36 @@ struct SetupView: View {
                         showTrophies = true
                     }
                 } label: {
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(baseTextColor)
-                        .frame(width: 44, height: 44)
-                        .background(
-                            Group {
-                                // Clean frosted glass
-                                Circle()
-                                    .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.5))
-                                    .background(Circle().fill(.ultraThinMaterial))
-                            }
-                        )
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(baseTextColor)
+                            .frame(width: 44, height: 44)
+                            .background(
+                                Group {
+                                    Circle()
+                                        .fill(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.5))
+                                        .background(Circle().fill(.ultraThinMaterial))
+                                }
+                            )
+
+                        if trophyInbox.unreadCount > 0 {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 11, height: 11)
+                                .overlay(Circle().stroke(Color.white.opacity(0.85), lineWidth: 1.5))
+                                .offset(x: -2, y: 2)
+                        }
+                    }
                 }
                 .buttonStyle(ScaleButtonStyle())
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
                 .opacity(cardsAppeared ? 1 : 0)
                 .animation(AnimationConfig.bouncySpring.delay(0.0), value: cardsAppeared)
-                
+
                 Spacer()
             }
-            
+
             // Center title (absolutely centered)
             Text("Roam Focus")
                 .font(.system(size: 34, weight: .bold, design: .rounded))
@@ -501,11 +529,11 @@ struct SetupView: View {
                 .scaleEffect(cardsAppeared ? 1 : 0.8)
                 .opacity(cardsAppeared ? 1 : 0)
                 .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.0), value: cardsAppeared)
-            
+
             // Right button - Settings
             HStack {
                 Spacer()
-                
+
                 Button {
                     HapticManager.light()
                     withAnimation(AnimationConfig.quickSpring) {
@@ -533,21 +561,21 @@ struct SetupView: View {
         }
         .padding(.horizontal, 24)
     }
-    
+
     // MARK: - Month Records
-    
+
     private var monthRecords: [JourneyRecord] {
         let calendar = Calendar.current
         let now = Date()
         let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-        
+
         return allRecords.filter { record in
             record.startTime >= startOfMonth && record.startTime <= now
         }
     }
-    
+
     // MARK: - Current Coordinate
-    
+
     private var currentCoordinate: CLLocationCoordinate2D {
         switch selectedLocation {
         case .currentLocation:
@@ -556,74 +584,135 @@ struct SetupView: View {
             return location.coordinate
         case .custom(let coordinate, _):
             return coordinate
+        case .scenicRoute(let route):
+            return route.startCoordinateForNextSession
         }
     }
-    
+
     // MARK: - Location Selection
-    
+
     private var locationSelectionCard: some View {
-        Button {
-            HapticManager.light()
-            showLocationPicker = true
-        } label: {
-            VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
                 Text(L("location.selectStart"))
                     .font(.system(size: 19, weight: .semibold, design: .rounded))
                     .foregroundColor(baseTextColor)
-                
-                HStack(spacing: 12) {
-                    // Location icon or emoji
-                    if case .preset(let location) = selectedLocation {
-                        // Show emoji for preset locations
-                        ZStack {
-                            Circle()
-                                .fill(Color.accentColor)
-                                .frame(width: 44, height: 44)
-                            
-                            Text(location.emoji)
-                                .font(.system(size: 24))
-                        }
-                    } else {
-                        // Show SF Symbol for current location and custom
-                        ZStack {
-                            Circle()
-                                .fill(Color.accentColor)
-                                .frame(width: 44, height: 44)
-                            
-                            Image(systemName: locationIcon)
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(locationDisplayName)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(baseTextColor)
-                        
-                        if let subtitle = locationSubtitle {
-                            Text(subtitle)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(baseSecondaryTextColor)
-                        }
-                    }
-                    .id(locationDisplayName) // Force refresh when location changes
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
+
+                Spacer(minLength: 8)
+
+                scenicRouteChip
+            }
+
+            Button {
+                HapticManager.light()
+                if selectedScenicRoute == nil {
+                    showLocationPicker = true
+                } else {
+                    showScenicRouteSheet = true
+                }
+            } label: {
+                locationSelectionContent
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(24)
+        .glassCard(
+            cornerRadius: 28,
+            tintColor: colorScheme == .dark ? Color(red: 0.15, green: 0.2, blue: 0.3).opacity(0.6) : Color.blue.opacity(0.1)
+        )
+    }
+
+    private var scenicRouteChip: some View {
+        Button {
+            HapticManager.light()
+            showScenicRouteSheet = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: selectedScenicRoute == nil ? "point.topleft.down.curvedto.point.bottomright.up" : "map.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(red: 0.25, green: 0.76, blue: 0.55))
+
+                Text(selectedScenicRoute?.localizedName ?? L("route.scenic.set"))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(baseTextColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(baseSecondaryTextColor)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.5))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.34), lineWidth: 1)
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .accessibilityLabel(L("route.scenic.sheet.title"))
+    }
+
+    private var locationSelectionContent: some View {
+        HStack(spacing: 12) {
+            // Location icon or emoji
+            if case .scenicRoute(let route) = selectedLocation {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 44, height: 44)
+
+                    Text(route.emoji)
+                        .font(.system(size: 24))
+                }
+            } else if case .preset(let location) = selectedLocation {
+                // Show emoji for preset locations
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 44, height: 44)
+
+                    Text(location.emoji)
+                        .font(.system(size: 24))
+                }
+            } else {
+                // Show SF Symbol for current location and custom
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: locationIcon)
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(locationDisplayName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(baseTextColor)
+
+                if let subtitle = locationSubtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(baseSecondaryTextColor)
                 }
             }
-            .padding(24)
-            .glassCard(
-                cornerRadius: 28,
-                tintColor: colorScheme == .dark ? Color(red: 0.15, green: 0.2, blue: 0.3).opacity(0.6) : Color.blue.opacity(0.1)
-            )
+            .id(locationDisplayName) // Force refresh when location changes
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(baseSecondaryTextColor)
         }
     }
-    
+
     private var locationIcon: String {
         switch selectedLocation {
         case .currentLocation:
@@ -632,9 +721,11 @@ struct SetupView: View {
             return "globe.asia.australia.fill" // This won't be used anymore for preset
         case .custom:
             return "globe.asia.australia.fill"
+        case .scenicRoute:
+            return "point.topleft.down.curvedto.point.bottomright.up"
         }
     }
-    
+
     /// Main display name for the location card - shows specific name for current location
     private var locationDisplayName: String {
         switch selectedLocation {
@@ -646,9 +737,11 @@ struct SetupView: View {
             return location.localizedName
         case .custom(_, let name):
             return name
+        case .scenicRoute(let route):
+            return route.localizedName
         }
     }
-    
+
     /// Subtitle shown below the main name (nil for current location to avoid duplication)
     private var locationSubtitle: String? {
         switch selectedLocation {
@@ -659,17 +752,27 @@ struct SetupView: View {
             return location.country
         case .custom:
             return L("location.custom")
+        case .scenicRoute(let route):
+            return "\(FormatUtilities.formatDistance(route.totalDistance)) · \(route.displayProgressText)"
         }
     }
-    
+
     // MARK: - Transport Selection
-    
+
     private var transportSelectionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L("label.selectTransport"))
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundColor(baseTextColor)
-            
+            HStack(spacing: 8) {
+                Text(L("label.selectTransport"))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(baseTextColor)
+
+                Spacer(minLength: 8)
+
+                if selectedTransport == .driving {
+                    vehicleChip
+                }
+            }
+
             HStack(spacing: 8) {
                 ForEach(TransportMode.allCases) { mode in
                     TransportModeButton(
@@ -692,15 +795,91 @@ struct SetupView: View {
             tintColor: colorScheme == .dark ? Color(red: 0.1, green: 0.25, blue: 0.15).opacity(0.6) : Color.green.opacity(0.1)
         )
     }
-    
+
+    private var vehicleChip: some View {
+        Button {
+            HapticManager.light()
+            showVehicleSheet = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: vehicleStore.selectedVehicle.map { $0.energyType == .electric ? "bolt.car.fill" : "car.fill" } ?? "car.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(red: 0.42, green: 0.58, blue: 0.95))
+
+                Text(vehicleStore.selectedVehicle?.modelDisplayName ?? L("vehicle.setup"))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(baseTextColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(baseSecondaryTextColor)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.5))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.34), lineWidth: 1)
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .accessibilityLabel(L("vehicle.sheet.title"))
+    }
+
     // MARK: - Duration Selection
-    
+
+    private var focusGoalChip: some View {
+        Button {
+            HapticManager.light()
+            showFocusGoalSheet = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: focusGoalStore.selectedGoal.isDefault ? "target" : focusGoalStore.selectedGoal.iconName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(red: 0.95, green: 0.6, blue: 0.2))
+
+                Text(focusGoalStore.selectedGoal.isDefault ? L("focus.goal.set") : focusGoalStore.selectedDisplayName)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(baseTextColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(baseSecondaryTextColor)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.5))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.34), lineWidth: 1)
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .accessibilityLabel(L("focus.goal.sheet.title"))
+    }
+
     private var durationSelectionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L("label.selectDuration"))
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundColor(baseTextColor)
-            
+            HStack(spacing: 8) {
+                Text(L("label.selectDuration"))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(baseTextColor)
+
+                Spacer(minLength: 8)
+
+                focusGoalChip
+            }
+
             VStack(spacing: 10) {
                 // Duration picker
                 HStack(spacing: 8) {
@@ -716,21 +895,21 @@ struct SetupView: View {
                         }
                     }
                 }
-                
+
                 // Custom duration slider
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text(L("label.custom"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(adaptiveSecondaryTextColor)
-                        
+
                         Spacer()
-                        
+
                         Text("\(selectedDuration) \(L("time.unit.min"))")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color.accentColor)
                     }
-                    
+
                     Slider(value: Binding(
                         get: { Double(selectedDuration) },
                         set: {
@@ -752,9 +931,9 @@ struct SetupView: View {
             tintColor: colorScheme == .dark ? Color(red: 0.25, green: 0.15, blue: 0.3).opacity(0.6) : Color.purple.opacity(0.1)
         )
     }
-    
+
     // MARK: - Start Button (优化尺寸)
-    
+
     private var startButton: some View {
         let ctaTextColor: Color = .white
 
@@ -777,7 +956,7 @@ struct SetupView: View {
                         Circle()
                             .stroke(ctaTextColor.opacity(0.3), lineWidth: 2.5)
                             .frame(width: 20, height: 20)
-                        
+
                         Circle()
                             .trim(from: 0, to: 0.7)
                             .stroke(
@@ -790,7 +969,7 @@ struct SetupView: View {
                     .frame(width: 26, height: 26)
                     .scaleEffect(preparingPulse)
                     .transition(.scale.combined(with: .opacity))
-                    
+
                     Text(L("transport.status.warmingUp"))
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .kerning(0.1)
@@ -850,17 +1029,17 @@ struct SetupView: View {
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: canStartJourney)
         .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isStarting)
     }
-    
+
     private var canStartJourney: Bool {
         if isStarting {
             return false
         }
-        
+
         // Check based on location source
         switch selectedLocation {
         case .currentLocation:
             return locationManager.isAuthorized && locationManager.currentLocation != nil
-        case .preset, .custom:
+        case .preset, .custom, .scenicRoute:
             return true // Preset and custom locations are always ready
         }
     }
@@ -878,15 +1057,15 @@ struct SetupView: View {
             buttonGlow = 1.0
         }
     }
-    
+
     // MARK: - First Journey Guide Overlay (简洁版)
-    
+
     @ViewBuilder
     private var firstJourneyGuideOverlay: some View {
         ZStack {
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 32) {
                 // 庆祝图标
                 ZStack {
@@ -899,7 +1078,7 @@ struct SetupView: View {
                             )
                         )
                         .frame(width: 100, height: 100)
-                    
+
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 50, weight: .semibold))
                         .foregroundStyle(
@@ -911,13 +1090,13 @@ struct SetupView: View {
                         )
                 }
                 .shadow(color: Color.green.opacity(0.4), radius: 20, x: 0, y: 10)
-                
+
                 // 标题
                 Text("🎉 " + L("guide.firstJourney.title"))
                     .font(.system(size: 26, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
-                
+
                 // 简洁的3步骤
                 VStack(spacing: 20) {
                     OnboardingStepView(
@@ -925,13 +1104,13 @@ struct SetupView: View {
                         icon: "clock.arrow.circlepath",
                         color: .blue
                     )
-                    
+
                     OnboardingStepView(
                         number: "2",
                         icon: "chart.bar.fill",
                         color: .orange
                     )
-                    
+
                     OnboardingStepView(
                         number: "3",
                         icon: "star.fill",
@@ -939,7 +1118,7 @@ struct SetupView: View {
                     )
                 }
                 .padding(.horizontal, 40)
-                
+
                 // 指向历史按钮的箭头
                 HStack {
                     Spacer()
@@ -953,7 +1132,7 @@ struct SetupView: View {
                     }
                     .padding(.trailing, 30)
                 }
-                
+
                 // 开始按钮
                 Button {
                     HapticManager.success()
@@ -987,9 +1166,9 @@ struct SetupView: View {
             .padding(.horizontal, 32)
         }
     }
-    
+
     // MARK: - Actions
-    
+
     private func startJourney() {
         journeyPreparationTask?.cancel()
         journeyPreparationTask = nil
@@ -998,7 +1177,7 @@ struct SetupView: View {
         let isPresetCity: Bool
         let startLocationName: String?
         var presetLocation: PresetLocation? = nil
-        
+
         // Determine start coordinate based on selected location
         switch selectedLocation {
         case .currentLocation:
@@ -1010,21 +1189,26 @@ struct SetupView: View {
             startCoordinate = location
             isPresetCity = false
             startLocationName = locationManager.currentLocationName.isEmpty ? nil : locationManager.currentLocationName
-            
+
         case .preset(let location):
             startCoordinate = location.coordinate
             isPresetCity = true
             presetLocation = location
             startLocationName = location.localizedName
-            
+
         case .custom(let coordinate, let name):
             startCoordinate = coordinate
             isPresetCity = false
             startLocationName = name
+
+        case .scenicRoute(let route):
+            startCoordinate = route.startCoordinateForNextSession
+            isPresetCity = false
+            startLocationName = route.localizedName
         }
-        
+
         isStarting = true
-        
+
         Task {
             await journeyManager.startJourney(
                 from: startCoordinate,
@@ -1032,14 +1216,28 @@ struct SetupView: View {
                 duration: TimeInterval(selectedDuration * 60),
                 isPresetCity: isPresetCity,
                 presetLocation: presetLocation,
-                startLocationName: startLocationName
+                startLocationName: startLocationName,
+                focusGoal: currentFocusGoal,
+                vehicle: selectedTransport == .driving ? vehicleStore.selectedVehicle : nil,
+                scenicRoute: selectedScenicRoute
             )
-            
+
             // Check if journey started successfully
             if case .failed = journeyManager.state {
                 isStarting = false
             }
         }
+    }
+
+    private var currentFocusGoal: String {
+        focusGoalStore.selectedSessionValue
+    }
+
+    private var selectedScenicRoute: ScenicRoute? {
+        if case .scenicRoute(let route) = selectedLocation {
+            return route
+        }
+        return nil
     }
 
     private func triggerDurationSliderHaptic(for value: Int) {
@@ -1141,19 +1339,19 @@ struct OnboardingStepView: View {
         self.title = title
         self.subtitle = subtitle
     }
-    
+
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
                     .fill(color.opacity(0.2))
                     .frame(width: 50, height: 50)
-                
+
                 Text(number)
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(color)
             }
-            
+
             // 图标
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
@@ -1168,7 +1366,7 @@ struct OnboardingStepView: View {
                         )
                     )
                     .frame(width: 60, height: 60)
-                
+
                 Image(systemName: icon)
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundColor(color)
@@ -1216,10 +1414,10 @@ struct ScaleButtonStyle: ButtonStyle {
 struct PremiumAnimatedGradientButtonBackground: View {
     @State private var animateGradient = false
     let isEnabled: Bool
-    
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
-        
+
         ZStack {
             if isEnabled {
                 // Base Animated Gradient
@@ -1294,7 +1492,7 @@ struct WidgetHeader: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.adaptiveTextColor) var adaptiveTextColor
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
-    
+
     var body: some View {
         HStack(spacing: 8) {
             ZStack {
@@ -1310,18 +1508,18 @@ struct WidgetHeader: View {
                         )
                     )
                     .frame(width: 28, height: 28)
-                
+
                 Image(systemName: icon)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(iconColor)
             }
-            
+
             Text(title)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundColor(adaptiveTextColor.opacity(0.9))
-            
+
             Spacer()
-            
+
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundColor(adaptiveSecondaryTextColor.opacity(0.5))
@@ -1337,7 +1535,7 @@ struct HistorySummaryWidget: View {
     @Environment(\.adaptiveTextColor) var adaptiveTextColor
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     let records: [JourneyRecord]
-    
+
     private var totalTime: TimeInterval {
         records.reduce(0) { $0 + $1.duration }
     }
@@ -1345,7 +1543,7 @@ struct HistorySummaryWidget: View {
     private var totalDistance: Double {
         records.reduce(0) { $0 + $1.distanceTraveled }
     }
-    
+
     private var journeyCount: Int {
         records.count
     }
@@ -1354,11 +1552,11 @@ struct HistorySummaryWidget: View {
         let calendar = Calendar.current
         return Set(records.map { calendar.startOfDay(for: $0.startTime) }).count
     }
-    
+
     private var currentMonthName: String {
         FormatUtilities.formatMonthLong(Date(), localeIdentifier: locale.identifier)
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             WidgetHeader(
@@ -1366,34 +1564,34 @@ struct HistorySummaryWidget: View {
                 title: currentMonthName,
                 iconColor: Color(red: 0.6, green: 0.4, blue: 0.9)
             )
-            
+
             Spacer()
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(FormatUtilities.formatTime(totalTime))
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundColor(adaptiveTextColor)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                
+
                 Text("\(journeyCount) \(journeyCount == 1 ? L("common.journey") : L("common.journeys"))")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(adaptiveSecondaryTextColor)
             }
 
             Spacer()
-            
-            HStack(spacing: 8) {
+
+            HStack(spacing: 7) {
                 compactMetric(
                     icon: "calendar",
                     label: L("history.stats.totalDays"),
                     value: "\(FormatUtilities.formatNumber(activeDayCount)) \(L("history.stats.daysActive"))"
                 )
-                
+
                 compactMetric(
                     icon: "location",
                     label: L("history.totalDistance"),
-                    value: FormatUtilities.formatDistance(totalDistance)
+                    value: compactDistanceText
                 )
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -1419,17 +1617,27 @@ struct HistorySummaryWidget: View {
             }
 
             Text(value)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundColor(adaptiveTextColor.opacity(0.9))
                 .lineLimit(1)
+                .minimumScaleFactor(0.62)
+                .allowsTightening(true)
+                .monospacedDigit()
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 9)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14)
                 .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
         )
+    }
+
+    private var compactDistanceText: String {
+        if totalDistance >= 1000 {
+            return String(format: "%.1fkm", totalDistance / 1000)
+        }
+        return String(format: "%.0fm", totalDistance)
     }
 }
 
@@ -1441,23 +1649,23 @@ struct WeatherWidget: View {
     @Environment(\.adaptiveTextColor) var adaptiveTextColor
     @Environment(\.adaptiveSecondaryTextColor) var adaptiveSecondaryTextColor
     @ObservedObject var weatherManager: WeatherManager
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             WidgetHeader(
-                icon: "cloud.sun.fill", 
-                title: L("label.weather"), 
+                icon: "cloud.sun.fill",
+                title: L("label.weather"),
                 iconColor: Color.blue
             )
-            
+
             Spacer()
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(weatherManager.temperatureString)
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundColor(adaptiveTextColor)
-                    
+
                     if weatherManager.isLoading {
                         ProgressView().tint(adaptiveTextColor)
                     } else {
@@ -1467,15 +1675,15 @@ struct WeatherWidget: View {
                             .symbolRenderingMode(.hierarchical)
                     }
                 }
-                
+
                 Text(weatherManager.isLoading ? L("common.loading") : weatherManager.weatherDescription)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(adaptiveSecondaryTextColor)
                     .lineLimit(1)
             }
-            
+
             Spacer()
-            
+
             AppleWeatherAttributionView(
                 textColor: adaptiveSecondaryTextColor,
                 fontSize: 9,

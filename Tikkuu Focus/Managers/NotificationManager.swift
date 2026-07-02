@@ -56,6 +56,25 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    func notifyTrophyUnlocked(trophy: Trophy) {
+        let content = UNMutableNotificationContent()
+        content.title = L("notification.trophyUnlocked.title")
+        content.body = String(format: L("notification.trophyUnlocked.body"), trophy.localizedTitle)
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "trophy.unlocked.\(trophy.id).\(UUID().uuidString)",
+            content: content,
+            trigger: nil
+        )
+
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            guard granted else { return }
+            center.add(request, withCompletionHandler: nil)
+        }
+    }
+
     // MARK: - UNUserNotificationCenterDelegate
 
     /// Show the notification even when the app is in the foreground (a journey

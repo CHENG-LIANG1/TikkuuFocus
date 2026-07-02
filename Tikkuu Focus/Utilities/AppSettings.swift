@@ -153,8 +153,8 @@ class AppSettings: ObservableObject {
         self.hasSeenFirstJourneyGuide = UserDefaults.standard.bool(forKey: "hasSeenFirstJourneyGuide")
         let storedMapMode = UserDefaults.standard.string(forKey: "selectedMapMode") ?? AppMapMode.explore.rawValue
         self.selectedMapMode = AppMapMode(rawValue: storedMapMode) ?? .explore
-        let storedTransport = UserDefaults.standard.string(forKey: "preferredTransportMode") ?? TransportMode.cycling.rawValue
-        self.preferredTransportMode = TransportMode(rawValue: storedTransport) ?? .cycling
+        let storedTransport = UserDefaults.standard.string(forKey: "preferredTransportMode") ?? TransportMode.driving.rawValue
+        self.preferredTransportMode = TransportMode(rawValue: storedTransport) ?? .driving
         let storedDuration = UserDefaults.standard.integer(forKey: "preferredDuration")
         self.preferredDuration = storedDuration == 0 ? 25 : min(max(storedDuration, 5), 240)
         self.isStrictModeEnabled = UserDefaults.standard.bool(forKey: "isStrictModeEnabled")

@@ -68,101 +68,127 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            // Immersive map visual — contained within safe margins
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.12))
-                    .frame(width: 220, height: 220)
-                    .blur(radius: 45)
-                    .offset(y: 8)
+            // Pomodoro timer hero — a focus ring wrapped around a tomato
+            pomodoroHero
+                .frame(height: isCompact ? 150 : 180)
 
-                Path { path in
-                    let w: CGFloat = 170
-                    let h: CGFloat = 80
-                    path.move(to: CGPoint(x: -w * 0.42, y: h * 0.1))
-                    path.addCurve(
-                        to: CGPoint(x: w * 0.42, y: -h * 0.1),
-                        control1: CGPoint(x: -w * 0.18, y: h * 0.5),
-                        control2: CGPoint(x: w * 0.18, y: -h * 0.4)
-                    )
-                }
-                .stroke(
-                    LinearGradient(colors: [.cyan, .blue, .purple], startPoint: .leading, endPoint: .trailing),
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [10, 7])
-                )
-                .frame(width: 170, height: 80)
-                .offset(y: -12)
+            Spacer().frame(height: isCompact ? 18 : 26)
 
-                Image(systemName: "location.fill")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                    .shadow(color: .cyan.opacity(0.5), radius: 8, y: 3)
-                    .offset(x: -44, y: 22)
-
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)))
-                    .shadow(color: .orange.opacity(0.5), radius: 6, y: 3)
-                    .offset(x: 46, y: -20)
+            // Pomodoro badge
+            HStack(spacing: 6) {
+                Image(systemName: "timer")
+                    .font(.system(size: 11, weight: .bold))
+                Text(L("onboarding.welcome.badge"))
+                    .font(.system(size: 12, weight: .bold))
             }
-            .frame(height: isCompact ? 120 : 150)
+            .foregroundStyle(.white.opacity(0.92))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color(red: 0.95, green: 0.33, blue: 0.28).opacity(0.22))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(Color(red: 0.98, green: 0.5, blue: 0.4).opacity(0.45), lineWidth: 1)
+                    )
+            )
 
-            Spacer().frame(height: isCompact ? 16 : 24)
+            Spacer().frame(height: isCompact ? 12 : 16)
 
             VStack(spacing: 10) {
                 Text(L("onboarding.welcome.title"))
-                    .font(.system(size: isCompact ? 26 : 32, weight: .bold, design: .rounded))
+                    .font(.system(size: isCompact ? 27 : 33, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
 
                 Text(L("onboarding.welcome.subtitle"))
                     .font(.system(size: isCompact ? 14 : 16, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(.white.opacity(0.78))
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, 36)
             }
 
-            Spacer().frame(height: isCompact ? 16 : 22)
+            Spacer().frame(height: isCompact ? 20 : 28)
 
-            HStack(spacing: 14) {
-                statBadge(icon: "map.fill", value: "3", label: L("onboarding.welcome.stat.modes"))
-                statBadge(icon: "timer", value: "25-90", label: L("onboarding.welcome.stat.minutes"))
-                statBadge(icon: "trophy.fill", value: "129", label: L("onboarding.welcome.stat.trophies"))
+            // How it works — 3 quick steps
+            HStack(spacing: 10) {
+                conceptStep(number: "1", icon: "timer", label: L("onboarding.welcome.step1"), color: Color(red: 0.97, green: 0.45, blue: 0.30))
+                stepArrow
+                conceptStep(number: "2", icon: "figure.walk", label: L("onboarding.welcome.step2"), color: .cyan)
+                stepArrow
+                conceptStep(number: "3", icon: "trophy.fill", label: L("onboarding.welcome.step3"), color: .yellow)
             }
+            .padding(.horizontal, 24)
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func statBadge(icon: String, value: String, label: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
-            Text(value)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-            Text(label)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.6))
-        }
-        .frame(width: 80)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+    private var pomodoroHero: some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.95, green: 0.33, blue: 0.28).opacity(0.18))
+                .frame(width: 200, height: 200)
+                .blur(radius: 46)
+
+            // Timer track
+            Circle()
+                .stroke(Color.white.opacity(0.12), lineWidth: 11)
+                .frame(width: 150, height: 150)
+
+            // Timer progress arc
+            Circle()
+                .trim(from: 0, to: 0.7)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color(red: 0.99, green: 0.55, blue: 0.28), Color(red: 0.95, green: 0.28, blue: 0.30)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    style: StrokeStyle(lineWidth: 11, lineCap: .round)
                 )
-        )
+                .rotationEffect(.degrees(-90))
+                .frame(width: 150, height: 150)
+
+            // Endpoint dot
+            Circle()
+                .fill(.white)
+                .frame(width: 13, height: 13)
+                .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
+                .offset(y: -75)
+                .rotationEffect(.degrees(0.7 * 360))
+
+            // Tomato center
+            Text("🍅")
+                .font(.system(size: 56))
+                .shadow(color: .red.opacity(0.3), radius: 10, y: 4)
+        }
+    }
+
+    private var stepArrow: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(.white.opacity(0.3))
+    }
+
+    private func conceptStep(number: String, icon: String, label: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.16))
+                    .overlay(Circle().stroke(color.opacity(0.4), lineWidth: 1))
+                    .frame(width: 52, height: 52)
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+            Text(label)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.85))
+        }
     }
 
     private func interactiveSetupPage(isCompact: Bool) -> some View {

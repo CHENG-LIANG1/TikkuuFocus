@@ -230,7 +230,7 @@ struct AcknowledgementsView: View {
             AcknowledgementPlatformCard(
                 imageName: "XiaoheiheIcon",
                 platform:L("acknowledgements.platform.xiaoheihe"),
-                names: ["Sekai", "米子哈qwq", "ikuyooo", "CasperMoller", "Crbon666", "左转直飞NX", "DoubleTian", "双蛋烤冷面"],
+                names: ["Sekai", "米子哈qwq", "ikuyooo", "CasperMoller", "Crbon666", "左转直飞NX", "DoubleTian", "双蛋烤冷面", "林野Linye"],
                 accent: Color(red: 0.74, green: 0.80, blue: 0.88)
             )
         }

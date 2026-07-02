@@ -18,6 +18,15 @@ final class JourneyRecord {
     var duration: TimeInterval = 0 // Actual duration (may be less than planned)
     var plannedDuration: TimeInterval = 0
     var transportMode: String = ""
+    var focusGoal: String = ""
+    var vehicleBrand: String = ""
+    var vehicleModel: String = ""
+    var vehicleEnergyType: String = ""
+    var vehiclePlate: String = ""
+    var scenicRouteID: String = ""
+    var scenicRouteName: String = ""
+    var scenicRouteTotalDistance: Double = 0
+    var scenicRouteProgress: Double = 0
     var startLocationName: String = ""
     var startLatitude: Double = 0
     var startLongitude: Double = 0
@@ -38,6 +47,15 @@ final class JourneyRecord {
         duration: TimeInterval,
         plannedDuration: TimeInterval,
         transportMode: String,
+        focusGoal: String = "",
+        vehicleBrand: String = "",
+        vehicleModel: String = "",
+        vehicleEnergyType: String = "",
+        vehiclePlate: String = "",
+        scenicRouteID: String = "",
+        scenicRouteName: String = "",
+        scenicRouteTotalDistance: Double = 0,
+        scenicRouteProgress: Double = 0,
         startLocationName: String,
         startLatitude: Double,
         startLongitude: Double,
@@ -57,6 +75,15 @@ final class JourneyRecord {
         self.duration = duration
         self.plannedDuration = plannedDuration
         self.transportMode = transportMode
+        self.focusGoal = focusGoal
+        self.vehicleBrand = vehicleBrand
+        self.vehicleModel = vehicleModel
+        self.vehicleEnergyType = vehicleEnergyType
+        self.vehiclePlate = vehiclePlate
+        self.scenicRouteID = scenicRouteID
+        self.scenicRouteName = scenicRouteName
+        self.scenicRouteTotalDistance = scenicRouteTotalDistance
+        self.scenicRouteProgress = scenicRouteProgress
         self.startLocationName = startLocationName
         self.startLatitude = startLatitude
         self.startLongitude = startLongitude
@@ -85,6 +112,38 @@ final class JourneyRecord {
     
     var formattedDistance: String {
         FormatUtilities.formatDistance(distanceTraveled)
+    }
+
+    var focusGoalDisplayName: String {
+        focusGoal.isEmpty ? L("focus.goal.default") : focusGoal
+    }
+
+    var hasVehicle: Bool {
+        !vehicleBrand.isEmpty || !vehicleModel.isEmpty || !vehiclePlate.isEmpty
+    }
+
+    /// Prefer the model name in history cards; fall back to brand + model for legacy records.
+    var vehicleDisplayName: String {
+        let trimmedModel = vehicleModel.trimmingCharacters(in: .whitespaces)
+        if !trimmedModel.isEmpty {
+            return trimmedModel
+        }
+        return [vehicleBrand, vehicleModel]
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    var vehicleEnergyTypeEnum: VehicleEnergyType? {
+        VehicleEnergyType(rawValue: vehicleEnergyType)
+    }
+
+    var hasScenicRoute: Bool {
+        !scenicRouteID.isEmpty
+    }
+
+    var scenicRouteDisplayName: String {
+        scenicRouteName.isEmpty ? L("route.scenic.title") : scenicRouteName
     }
 
     var discoveredPOIs: [StoredDiscoveredPOI] {

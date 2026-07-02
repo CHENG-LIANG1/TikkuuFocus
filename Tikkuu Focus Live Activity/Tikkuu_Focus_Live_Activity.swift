@@ -1080,16 +1080,21 @@ struct TikkuuFocusLiveActivity: Widget {
 
                     Spacer(minLength: 0)
 
-                    timeView(for: context.state)
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.65)
-                }
+                    HStack(spacing: 8) {
+                        timeView(for: context.state)
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
 
-                ProgressView(value: progress(for: context.state))
-                    .progressViewStyle(.linear)
-                    .tint(context.state.isPaused ? .orange : .blue)
+                        progressRing(
+                            progress: progress(for: context.state),
+                            size: 32,
+                            lineWidth: 3.2,
+                            tint: context.state.isPaused ? .orange : .blue
+                        )
+                    }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -1146,11 +1151,6 @@ struct TikkuuFocusLiveActivity: Widget {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                         }
-
-                        progressBar(
-                            progress: progress(for: context.state),
-                            tint: context.state.isPaused ? .orange : .blue
-                        )
 
                         Text(routeText(for: context.state))
                             .font(.caption2.weight(.medium))
@@ -1234,23 +1234,6 @@ struct TikkuuFocusLiveActivity: Widget {
                 .rotationEffect(.degrees(-90))
         }
         .frame(width: size, height: size)
-        .accessibilityLabel("进度")
-        .accessibilityValue(Text("\(Int(progress * 100))%"))
-    }
-
-    private func progressBar(progress: Double, tint: Color) -> some View {
-        GeometryReader { proxy in
-            let width = max(proxy.size.width * progress, progress > 0 ? 4 : 0)
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(tint.opacity(0.2))
-                Capsule()
-                    .fill(tint)
-                    .frame(width: width)
-            }
-        }
-        .frame(height: 6)
         .accessibilityLabel("进度")
         .accessibilityValue(Text("\(Int(progress * 100))%"))
     }

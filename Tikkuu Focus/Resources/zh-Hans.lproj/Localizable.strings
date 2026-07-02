@@ -544,15 +544,16 @@
 "trophy.progress" = "进度";
 "trophy.complete" = "完成";
 "trophy.requirement" = "达成条件";
+"trophy.next" = "下一座";
 
 // Trophy Categories
 "trophy.category.all" = "全部";
-"trophy.category.distance" = "里程";
-"trophy.category.journey" = "旅程";
+"trophy.category.distance" = "开图";
+"trophy.category.journey" = "主线";
 "trophy.category.location" = "地点";
-"trophy.category.time" = "时间";
-"trophy.category.poi" = "景点";
-"trophy.category.streak" = "连续";
+"trophy.category.time" = "挂机";
+"trophy.category.poi" = "彩蛋";
+"trophy.category.streak" = "连击";
 "trophy.category.speed" = "速度";
 "trophy.category.weather" = "天气";
 
@@ -566,21 +567,21 @@
 // Trophy Titles & Descriptions
 "trophy.distance_1km.title" = "初次尝试";
 "trophy.distance_1km.description" = "旅行 1 公里";
-"trophy.distance_10km.title" = "探索者";
-"trophy.distance_10km.description" = "旅行 10 公里";
+"trophy.distance_10km.title" = "新手村外";
+"trophy.distance_10km.description" = "累计走出 10 公里，终于不是出生点附近打转了。";
 "trophy.distance_50km.title" = "冒险家";
 "trophy.distance_50km.description" = "旅行 50 公里";
-"trophy.distance_100km.title" = "旅行者";
-"trophy.distance_100km.description" = "旅行 100 公里";
-"trophy.distance_500km.title" = "环球旅行家";
-"trophy.distance_500km.description" = "旅行 500 公里";
+"trophy.distance_100km.title" = "地图边界在哪";
+"trophy.distance_100km.description" = "累计开图 100 公里，小地图已经不够用了。";
+"trophy.distance_500km.title" = "这不是开放世界吗";
+"trophy.distance_500km.description" = "累计开图 500 公里，制作组：这块我们真没做空气墙。";
 
-"trophy.journey_1.title" = "新手";
-"trophy.journey_1.description" = "完成 1 次漫游";
-"trophy.journey_10.title" = "常客";
-"trophy.journey_10.description" = "完成 10 次漫游";
-"trophy.journey_50.title" = "专注者";
-"trophy.journey_50.description" = "完成 50 次漫游";
+"trophy.journey_1.title" = "开局就送";
+"trophy.journey_1.description" = "完成 1 次漫游，教程关通过。";
+"trophy.journey_10.title" = "每日任务清完了";
+"trophy.journey_10.description" = "完成 10 次漫游，任务板上少了几个感叹号。";
+"trophy.journey_50.title" = "肝帝上线";
+"trophy.journey_50.description" = "完成 50 次漫游，这不是上班，这是刷声望。";
 "trophy.journey_100.title" = "坚持者";
 "trophy.journey_100.description" = "完成 100 次漫游";
 "trophy.journey_500.title" = "大师";
@@ -595,21 +596,21 @@
 "trophy.location_50.title" = "世界探险家";
 "trophy.location_50.description" = "访问 50 个不同地点";
 
-"trophy.time_1h.title" = "第一小时";
-"trophy.time_1h.description" = "累计专注 1 小时";
-"trophy.time_10h.title" = "专注者";
-"trophy.time_10h.description" = "累计专注 10 小时";
-"trophy.time_50h.title" = "投入者";
-"trophy.time_50h.description" = "累计专注 50 小时";
+"trophy.time_1h.title" = "挂机一小时";
+"trophy.time_1h.description" = "累计专注 1 小时，经验条动了。";
+"trophy.time_10h.title" = "读条大师";
+"trophy.time_10h.description" = "累计专注 10 小时，所有 loading 都值得被尊重。";
+"trophy.time_50h.title" = "防沉迷失效";
+"trophy.time_50h.description" = "累计专注 50 小时，系统提示：你真的很能坐。";
 "trophy.time_100h.title" = "专家";
 "trophy.time_100h.description" = "累计专注 100 小时";
 "trophy.time_500h.title" = "禅宗大师";
 "trophy.time_500h.description" = "累计专注 500 小时";
 
-"trophy.poi_10.title" = "侦察兵";
-"trophy.poi_10.description" = "发现 10 个景点";
-"trophy.poi_50.title" = "发现者";
-"trophy.poi_50.description" = "发现 50 个景点";
+"trophy.poi_10.title" = "到处点问号";
+"trophy.poi_10.description" = "发现 10 个景点，地图上的问号不会自己消失。";
+"trophy.poi_50.title" = "全图标收集癖";
+"trophy.poi_50.description" = "发现 50 个景点，路过的图标都得点亮。";
 "trophy.poi_100.title" = "收藏家";
 "trophy.poi_100.description" = "发现 100 个景点";
 "trophy.poi_500.title" = "策展人";
@@ -617,10 +618,10 @@
 "trophy.poi_1000.title" = "百科全书";
 "trophy.poi_1000.description" = "发现 1000 个景点";
 
-"trophy.streak_3.title" = "初露锋芒";
-"trophy.streak_3.description" = "连续 3 天";
-"trophy.streak_7.title" = "周战士";
-"trophy.streak_7.description" = "连续 7 天";
+"trophy.streak_3.title" = "连击 x3";
+"trophy.streak_3.description" = "连续 3 天专注，combo 还没断。";
+"trophy.streak_7.title" = "七日登录奖励";
+"trophy.streak_7.description" = "连续 7 天专注，今天的奖励请查收。";
 "trophy.streak_30.title" = "月度大师";
 "trophy.streak_30.description" = "连续 30 天";
 "trophy.streak_100.title" = "百日勇士";
@@ -772,20 +773,20 @@
 "trophy.special_veteran.description" = "活跃 730 天（2年）";
 
 // Missing Distance Trophies
-"trophy.distance_5km.title" = "起步者";
-"trophy.distance_5km.description" = "旅行 5 公里";
-"trophy.distance_25km.title" = "远行者";
-"trophy.distance_25km.description" = "旅行 25 公里";
-"trophy.distance_250km.title" = "长途旅客";
-"trophy.distance_250km.description" = "旅行 250 公里";
-"trophy.distance_1000km.title" = "千里之行";
-"trophy.distance_1000km.description" = "旅行 1000 公里";
+"trophy.distance_5km.title" = "离开安全区";
+"trophy.distance_5km.description" = "累计开图 5 公里，系统提示：前方可自由探索。";
+"trophy.distance_25km.title" = "小地图不够用";
+"trophy.distance_25km.description" = "累计开图 25 公里，缩放按钮开始有存在感。";
+"trophy.distance_250km.title" = "跑图素材收集";
+"trophy.distance_250km.description" = "累计开图 250 公里，这条路你真的刷过。";
+"trophy.distance_1000km.title" = "全图传火";
+"trophy.distance_1000km.description" = "累计开图 1000 公里，迷雾战争基本结束。";
 
 // Missing Journey Trophies
-"trophy.journey_5.title" = "入门者";
-"trophy.journey_5.description" = "完成 5 次漫游";
-"trophy.journey_25.title" = "熟练者";
-"trophy.journey_25.description" = "完成 25 次漫游";
+"trophy.journey_5.title" = "五连抽";
+"trophy.journey_5.description" = "完成 5 次漫游，保底还没出，但习惯出了。";
+"trophy.journey_25.title" = "任务链还挺长";
+"trophy.journey_25.description" = "完成 25 次漫游，NPC 已经开始眼熟你。";
 "trophy.journey_250.title" = "资深旅行家";
 "trophy.journey_250.description" = "完成 250 次漫游";
 "trophy.journey_1000.title" = "传奇";
@@ -800,28 +801,28 @@
 "trophy.location_100.description" = "访问 100 个不同地点";
 
 // Missing Time Trophies
-"trophy.time_30min.title" = "初试锋芒";
-"trophy.time_30min.description" = "累计专注 30 分钟";
-"trophy.time_5h.title" = "入门者";
-"trophy.time_5h.description" = "累计专注 5 小时";
-"trophy.time_25h.title" = "勤奋者";
-"trophy.time_25h.description" = "累计专注 25 小时";
+"trophy.time_30min.title" = "新手教程没跳过";
+"trophy.time_30min.description" = "累计专注 30 分钟，剧情还没跳，经验先拿。";
+"trophy.time_5h.title" = "存档点已到";
+"trophy.time_5h.description" = "累计专注 5 小时，今天可以安心保存退出。";
+"trophy.time_25h.title" = "读档重开也不亏";
+"trophy.time_25h.description" = "累计专注 25 小时，这个号养起来了。";
 "trophy.time_250h.title" = "大师级";
 "trophy.time_250h.description" = "累计专注 250 小时";
 
 // Missing POI Trophies
-"trophy.poi_5.title" = "观察者";
-"trophy.poi_5.description" = "发现 5 个景点";
-"trophy.poi_25.title" = "探险者";
-"trophy.poi_25.description" = "发现 25 个景点";
+"trophy.poi_5.title" = "问号清洁工";
+"trophy.poi_5.description" = "发现 5 个景点，地图强迫症初见端倪。";
+"trophy.poi_25.title" = "路边宝箱猎人";
+"trophy.poi_25.description" = "发现 25 个景点，能点亮的都别放过。";
 "trophy.poi_250.title" = "鉴赏家";
 "trophy.poi_250.description" = "发现 250 个景点";
 
 // Missing Streak Trophies
-"trophy.streak_2.title" = "开始习惯";
-"trophy.streak_2.description" = "连续 2 天";
-"trophy.streak_14.title" = "双周冠军";
-"trophy.streak_14.description" = "连续 14 天";
+"trophy.streak_2.title" = "二段跳";
+"trophy.streak_2.description" = "连续 2 天专注，第一段还没落地就接上了。";
+"trophy.streak_14.title" = "周目二开启";
+"trophy.streak_14.description" = "连续 14 天专注，这已经不是签到，是周目。";
 "trophy.streak_60.title" = "双月英雄";
 "trophy.streak_60.description" = "连续 60 天";
 
@@ -902,9 +903,57 @@
 
 "history.stats.activityHeatmap" = "活动热力图";
 
+// Focus Goal
+"focus.goal.title" = "专注目标";
+"focus.goal.default" = "默认";
+"focus.goal.work" = "工作";
+"focus.goal.study" = "学习";
+"focus.goal.exercise" = "运动";
+"focus.goal.custom" = "自定义";
+"focus.goal.custom.placeholder" = "12 个英文或 6 个中文";
+"focus.goal.stats.title" = "目标分布";
+"focus.goal.set" = "设置目标";
+"focus.goal.sheet.title" = "设置专注目标";
+"focus.goal.add.title" = "添加目标";
+"focus.goal.add.confirm" = "添加";
+"focus.goal.add.message" = "为本次专注命名一个目标（12 个英文或 6 个中文以内）。";
+"focus.goal.count" = "已添加 %d / %d 个目标";
+
+// Vehicle
+"vehicle.title" = "车辆";
+"vehicle.setup" = "设置车辆";
+"vehicle.sheet.title" = "设置车辆";
+"vehicle.add" = "添加车辆";
+"vehicle.edit" = "编辑车辆";
+"vehicle.count" = "已添加 %d / %d 辆车";
+"vehicle.empty" = "还没有车辆";
+"vehicle.empty.message" = "添加一辆车，开始你的驾驶专注。";
+"vehicle.section.model" = "品牌车型";
+"vehicle.brand" = "汽车品牌";
+"vehicle.brand.placeholder" = "选择品牌";
+"vehicle.brand.search" = "搜索品牌";
+"vehicle.model" = "车型";
+"vehicle.model.placeholder" = "选择车型";
+"vehicle.plate" = "车牌";
+"vehicle.plate.placeholder" = "例如 沪A·8888";
+"vehicle.plate.hint" = "油车车牌最多 7 个字，电车最多 8 个字。";
+"vehicle.delete.confirm.title" = "删除这辆车？";
+"vehicle.delete.confirm.message" = "确定要删除「%@」吗？删除后不会影响已经保存的记录。";
+"vehicle.energy.title" = "能源方式";
+"vehicle.energy.gasoline" = "汽油";
+"vehicle.energy.electric" = "电动";
+"vehicle.energy.cost" = "电费";
+
+"virtual.metrics.title.energyKwh" = "电耗";
+"virtual.metrics.title.energyCost" = "电费";
+"virtual.metrics.energyKwh" = "%.1f kWh";
+
+"common.save" = "保存";
+
 // Journey Summary
 "journey.summary.focusTime" = "专注时间";
 "journey.summary.distance" = "距离";
+"journey.summary.progress" = "进度";
 "journey.summary.pois" = "景点";
 "journey.summary.route" = "路线";
 "journey.summary.save" = "保存";
@@ -926,12 +975,12 @@
 "virtual.metrics.title.steps" = "步数";
 "virtual.metrics.title.calories" = "卡路里";
 "virtual.metrics.title.fuelLiters" = "油耗";
-"virtual.metrics.title.fuelPrice" = "油价";
+"virtual.metrics.title.fuelPrice" = "总油价";
 "virtual.metrics.title.fallCount" = "摔倒次数";
 "virtual.metrics.steps" = "%@ 步";
 "virtual.metrics.calories" = "%@ 千卡";
 "virtual.metrics.fuelLiters" = "%.1f L";
-"virtual.metrics.fuelPrice" = "%@/L";
+"virtual.metrics.fuelPrice" = "%@";
 "virtual.metrics.fallCount" = "%@ 次";
 
 // Activity Heatmap
@@ -960,6 +1009,33 @@
 "trophy.notFound" = "未找到奖杯";
 "trophy.empty.category" = "该分类暂无奖杯";
 "trophy.done" = "完成";
+"trophy.inbox.title" = "奖杯消息";
+"trophy.inbox.empty" = "还没有获得奖杯";
+"trophy.category.route" = "副本";
+"trophy.route_first.title" = "进副本了";
+"trophy.route_first.description" = "开始 1 次景点路线，队长已经点了确认。";
+"trophy.route_5.title" = "固定队成型";
+"trophy.route_5.description" = "开始 5 次景点路线，队友默契值上升。";
+"trophy.route_half.title" = "进度条强迫症";
+"trophy.route_half.description" = "任意景点路线达到 50%，看到一半就想补满。";
+"trophy.route_90.title" = "就差临门一脚";
+"trophy.route_90.description" = "任意景点路线达到 90%，此时退出会很难受。";
+"trophy.route_complete.title" = "传送点已解锁";
+"trophy.route_complete.description" = "完成任意一条景点路线，下次可以骄傲地说：我跑过。";
+
+// Scenic Routes
+"route.scenic.title" = "景点路线";
+"route.scenic.set" = "设置路线";
+"route.scenic.sheet.title" = "设置路线";
+"route.scenic.clear" = "取消路线";
+"route.scenic.locked.hint" = "已选择固定路线，本次不能自定义出发地点；下次会从当前路线进度继续。";
+"route.scenic.start.progress" = "%@ · 已完成 %d%%";
+"route.scenic.progress" = "路线进度";
+"route.stats.title" = "路线统计";
+
+// Notifications
+"notification.trophyUnlocked.title" = "获得新奖杯";
+"notification.trophyUnlocked.body" = "你解锁了「%@」";
 
 // About
 "about.appName" = "Roam Focus";
@@ -971,30 +1047,34 @@
 "common.dash" = "—";
 
 // Onboarding v3 - Interactive
-"onboarding.welcome.title" = "专注、漫游、发现";
-"onboarding.welcome.subtitle" = "将专注时间变成真实的地图冒险。选择方式，设定时长，看着自己探索世界。";
+"onboarding.welcome.badge" = "番茄钟 · 专注计时";
+"onboarding.welcome.title" = "会旅行的番茄钟";
+"onboarding.welcome.subtitle" = "专注开始，就在地图上出发；时间一到，旅程到站。";
+"onboarding.welcome.step1" = "设时长";
+"onboarding.welcome.step2" = "去专注";
+"onboarding.welcome.step3" = "得成就";
 "onboarding.welcome.stat.modes" = "模式";
 "onboarding.welcome.stat.minutes" = "分钟";
 "onboarding.welcome.stat.trophies" = "奖杯";
 
-"onboarding.setup.title" = "选择你的风格";
-"onboarding.setup.subtitle" = "选择适合你专注节奏的交通方式和时长。随时可以在设置中更改。";
+"onboarding.setup.title" = "挑一个你的节奏";
+"onboarding.setup.subtitle" = "选交通方式和专注时长，之后随时能改。";
 "onboarding.setup.transport.label" = "交通方式";
 "onboarding.setup.duration.label" = "专注时长";
 "onboarding.setup.preview.title" = "预览";
 
-"onboarding.sim.title" = "专注是这样进行的";
-"onboarding.sim.subtitle" = "当你专注时，你的头像会在地图上漫游，沿途发现有趣的地方。";
+"onboarding.sim.title" = "一颗番茄，一段旅程";
+"onboarding.sim.subtitle" = "专注时头像在地图上漫游，沿途解锁景点。";
 
-"onboarding.perm.title" = "开启定位服务";
-"onboarding.perm.subtitle" = "我们需要你的位置来规划真实的漫游路线。";
+"onboarding.perm.title" = "开启定位";
+"onboarding.perm.subtitle" = "用你的位置生成真实的漫游路线。";
 "onboarding.perm.location.title" = "定位服务";
-"onboarding.perm.location.desc" = "用于计算路线和发现附近的兴趣点。";
+"onboarding.perm.location.desc" = "用于计算路线和发现附近景点。";
 "onboarding.perm.notif.title" = "通知";
-"onboarding.perm.notif.desc" = "在专注结束时提醒你。";
+"onboarding.perm.notif.desc" = "番茄结束时提醒你。";
 
-"onboarding.ready.title" = "一切就绪！";
-"onboarding.ready.subtitle" = "你的偏好已保存。准备好后，开始你的第一次专注漫游吧。";
+"onboarding.ready.title" = "准备就绪！";
+"onboarding.ready.subtitle" = "偏好已保存，开始你的第一颗番茄吧。";
 "onboarding.ready.config.title" = "你的配置";
 
 "onboarding.btn.start" = "开始体验";

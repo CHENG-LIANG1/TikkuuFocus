@@ -333,6 +333,62 @@ struct JourneySummaryView: View {
                 )
             }
 
+            HStack(spacing: 12) {
+                if let focusGoalText {
+                    MetricCell(
+                        icon: "target",
+                        title: L("focus.goal.title"),
+                        value: focusGoalText,
+                        gradient: LinearGradient(colors: [Color.indigo, Color.blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                }
+
+                MetricCell(
+                    icon: "flag.fill",
+                    title: L("journey.summary.progress"),
+                    value: FormatUtilities.formatProgress(progress),
+                    gradient: LinearGradient(colors: [Color.mint, Color.green], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+            }
+
+            if let vehicle = session.vehicle {
+                let plate = vehicle.plate.trimmingCharacters(in: .whitespacesAndNewlines)
+                HStack(spacing: 12) {
+                    MetricCell(
+                        icon: vehicle.energyType == .electric ? "bolt.car.fill" : "car.fill",
+                        title: L("vehicle.title"),
+                        value: vehicle.modelDisplayName,
+                        subtitle: plate.isEmpty ? nil : plate,
+                        gradient: LinearGradient(colors: [Color.blue, Color.cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+
+                    MetricCell(
+                        icon: vehicle.energyType.iconName,
+                        title: L("vehicle.energy.title"),
+                        value: vehicle.energyType.localizedName,
+                        gradient: LinearGradient(colors: [Color.purple, Color.indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                }
+            }
+
+            if session.hasScenicRoute {
+                HStack(spacing: 12) {
+                    MetricCell(
+                        icon: "point.topleft.down.curvedto.point.bottomright.up",
+                        title: L("route.scenic.title"),
+                        value: session.scenicRouteName,
+                        gradient: LinearGradient(colors: [Color.green, Color.teal], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+
+                    MetricCell(
+                        icon: "chart.line.uptrend.xyaxis",
+                        title: L("route.scenic.progress"),
+                        value: routeProgressText,
+                        gradient: LinearGradient(colors: [Color.orange, Color.yellow], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                }
+            }
+
             if !virtualMetrics.cardItems.isEmpty {
                 HStack(spacing: 12) {
                     ForEach(virtualMetrics.cardItems) { item in
@@ -357,6 +413,11 @@ struct JourneySummaryView: View {
         return data
     }
 
+    private var focusGoalText: String? {
+        let trimmed = session.focusGoal.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     private func virtualMetricGradient(for item: VirtualJourneyMetricCardItem) -> LinearGradient {
         let colors: [Color]
         switch item.id {
@@ -367,6 +428,10 @@ struct JourneySummaryView: View {
         case "fuelLiters":
             colors = [Color.teal, Color.cyan]
         case "fuelPrice":
+            colors = [Color.yellow, Color.orange]
+        case "energyKwh":
+            colors = [Color.green, Color.teal]
+        case "energyCost":
             colors = [Color.yellow, Color.orange]
         case "fallCount":
             colors = [Color.pink, Color.purple]
@@ -653,12 +718,21 @@ struct JourneySummaryView: View {
         return sanitizeDistance(rawDistance, transportMode: session.transportMode, duration: actualDuration)
     }
 
+    private var scenicRouteProgress: Double {
+        min(max(session.scenicRouteProgress(atSessionProgress: progress), 0), 1)
+    }
+
+    private var routeProgressText: String {
+        FormatUtilities.formatProgress(scenicRouteProgress)
+    }
+
     private var virtualMetrics: VirtualJourneyMetrics {
         VirtualJourneyMetrics(
             distanceMeters: displayDistance,
             duration: actualDuration,
             transportMode: session.transportMode,
-            sessionID: session.id
+            sessionID: session.id,
+            energyType: session.vehicle?.energyType ?? .gasoline
         )
     }
 
